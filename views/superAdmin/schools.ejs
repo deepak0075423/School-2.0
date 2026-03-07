@@ -1,0 +1,67 @@
+<div class="page-header">
+    <div>
+        <h1>🏫 All Schools</h1>
+        <p>Manage all schools in the system</p>
+    </div>
+    <a href="/super-admin/schools/create" class="btn btn-primary">+ Add School</a>
+</div>
+
+<div class="card">
+    <div class="table-wrapper">
+        <% if (schools.length===0) { %>
+            <div class="empty-state">
+                <div class="empty-icon">🏫</div>
+                <h3>No Schools Yet</h3>
+                <p>Create your first school to get started.</p>
+                <a href="/super-admin/schools/create" class="btn btn-primary">Create School</a>
+            </div>
+            <% } else { %>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>#</th>
+                            <th>School Name</th>
+                            <th>Email</th>
+                            <th>Phone</th>
+                            <th>Website</th>
+                            <th>Status</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <% schools.forEach((school, i)=> { %>
+                            <tr>
+                                <td class="text-muted">
+                                    <%= i + 1 %>
+                                </td>
+                                <td class="text-primary fw-semibold">🏫 <%= school.name %>
+                                </td>
+                                <td>
+                                    <%= school.email || '—' %>
+                                </td>
+                                <td>
+                                    <%= school.phone || '—' %>
+                                </td>
+                                <td>
+                                    <%= school.website ? `<a href="${school.website}" target="_blank">
+                                        ${school.website}</a>` : '—' %>
+                                </td>
+                                <td>
+                                    <span class="badge <%= school.isActive ? 'badge-green' : 'badge-red' %>">
+                                        <%= school.isActive ? '● Active' : '● Inactive' %>
+                                    </span>
+                                </td>
+                                <td>
+                                    <form action="/super-admin/schools/<%= school._id %>/delete" method="POST"
+                                        style="display:inline;"
+                                        onsubmit="return confirm('Delete school: <%= school.name %>?')">
+                                        <button type="submit" class="btn btn-danger btn-sm">🗑️ Delete</button>
+                                    </form>
+                                </td>
+                            </tr>
+                            <% }) %>
+                    </tbody>
+                </table>
+                <% } %>
+    </div>
+</div>

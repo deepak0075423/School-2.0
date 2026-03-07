@@ -1,0 +1,153 @@
+<div class="welcome-banner">
+    <div class="welcome-icon">👨‍🏫</div>
+    <div>
+        <h2>Welcome, <%= session.userName %>!</h2>
+        <p>Teacher Dashboard — <%= session.schoolName || 'Your School' %>
+        </p>
+    </div>
+</div>
+
+<div class="stats-grid">
+    <div class="stat-card">
+        <div class="stat-icon cyan">👥</div>
+        <div class="stat-info">
+            <div class="stat-value">
+                <%= students.length %>
+            </div>
+            <div class="stat-label">My Students</div>
+        </div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-icon green">📚</div>
+        <div class="stat-info">
+            <div class="stat-value">
+                <%= profile && profile.subjects ? profile.subjects.length : 0 %>
+            </div>
+            <div class="stat-label">Subjects</div>
+        </div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-icon purple">🏫</div>
+        <div class="stat-info">
+            <div class="stat-value">
+                <%= profile && profile.classes ? profile.classes.length : 0 %>
+            </div>
+            <div class="stat-label">Classes</div>
+        </div>
+    </div>
+</div>
+
+<div style="display:grid; grid-template-columns:1fr 1fr; gap:20px;">
+    <div class="card">
+        <div class="card-header">
+            <div class="card-title">📊 My Profile</div>
+        </div>
+        <div class="card-body">
+            <% if (profile) { %>
+                <div style="display:flex; flex-direction:column; gap:14px;">
+                    <div>
+                        <div class="form-label">Subjects</div>
+                        <div style="display:flex; gap:6px; flex-wrap:wrap; margin-top:4px;">
+                            <% (profile.subjects || []).forEach(s=> { %>
+                                <span class="badge badge-green">
+                                    <%= s %>
+                                </span>
+                                <% }) %>
+                                    <% if (!profile.subjects || profile.subjects.length===0) { %>
+                                        <span class="text-muted">Not assigned yet</span>
+                                        <% } %>
+                        </div>
+                    </div>
+                    <div>
+                        <div class="form-label">Classes</div>
+                        <div style="display:flex; gap:6px; flex-wrap:wrap; margin-top:4px;">
+                            <% (profile.classes || []).forEach(c=> { %>
+                                <span class="badge badge-purple">
+                                    <%= c %>
+                                </span>
+                                <% }) %>
+                                    <% if (!profile.classes || profile.classes.length===0) { %>
+                                        <span class="text-muted">Not assigned yet</span>
+                                        <% } %>
+                        </div>
+                    </div>
+                    <% if (profile.qualification) { %>
+                        <div>
+                            <div class="form-label">Qualification</div>
+                            <div class="text-primary">
+                                <%= profile.qualification %>
+                            </div>
+                        </div>
+                        <% } %>
+                </div>
+                <% } else { %>
+                    <p class="text-muted">Profile not set up. Contact your administrator.</p>
+                    <% } %>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="card-header">
+            <div class="card-title">🎒 My Students</div>
+        </div>
+        <div class="table-wrapper">
+            <% if (students.length===0) { %>
+                <div class="empty-state" style="padding:30px;">
+                    <div class="empty-icon">🎒</div>
+                    <p>No students assigned to your classes yet.</p>
+                </div>
+                <% } else { %>
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Name</th>
+                                <th>Class</th>
+                                <th>Section</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <% students.forEach(s=> { %>
+                                <tr>
+                                    <td class="text-primary fw-semibold">
+                                        <%= s.user ? s.user.name : '—' %>
+                                    </td>
+                                    <td><span class="badge badge-cyan">Class <%= s.class %></span></td>
+                                    <td>
+                                        <%= s.section || '—' %>
+                                    </td>
+                                </tr>
+                                <% }) %>
+                        </tbody>
+                    </table>
+                    <% } %>
+        </div>
+    </div>
+</div>
+
+<!-- Feature tiles -->
+<div style="display:grid; grid-template-columns:repeat(3,1fr); gap:16px; margin-top:20px;">
+    <div class="card" style="cursor:pointer;">
+        <div class="card-body" style="text-align:center; padding:24px;">
+            <div style="font-size:36px; margin-bottom:12px;">📋</div>
+            <div class="card-title" style="margin-bottom:4px;">Attendance</div>
+            <p class="text-muted" style="font-size:12px;">Mark & view attendance</p>
+            <span class="badge badge-gray" style="margin-top:8px;">Coming Soon</span>
+        </div>
+    </div>
+    <div class="card" style="cursor:pointer;">
+        <div class="card-body" style="text-align:center; padding:24px;">
+            <div style="font-size:36px; margin-bottom:12px;">📝</div>
+            <div class="card-title" style="margin-bottom:4px;">Assignments</div>
+            <p class="text-muted" style="font-size:12px;">Upload & manage</p>
+            <span class="badge badge-gray" style="margin-top:8px;">Coming Soon</span>
+        </div>
+    </div>
+    <div class="card" style="cursor:pointer;">
+        <div class="card-body" style="text-align:center; padding:24px;">
+            <div style="font-size:36px; margin-bottom:12px;">📊</div>
+            <div class="card-title" style="margin-bottom:4px;">Grades</div>
+            <p class="text-muted" style="font-size:12px;">Enter & review grades</p>
+            <span class="badge badge-gray" style="margin-top:8px;">Coming Soon</span>
+        </div>
+    </div>
+</div>

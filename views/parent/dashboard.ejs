@@ -1,0 +1,101 @@
+<div class="welcome-banner">
+    <div class="welcome-icon">👪</div>
+    <div>
+        <h2>Welcome, <%= session.userName %>!</h2>
+        <p>Parent Dashboard — <%= session.schoolName || '' %>
+        </p>
+    </div>
+</div>
+
+<!-- Children -->
+<div class="page-header" style="margin-bottom:16px;">
+    <h1 style="font-size:18px;">👦 My Children</h1>
+</div>
+
+<% if (childProfiles.length===0) { %>
+    <div class="card">
+        <div class="empty-state">
+            <div class="empty-icon">🎒</div>
+            <h3>No children linked</h3>
+            <p>Contact your school admin if your child's account is not linked.</p>
+        </div>
+    </div>
+    <% } else { %>
+        <div
+            style="display:grid; grid-template-columns:repeat(auto-fit,minmax(280px,1fr)); gap:16px; margin-bottom:24px;">
+            <% childProfiles.forEach(cp=> { %>
+                <div class="stat-card" style="flex-direction:column; align-items:flex-start; gap:12px;">
+                    <div style="display:flex; align-items:center; gap:12px;">
+                        <div class="user-avatar" style="width:44px; height:44px; font-size:18px;">
+                            <%= cp.user ? cp.user.name.charAt(0).toUpperCase() : '?' %>
+                        </div>
+                        <div>
+                            <div class="fw-bold text-primary">
+                                <%= cp.user ? cp.user.name : '—' %>
+                            </div>
+                            <div class="text-muted" style="font-size:12px;">
+                                <%= cp.user ? cp.user.email : '' %>
+                            </div>
+                        </div>
+                    </div>
+                    <div style="display:flex; gap:8px;">
+                        <span class="badge badge-cyan">Class <%= cp.class || '—' %></span>
+                        <% if (cp.section) { %><span class="badge badge-purple">Section <%= cp.section %></span>
+                            <% } %>
+                    </div>
+                </div>
+                <% }) %>
+        </div>
+        <% } %>
+
+            <!-- Feature Tiles -->
+            <div style="display:grid; grid-template-columns:repeat(3,1fr); gap:16px;">
+                <div class="card">
+                    <div class="card-body" style="text-align:center; padding:28px 20px;">
+                        <div style="font-size:36px; margin-bottom:12px;">📊</div>
+                        <div class="card-title" style="margin-bottom:4px;">Grades</div>
+                        <p class="text-muted" style="font-size:12px; margin-bottom:10px;">View child's performance</p>
+                        <span class="badge badge-gray">Coming Soon</span>
+                    </div>
+                </div>
+                <div class="card">
+                    <div class="card-body" style="text-align:center; padding:28px 20px;">
+                        <div style="font-size:36px; margin-bottom:12px;">✅</div>
+                        <div class="card-title" style="margin-bottom:4px;">Attendance</div>
+                        <p class="text-muted" style="font-size:12px; margin-bottom:10px;">Track daily attendance</p>
+                        <span class="badge badge-gray">Coming Soon</span>
+                    </div>
+                </div>
+                <div class="card">
+                    <div class="card-body" style="text-align:center; padding:28px 20px;">
+                        <div style="font-size:36px; margin-bottom:12px;">💬</div>
+                        <div class="card-title" style="margin-bottom:4px;">Contact Teachers</div>
+                        <p class="text-muted" style="font-size:12px; margin-bottom:10px;">Communicate with staff</p>
+                        <span class="badge badge-gray">Coming Soon</span>
+                    </div>
+                </div>
+                <div class="card">
+                    <div class="card-body" style="text-align:center; padding:28px 20px;">
+                        <div style="font-size:36px; margin-bottom:12px;">📢</div>
+                        <div class="card-title" style="margin-bottom:4px;">Announcements</div>
+                        <p class="text-muted" style="font-size:12px; margin-bottom:10px;">School updates & notices</p>
+                        <span class="badge badge-gray">Coming Soon</span>
+                    </div>
+                </div>
+                <div class="card">
+                    <div class="card-body" style="text-align:center; padding:28px 20px;">
+                        <div style="font-size:36px; margin-bottom:12px;">📝</div>
+                        <div class="card-title" style="margin-bottom:4px;">Assignments</div>
+                        <p class="text-muted" style="font-size:12px; margin-bottom:10px;">View child's tasks</p>
+                        <span class="badge badge-gray">Coming Soon</span>
+                    </div>
+                </div>
+                <div class="card">
+                    <div class="card-body" style="text-align:center; padding:28px 20px;">
+                        <div style="font-size:36px; margin-bottom:12px;">💳</div>
+                        <div class="card-title" style="margin-bottom:4px;">Fee Status</div>
+                        <p class="text-muted" style="font-size:12px; margin-bottom:10px;">Track payment status</p>
+                        <span class="badge badge-gray">Coming Soon</span>
+                    </div>
+                </div>
+            </div>

@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>
+        <%= title %> | <%= appName %>
+    </title>
+    <link rel="stylesheet" href="/css/style.css" />
+    <link rel="icon"
+        href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🎓</text></svg>" />
+</head>
+
+<body>
+    <div class="app-layout">
+        <!-- Sidebar -->
+        <aside class="sidebar" id="sidebar">
+            <div class="sidebar-logo">
+                <div class="logo-icon">🎓</div>
+                <div>
+                    <div class="logo-text">
+                        <%= appName %>
+                    </div>
+                    <% if (session && session.schoolName) { %>
+                        <div class="logo-sub">
+                            <%= session.schoolName %>
+                        </div>
+                        <% } %>
+                </div>
+            </div>
+
+            <nav class="sidebar-nav">
+                <% if (session && session.userRole==='super_admin' ) { %>
+                    <div class="nav-section-label">Overview</div>
+                    <a href="/super-admin/dashboard"
+                        class="nav-item <%= title.includes('Dashboard') ? 'active' : '' %>">
+                        <span class="nav-icon">📊</span> Dashboard
+                    </a>
+                    <div class="nav-section-label">Management</div>
+                    <a href="/super-admin/schools"
+                        class="nav-item <%= title.includes('Schools') || title.includes('School') ? 'active' : '' %>">
+                        <span class="nav-icon">🏫</span> Schools
+                    </a>
+                    <a href="/super-admin/users"
+                        class="nav-item <%= title.includes('Users') || title.includes('User') ? 'active' : '' %>">
+                        <span class="nav-icon">👥</span> All Users
+                    </a>
+                    <a href="/super-admin/users/create" class="nav-item">
+                        <span class="nav-icon">➕</span> Add User
+                    </a>
+                    <a href="/super-admin/schools/create" class="nav-item">
+                        <span class="nav-icon">🏗️</span> Add School
+                    </a>
+
+                    <% } else if (session && session.userRole==='school_admin' ) { %>
+                        <div class="nav-section-label">Overview</div>
+                        <a href="/admin/dashboard" class="nav-item <%= title.includes('Dashboard') ? 'active' : '' %>">
+                            <span class="nav-icon">📊</span> Dashboard
+                        </a>
+                        <div class="nav-section-label">Staff & Students</div>
+                        <a href="/admin/teachers" class="nav-item <%= title.includes('Teacher') ? 'active' : '' %>">
+                            <span class="nav-icon">👨‍🏫</span> Teachers
+                        </a>
+                        <a href="/admin/teachers/create" class="nav-item">
+                            <span class="nav-icon">➕</span> Add Teacher
+                        </a>
+                        <a href="/admin/students" class="nav-item <%= title.includes('Student') ? 'active' : '' %>">
+                            <span class="nav-icon">🎒</span> Students
+                        </a>
+                        <a href="/admin/students/create" class="nav-item">
+                            <span class="nav-icon">➕</span> Add Student
+                        </a>
+                        <div class="nav-section-label">Administration</div>
+                        <a href="/admin/admins" class="nav-item <%= title.includes('Co-Admin') ? 'active' : '' %>">
+                            <span class="nav-icon">🛡️</span> Co-Admins
+                        </a>
+                        <a href="/admin/admins/create" class="nav-item">
+                            <span class="nav-icon">➕</span> Add Co-Admin
+                        </a>
+
+                        <% } else if (session && session.userRole==='teacher' ) { %>
+                            <div class="nav-section-label">Classroom</div>
+                            <a href="/teacher/dashboard" class="nav-item active">
+                                <span class="nav-icon">📊</span> Dashboard
+                            </a>
+                            <a href="#" class="nav-item"><span class="nav-icon">👥</span> My Students</a>
+                            <a href="#" class="nav-item"><span class="nav-icon">📋</span> Attendance</a>
+                            <a href="#" class="nav-item"><span class="nav-icon">📝</span> Assignments</a>
+
+                            <% } else if (session && session.userRole==='student' ) { %>
+                                <div class="nav-section-label">My School</div>
+                                <a href="/student/dashboard" class="nav-item active">
+                                    <span class="nav-icon">📊</span> Dashboard
+                                </a>
+                                <a href="#" class="nav-item"><span class="nav-icon">📅</span> Timetable</a>
+                                <a href="#" class="nav-item"><span class="nav-icon">📝</span> Assignments</a>
+                                <a href="#" class="nav-item"><span class="nav-icon">📊</span> Grades</a>
+                                <a href="#" class="nav-item"><span class="nav-icon">📢</span> Announcements</a>
+
+                                <% } else if (session && session.userRole==='parent' ) { %>
+                                    <div class="nav-section-label">My Child</div>
+                                    <a href="/parent/dashboard" class="nav-item active">
+                                        <span class="nav-icon">📊</span> Dashboard
+                                    </a>
+                                    <a href="#" class="nav-item"><span class="nav-icon">📊</span> Grades</a>
+                                    <a href="#" class="nav-item"><span class="nav-icon">✅</span> Attendance</a>
+                                    <a href="#" class="nav-item"><span class="nav-icon">📢</span> Announcements</a>
+                                    <a href="#" class="nav-item"><span class="nav-icon">💬</span> Contact Teachers</a>
+                                    <% } %>
+            </nav>
+
+            <div class="sidebar-bottom">
+                <div class="user-card">
+                    <div class="user-avatar">
+                        <%= session && session.userName ? session.userName.charAt(0).toUpperCase() : '?' %>
+                    </div>
+                    <div class="user-info">
+                        <div class="user-name">
+                            <%= session && session.userName %>
+                        </div>
+                        <div class="user-role">
+                            <%= session && session.userRole ? session.userRole.replace('_', ' ' ) : '' %>
+                        </div>
+                    </div>
+                </div>
+                <a href="/auth/logout" class="nav-item" style="margin-top:8px; color: #ef4444;">
+                    <span class="nav-icon">🚪</span> Logout
+                </a>
+            </div>
+        </aside>
+
+        <!-- Main content -->
+        <div class="main-content">
+            <header class="topbar">
+                <div class="d-flex align-center gap-3">
+                    <button class="sidebar-toggle" id="sidebarToggle">☰</button>
+                    <div class="topbar-title">
+                        <h2>
+                            <%= title %>
+                        </h2>
+                    </div>
+                </div>
+                <div class="topbar-actions">
+                    <% if (session && session.schoolName) { %>
+                        <div class="topbar-btn">🏫 <%= session.schoolName %>
+                        </div>
+                        <% } %>
+                            <a href="/auth/logout" class="topbar-btn">🚪 Logout</a>
+                </div>
+            </header>
+
+            <main class="page-content">
+                <% if (success && success.length> 0) { %>
+                    <% success.forEach(msg=> { %>
+                        <div class="alert alert-success">
+                            ✅ <%= msg %>
+                                <button class="alert-close">×</button>
+                        </div>
+                        <% }) %>
+                            <% } %>
+                                <% if (error && error.length> 0) { %>
+                                    <% error.forEach(msg=> { %>
+                                        <div class="alert alert-error">
+                                            ❌ <%= msg %>
+                                                <button class="alert-close">×</button>
+                                        </div>
+                                        <% }) %>
+                                            <% } %>
+
+                                                <%- body %>
+            </main>
+        </div>
+    </div>
+    <script src="/js/main.js"></script>
+</body>
+
+</html>

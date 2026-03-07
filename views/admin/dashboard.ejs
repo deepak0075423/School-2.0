@@ -1,0 +1,91 @@
+<div class="welcome-banner">
+    <div class="welcome-icon">🏫</div>
+    <div>
+        <h2>Welcome, <%= session.userName %>!</h2>
+        <p>School Admin Dashboard — <%= schoolName || 'Your School' %>
+        </p>
+    </div>
+</div>
+
+<div class="stats-grid">
+    <div class="stat-card">
+        <div class="stat-icon green">👨‍🏫</div>
+        <div class="stat-info">
+            <div class="stat-value">
+                <%= stats.teachers %>
+            </div>
+            <div class="stat-label">Teachers</div>
+        </div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-icon cyan">🎒</div>
+        <div class="stat-info">
+            <div class="stat-value">
+                <%= stats.students %>
+            </div>
+            <div class="stat-label">Students</div>
+        </div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-icon orange">👪</div>
+        <div class="stat-info">
+            <div class="stat-value">
+                <%= stats.parents %>
+            </div>
+            <div class="stat-label">Parents</div>
+        </div>
+    </div>
+</div>
+
+<div style="display:grid; grid-template-columns:1fr 1fr; gap:20px;">
+    <div class="card">
+        <div class="card-header">
+            <div class="card-title">⚡ Quick Actions</div>
+        </div>
+        <div class="card-body" style="display:flex; flex-direction:column; gap:10px;">
+            <a href="/admin/teachers/create" class="btn btn-primary">👨‍🏫 Add Teacher</a>
+            <a href="/admin/students/create" class="btn btn-primary">🎒 Add Student &amp; Parent</a>
+            <a href="/admin/admins/create" class="btn btn-primary">🛡️ Add Co-Admin</a>
+            <a href="/admin/teachers" class="btn btn-secondary">📋 View Teachers</a>
+            <a href="/admin/students" class="btn btn-secondary">📋 View Students</a>
+            <a href="/admin/admins" class="btn btn-secondary">👥 View Co-Admins</a>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="card-header">
+            <div class="card-title">🕒 Recent Activity</div>
+        </div>
+        <div class="table-wrapper">
+            <% if (recentUsers.length===0) { %>
+                <div class="empty-state" style="padding:30px;">
+                    <p>No recent users.</p>
+                </div>
+                <% } else { %>
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Name</th>
+                                <th>Role</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <% recentUsers.forEach(u=> { %>
+                                <tr>
+                                    <td class="text-primary fw-semibold">
+                                        <%= u.name %>
+                                    </td>
+                                    <td>
+                                        <span
+                                            class="badge <%= u.role==='teacher'?'badge-green':u.role==='student'?'badge-cyan':'badge-orange' %>">
+                                            <%= u.role %>
+                                        </span>
+                                    </td>
+                                </tr>
+                                <% }) %>
+                        </tbody>
+                    </table>
+                    <% } %>
+        </div>
+    </div>
+</div>

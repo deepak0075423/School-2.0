@@ -1,0 +1,157 @@
+<div class="page-header">
+    <div>
+        <h1>👥 All Users</h1>
+        <p>Manage all users across all schools</p>
+    </div>
+    <a href="/super-admin/users/create" class="btn btn-primary">+ Add User</a>
+</div>
+
+<% if (typeof generatedLink !=='undefined' && generatedLink) { %>
+    <div class="magic-link-banner">
+        <div style="display:flex; align-items:center; gap:10px; margin-bottom:10px;">
+            <span style="font-size:20px;">🔗</span>
+            <div>
+                <div style="font-weight:700; color:#1e40af;">One-Time Login Link Generated</div>
+                <div style="font-size:12px; color:#3b82f6;">This link expires in 15 minutes and can only be used once.
+                </div>
+            </div>
+        </div>
+        <div style="display:flex; gap:8px; align-items:center;">
+            <input id="magicLinkInput" type="text" value="<%= generatedLink %>" readonly
+                style="flex:1; font-family:monospace; font-size:12px; padding:10px 14px; border:1.5px solid #bfdbfe; border-radius:8px; background:#eff6ff; color:#1e40af; outline:none;" />
+            <button onclick="copyMagicLink()" class="btn btn-primary btn-sm" style="white-space:nowrap;">📋
+                Copy</button>
+        </div>
+    </div>
+    <script>
+        function copyMagicLink() {
+            const inp = document.getElementById('magicLinkInput');
+            inp.select();
+            document.execCommand('copy');
+            const btn = inp.nextElementSibling;
+            btn.textContent = '✅ Copied!';
+            setTimeout(() => btn.textContent = '📋 Copy', 2000);
+        }
+    </script>
+    <style>
+        .magic-link-banner {
+            background: #eff6ff;
+            border: 1.5px solid #bfdbfe;
+            border-radius: 12px;
+            padding: 18px 20px;
+            margin-bottom: 20px;
+            animation: fadeUp 0.4s ease;
+        }
+    </style>
+    <% } %>
+
+        <!-- Filter Bar -->
+        <div class="card" style="margin-bottom:20px; padding:16px 20px;">
+            <form action="/super-admin/users" method="GET"
+                style="display:flex; gap:12px; align-items:flex-end; flex-wrap:wrap;">
+                <div class="form-group" style="margin:0; min-width:160px;">
+                    <label class="form-label">Filter by Role</label>
+                    <select name="role" class="form-control">
+                        <option value="">All Roles</option>
+                        <option value="school_admin" <%=query.role==='school_admin' ?'selected':''%>>School Admin
+                        </option>
+                        <option value="teacher" <%=query.role==='teacher' ?'selected':''%>>Teacher</option>
+                        <option value="student" <%=query.role==='student' ?'selected':''%>>Student</option>
+                        <option value="parent" <%=query.role==='parent' ?'selected':''%>>Parent</option>
+                    </select>
+                </div>
+                <div class="form-group" style="margin:0; min-width:200px;">
+                    <label class="form-label">Filter by School</label>
+                    <select name="school" class="form-control">
+                        <option value="">All Schools</option>
+                        <% schools.forEach(s=> { %>
+                            <option value="<%= s._id %>" <%=query.school &&
+                                query.school.toString()===s._id.toString()?'selected':''%>><%= s.name %>
+                            </option>
+                            <% }) %>
+                    </select>
+                </div>
+                <button type="submit" class="btn btn-primary">Filter</button>
+                <a href="/super-admin/users" class="btn btn-secondary">Reset</a>
+            </form>
+        </div>
+
+        <div class="card">
+            <div class="table-wrapper">
+                <% if (users.length===0) { %>
+                    <div class="empty-state">
+                        <div class="empty-icon">👤</div>
+                        <h3>No Users Found</h3>
+                        <p>Adjust filters or add a new user.</p>
+                    </div>
+                    <% } else { %>
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>#</th>
+                                    <th>Name</th>
+                                    <th>Email</th>
+                                    <th>Role</th>
+                                    <th>School</th>
+                                    <th>Status</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <% users.forEach((u, i)=> { %>
+                                    <tr>
+                                        <td class="text-muted">
+                                            <%= i + 1 %>
+                                        </td>
+                                        <td class="text-primary fw-semibold">
+                                            <%= u.name %>
+                                        </td>
+                                        <td>
+                                            <%= u.email %>
+                                        </td>
+                                        <td>
+                                            <span class="badge <%=
+                  u.role==='school_admin'?'badge-purple':
+                  u.role==='teacher'?'badge-green':
+                  u.role==='student'?'badge-cyan':
+                  u.role==='parent'?'badge-orange':'badge-gray'
+                %>">
+                                                <%= u.role.replace('_', ' ' ) %>
+                                            </span>
+                                        </td>
+                                        <td>
+                                            <%= u.school ? u.school.name : '—' %>
+                                        </td>
+                                        <td>
+                                            <span class="badge <%= u.isActive ? 'badge-green' : 'badge-red' %>">
+                                                <%= u.isActive ? 'Active' : 'Inactive' %>
+                                            </span>
+                                        </td>
+                                        <td style="display:flex; gap:6px; flex-wrap:wrap;">
+                                            <form action="/super-admin/users/<%= u._id %>/toggle" method="POST"
+                                                style="display:inline;">
+                                                <button type="submit" class="btn btn-warning btn-sm">
+                                                    <%= u.isActive ? '🔒 Deactivate' : '🔓 Activate' %>
+                                                </button>
+                                            </form>
+                                            <form action="/super-admin/users/<%= u._id %>/login-link" method="POST"
+                                                style="display:inline;"
+                                                onsubmit="return confirm('Generate a one-time login link for <%= u.name %>?')">
+                                                <button type="submit" class="btn btn-secondary btn-sm"
+                                                    title="One-time login link">
+                                                    🔗 Login Link
+                                                </button>
+                                            </form>
+                                            <form action="/super-admin/users/<%= u._id %>/delete" method="POST"
+                                                style="display:inline;"
+                                                onsubmit="return confirm('Delete user: <%= u.name %>?')">
+                                                <button type="submit" class="btn btn-danger btn-sm">🗑️</button>
+                                            </form>
+                                        </td>
+                                    </tr>
+                                    <% }) %>
+                            </tbody>
+                        </table>
+                        <% } %>
+            </div>
+        </div>

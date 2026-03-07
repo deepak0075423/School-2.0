@@ -1,0 +1,80 @@
+<div class="page-header">
+    <div>
+        <h1>🛡️ Co-Admins</h1>
+        <p>School admins for <%= session.schoolName %>
+        </p>
+    </div>
+    <a href="/admin/admins/create" class="btn btn-primary">➕ Add Co-Admin</a>
+</div>
+
+<div class="card">
+    <div class="card-header">
+        <div class="card-title">🛡️ School Admin Accounts</div>
+    </div>
+    <div class="table-wrapper">
+        <% if (admins.length===0) { %>
+            <div class="empty-state">
+                <span class="empty-icon">🛡️</span>
+                <h3>No co-admins yet</h3>
+                <p>Add another admin to help manage your school.</p>
+                <a href="/admin/admins/create" class="btn btn-primary">➕ Add First Co-Admin</a>
+            </div>
+            <% } else { %>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Name</th>
+                            <th>Email</th>
+                            <th>Phone</th>
+                            <th>Status</th>
+                            <th>First Login</th>
+                            <th>Created</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <% admins.forEach(admin=> { %>
+                            <tr>
+                                <td>
+                                    <div style="display:flex; align-items:center; gap:10px;">
+                                        <div
+                                            style="width:32px; height:32px; border-radius:8px; background:linear-gradient(135deg,#4f46e5,#7c3aed); display:flex; align-items:center; justify-content:center; color:#fff; font-weight:700; font-size:13px; flex-shrink:0;">
+                                            <%= admin.name.charAt(0).toUpperCase() %>
+                                        </div>
+                                        <span class="fw-semibold text-primary">
+                                            <%= admin.name %>
+                                        </span>
+                                    </div>
+                                </td>
+                                <td>
+                                    <%= admin.email %>
+                                </td>
+                                <td>
+                                    <%= admin.phone || '—' %>
+                                </td>
+                                <td>
+                                    <span class="badge <%= admin.isActive ? 'badge-green' : 'badge-red' %>">
+                                        <%= admin.isActive ? '● Active' : '● Inactive' %>
+                                    </span>
+                                </td>
+                                <td>
+                                    <span class="badge <%= admin.isFirstLogin ? 'badge-orange' : 'badge-gray' %>">
+                                        <%= admin.isFirstLogin ? 'Pending' : 'Done' %>
+                                    </span>
+                                </td>
+                                <td>
+                                    <%= new Date(admin.createdAt).toLocaleDateString('en-IN') %>
+                                </td>
+                                <td>
+                                    <form action="/admin/admins/<%= admin._id %>/delete" method="POST"
+                                        onsubmit="return confirm('Delete this admin? This cannot be undone.')">
+                                        <button type="submit" class="btn btn-danger btn-sm">🗑️ Delete</button>
+                                    </form>
+                                </td>
+                            </tr>
+                            <% }) %>
+                    </tbody>
+                </table>
+                <% } %>
+    </div>
+</div>

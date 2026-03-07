@@ -1,0 +1,75 @@
+<div class="page-header">
+    <div>
+        <h1>🎒 Students</h1>
+        <p>Currently enrolled students at <%= session.schoolName %>
+        </p>
+    </div>
+    <a href="/admin/students/create" class="btn btn-primary">+ Add Student</a>
+</div>
+
+<div class="card">
+    <div class="table-wrapper">
+        <% if (students.length===0) { %>
+            <div class="empty-state">
+                <div class="empty-icon">🎒</div>
+                <h3>No Students Yet</h3>
+                <p>Enroll your first student to get started.</p>
+                <a href="/admin/students/create" class="btn btn-primary">Add Student</a>
+            </div>
+            <% } else { %>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>#</th>
+                            <th>Student</th>
+                            <th>Class</th>
+                            <th>Section</th>
+                            <th>Parent</th>
+                            <th>Relationship</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <% students.forEach((s, i)=> { %>
+                            <tr>
+                                <td class="text-muted">
+                                    <%= i + 1 %>
+                                </td>
+                                <td>
+                                    <div class="text-primary fw-semibold">
+                                        <%= s.user ? s.user.name : '—' %>
+                                    </div>
+                                    <div class="text-muted" style="font-size:12px;">
+                                        <%= s.user ? s.user.email : '' %>
+                                    </div>
+                                </td>
+                                <td><span class="badge badge-cyan">Class <%= s.class || '—' %></span></td>
+                                <td>
+                                    <%= s.section || '—' %>
+                                </td>
+                                <td>
+                                    <% if (s.parent) { %>
+                                        <div class="text-primary">
+                                            <%= s.parent.name %>
+                                        </div>
+                                        <div class="text-muted" style="font-size:12px;">
+                                            <%= s.parent.email %>
+                                        </div>
+                                        <% } else { %>—<% } %>
+                                </td>
+                                <td>
+                                    <%= s.relationship || '—' %>
+                                </td>
+                                <td>
+                                    <form action="/admin/students/<%= s.user ? s.user._id : '' %>/delete" method="POST"
+                                        style="display:inline;" onsubmit="return confirm('Delete this student?')">
+                                        <button type="submit" class="btn btn-danger btn-sm">🗑️</button>
+                                    </form>
+                                </td>
+                            </tr>
+                            <% }) %>
+                    </tbody>
+                </table>
+                <% } %>
+    </div>
+</div>

@@ -1,0 +1,63 @@
+<div class="page-header">
+    <div>
+        <h1>👨‍🏫 Teachers</h1>
+        <p>Teaching staff at <%= session.schoolName %>
+        </p>
+    </div>
+    <a href="/admin/teachers/create" class="btn btn-primary">+ Add Teacher</a>
+</div>
+
+<div class="card">
+    <div class="table-wrapper">
+        <% if (teachers.length===0) { %>
+            <div class="empty-state">
+                <div class="empty-icon">👨‍🏫</div>
+                <h3>No Teachers Yet</h3>
+                <p>Add your first teacher to get started.</p>
+                <a href="/admin/teachers/create" class="btn btn-primary">Add Teacher</a>
+            </div>
+            <% } else { %>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>#</th>
+                            <th>Name</th>
+                            <th>Email</th>
+                            <th>Phone</th>
+                            <th>Status</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <% teachers.forEach((t, i)=> { %>
+                            <tr>
+                                <td class="text-muted">
+                                    <%= i + 1 %>
+                                </td>
+                                <td class="text-primary fw-semibold">👨‍🏫 <%= t.name %>
+                                </td>
+                                <td>
+                                    <%= t.email %>
+                                </td>
+                                <td>
+                                    <%= t.phone || '—' %>
+                                </td>
+                                <td>
+                                    <span class="badge <%= t.isActive ? 'badge-green' : 'badge-red' %>">
+                                        <%= t.isActive ? 'Active' : 'Inactive' %>
+                                    </span>
+                                </td>
+                                <td>
+                                    <form action="/admin/teachers/<%= t._id %>/delete" method="POST"
+                                        style="display:inline;"
+                                        onsubmit="return confirm('Delete teacher: <%= t.name %>?')">
+                                        <button type="submit" class="btn btn-danger btn-sm">🗑️ Remove</button>
+                                    </form>
+                                </td>
+                            </tr>
+                            <% }) %>
+                    </tbody>
+                </table>
+                <% } %>
+    </div>
+</div>

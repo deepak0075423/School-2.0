@@ -1,0 +1,134 @@
+<div class="welcome-banner">
+    <div class="welcome-icon">🚀</div>
+    <div>
+        <h2>Good day, <%= session.userName %>!</h2>
+        <p>Welcome to your Super Admin dashboard. You have full system access.</p>
+    </div>
+</div>
+
+<!-- Stats -->
+<div class="stats-grid">
+    <div class="stat-card">
+        <div class="stat-icon purple">🏫</div>
+        <div class="stat-info">
+            <div class="stat-value">
+                <%= stats.schools %>
+            </div>
+            <div class="stat-label">Schools</div>
+        </div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-icon blue">👤</div>
+        <div class="stat-info">
+            <div class="stat-value">
+                <%= stats.admins %>
+            </div>
+            <div class="stat-label">School Admins</div>
+        </div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-icon green">👨‍🏫</div>
+        <div class="stat-info">
+            <div class="stat-value">
+                <%= stats.teachers %>
+            </div>
+            <div class="stat-label">Teachers</div>
+        </div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-icon cyan">🎒</div>
+        <div class="stat-info">
+            <div class="stat-value">
+                <%= stats.students %>
+            </div>
+            <div class="stat-label">Students</div>
+        </div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-icon orange">👪</div>
+        <div class="stat-info">
+            <div class="stat-value">
+                <%= stats.parents %>
+            </div>
+            <div class="stat-label">Parents</div>
+        </div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-icon pink">👥</div>
+        <div class="stat-info">
+            <div class="stat-value">
+                <%= stats.users %>
+            </div>
+            <div class="stat-label">Total Users</div>
+        </div>
+    </div>
+</div>
+
+<!-- Quick Actions -->
+<div style="display:grid; grid-template-columns:1fr 1fr; gap:20px; margin-bottom:24px;">
+    <div class="card">
+        <div class="card-header">
+            <div class="card-title">⚡ Quick Actions</div>
+        </div>
+        <div class="card-body" style="display:flex; flex-direction:column; gap:10px;">
+            <a href="/super-admin/schools/create" class="btn btn-primary">
+                🏫 Create New School
+            </a>
+            <a href="/super-admin/users/create" class="btn btn-secondary">
+                👤 Create New User
+            </a>
+            <a href="/super-admin/schools" class="btn btn-secondary">
+                📋 Manage Schools
+            </a>
+            <a href="/super-admin/users" class="btn btn-secondary">
+                👥 Manage All Users
+            </a>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="card-header">
+            <div class="card-title">🕒 Recent Users</div>
+        </div>
+        <div class="table-wrapper">
+            <% if (recentUsers.length===0) { %>
+                <div class="empty-state" style="padding:30px;">
+                    <div class="empty-icon">👤</div>
+                    <p>No users yet.</p>
+                </div>
+                <% } else { %>
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Name</th>
+                                <th>Role</th>
+                                <th>School</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <% recentUsers.forEach(u=> { %>
+                                <tr>
+                                    <td class="text-primary fw-semibold">
+                                        <%= u.name %>
+                                    </td>
+                                    <td>
+                                        <span class="badge <%=
+                    u.role === 'teacher' ? 'badge-green' :
+                    u.role === 'student' ? 'badge-cyan' :
+                    u.role === 'parent' ? 'badge-orange' :
+                    u.role === 'school_admin' ? 'badge-purple' : 'badge-gray'
+                  %>">
+                                            <%= u.role.replace('_', ' ' ) %>
+                                        </span>
+                                    </td>
+                                    <td>
+                                        <%= u.school ? u.school.name : '—' %>
+                                    </td>
+                                </tr>
+                                <% }) %>
+                        </tbody>
+                    </table>
+                    <% } %>
+        </div>
+    </div>
+</div>

@@ -1,0 +1,44 @@
+<div class="auth-wrapper">
+    <div class="auth-card">
+        <div class="auth-logo">
+            <div class="logo-icon">🔐</div>
+            <h1>Enter OTP</h1>
+            <p>Check your email for the 6-digit code</p>
+        </div>
+
+        <% if (error && error.length> 0) { %>
+            <% error.forEach(msg=> { %>
+                <div class="alert alert-error">❌ <%= msg %><button class="alert-close">×</button></div>
+                <% }) %>
+                    <% } %>
+
+                        <div class="alert alert-warning" style="margin-bottom:20px;">
+                            ⏱️ Your OTP is valid for <strong>10 minutes</strong>. Check your inbox (and spam folder).
+                        </div>
+
+                        <form action="/auth/verify-otp" method="POST">
+                            <div class="form-group">
+                                <label class="form-label">6-Digit OTP</label>
+                                <input type="text" name="otp" class="form-control" placeholder="Enter OTP" maxlength="6"
+                                    minlength="6" pattern="[0-9]{6}" inputmode="numeric" autocomplete="one-time-code"
+                                    required
+                                    style="font-size:28px; font-weight:800; letter-spacing:12px; text-align:center; font-family:monospace;" />
+                            </div>
+
+                            <button type="submit" class="btn btn-primary btn-block btn-lg" style="margin-top:8px;">
+                                ✅ Verify OTP
+                            </button>
+                        </form>
+
+                        <div style="margin-top:20px; text-align:center;">
+                            <a href="/auth/forgot-password" style="color:var(--text-muted); font-size:13px;">
+                                Didn't receive it? <span style="color:var(--primary); font-weight:600;">Resend
+                                    OTP</span>
+                            </a>
+                        </div>
+                        <div style="margin-top:10px; text-align:center;">
+                            <a href="/auth/login" style="color:var(--primary); font-size:13px; font-weight:500;">← Back
+                                to Login</a>
+                        </div>
+    </div>
+</div>

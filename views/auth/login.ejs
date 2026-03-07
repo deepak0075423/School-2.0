@@ -1,0 +1,57 @@
+<div class="auth-wrapper">
+    <div class="auth-card">
+        <div class="auth-logo">
+            <div class="logo-icon">🎓</div>
+            <h1>
+                <%= appName %>
+            </h1>
+            <p>Sign in to your account</p>
+        </div>
+
+        <% if (error && error.length> 0) { %>
+            <% error.forEach(msg=> { %>
+                <div class="alert alert-error">
+                    ❌ <%= msg %>
+                        <button class="alert-close">×</button>
+                </div>
+                <% }) %>
+                    <% } %>
+
+                        <form action="/auth/login" method="POST">
+                            <div class="form-group">
+                                <label class="form-label" for="email">Email Address</label>
+                                <div class="input-icon-wrapper">
+                                    <span class="icon">📧</span>
+                                    <input type="email" id="email" name="email" class="form-control"
+                                        placeholder="Enter your email" required autocomplete="email" />
+                                </div>
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label" for="password">Password</label>
+                                <div class="input-icon-wrapper">
+                                    <span class="icon">🔑</span>
+                                    <input type="password" id="password" name="password" class="form-control"
+                                        placeholder="Enter your password" required autocomplete="current-password" />
+                                </div>
+                            </div>
+
+                            <button type="submit" class="btn btn-primary btn-block btn-lg" style="margin-top:8px;">
+                                Sign In →
+                            </button>
+
+                            <div style="margin-top:16px; text-align:center;">
+                                <a href="/auth/forgot-password"
+                                    style="color:var(--primary); font-size:13px; font-weight:500;">
+                                    🔑 Forgot your password?
+                                </a>
+                            </div>
+                        </form>
+
+                        <div style="margin-top:24px; text-align:center;">
+                            <p style="color: var(--text-muted); font-size:12px;">
+                                🔐 Secure login with role-based access control<br />
+                                Contact your administrator if you need access.
+                            </p>
+                        </div>
+    </div>
+</div>
