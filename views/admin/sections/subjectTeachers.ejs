@@ -1,0 +1,81 @@
+<div class="page-header">
+    <div>
+        <h1>👨‍🏫 Subject Teachers — Section <%= section.sectionName %>
+        </h1>
+        <p>Assign teachers for each subject in this section</p>
+    </div>
+    <a href="/admin/sections/<%= section._id %>" class="btn btn-secondary">← Back to Section</a>
+</div>
+
+<div style="display:grid; grid-template-columns:1fr 1fr; gap:20px;">
+    <%# Assign Form %>
+        <div class="card">
+            <div class="card-header">
+                <div class="card-title">➕ Assign Teacher to Subject</div>
+            </div>
+            <div class="card-body">
+                <% if (unassigned.length===0) { %>
+                    <p class="text-muted">All class subjects have teachers assigned.</p>
+                    <% } else { %>
+                        <form action="/admin/sections/<%= section._id %>/subjects/assign" method="POST">
+                            <div class="form-group">
+                                <label class="form-label">Subject</label>
+                                <select name="subjectId" class="form-control" required>
+                                    <option value="">— Select subject —</option>
+                                    <% unassigned.forEach(cs=> { %>
+                                        <option value="<%= cs.subject._id %>">
+                                            <%= cs.subject.subjectName %>
+                                        </option>
+                                        <% }) %>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Teacher</label>
+                                <select name="teacherId" class="form-control" required>
+                                    <option value="">— Select teacher —</option>
+                                    <% teachers.forEach(t=> { %>
+                                        <option value="<%= t._id %>">
+                                            <%= t.name %>
+                                        </option>
+                                        <% }) %>
+                                </select>
+                            </div>
+                            <button type="submit" class="btn btn-primary">Assign</button>
+                        </form>
+                        <% } %>
+            </div>
+        </div>
+
+        <%# Current Assignments %>
+            <div class="card">
+                <div class="card-header">
+                    <div class="card-title">✅ Current Assignments (<%= assignments.length %>)</div>
+                </div>
+                <% if (assignments.length===0) { %>
+                    <div class="empty-state" style="padding:20px;">
+                        <p>No assignments yet.</p>
+                    </div>
+                    <% } else { %>
+                        <div class="table-wrapper">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>Subject</th>
+                                        <th>Teacher</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <% assignments.forEach(a=> { %>
+                                        <tr>
+                                            <td class="text-primary fw-semibold">📚 <%= a.subject.subjectName %>
+                                            </td>
+                                            <td>👨‍🏫 <%= a.teacher?.name %>
+                                            </td>
+                                        </tr>
+                                        <% }) %>
+                                </tbody>
+                            </table>
+                        </div>
+                        <% } %>
+            </div>
+</div>

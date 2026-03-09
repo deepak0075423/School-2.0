@@ -1,0 +1,124 @@
+<div class="page-header">
+    <div>
+        <h1>👶 Child's Class</h1>
+        <p>Class information for your children</p>
+    </div>
+</div>
+
+<% if (!children || children.length===0) { %>
+    <div class="card">
+        <div class="empty-state">
+            <div class="empty-icon">👶</div>
+            <h3>No Children Found</h3>
+            <p>No children are linked to your account. Please contact the School Admin.</p>
+        </div>
+    </div>
+    <% } else { %>
+        <% children.forEach(({profile, announcements, byDay, days})=> { %>
+            <div style="margin-bottom:24px;">
+                <h2 style="margin-bottom:12px;">👶 <%= profile.user?.name %>
+                </h2>
+
+                <% if (!profile.currentSection) { %>
+                    <div class="card">
+                        <div class="empty-state" style="padding:30px;">
+                            <p>Not yet assigned to any class section.</p>
+                        </div>
+                    </div>
+                    <% } else { %>
+                        <%# Info Stats %>
+                            <div class="stats-grid" style="margin-bottom:16px;">
+                                <div class="stat-card">
+                                    <div class="stat-icon cyan">🏫</div>
+                                    <div class="stat-info">
+                                        <div class="stat-value">
+                                            <%= profile.currentSection.class?.className %>
+                                        </div>
+                                        <div class="stat-label">Class</div>
+                                    </div>
+                                </div>
+                                <div class="stat-card">
+                                    <div class="stat-icon green">📂</div>
+                                    <div class="stat-info">
+                                        <div class="stat-value">Section <%= profile.currentSection.sectionName %>
+                                        </div>
+                                        <div class="stat-label">Section</div>
+                                    </div>
+                                </div>
+                                <div class="stat-card">
+                                    <div class="stat-icon orange">👨‍🏫</div>
+                                    <div class="stat-info">
+                                        <div class="stat-value" style="font-size:1rem;">
+                                            <%= profile.currentSection.classTeacher?.name || '—' %>
+                                        </div>
+                                        <div class="stat-label">Class Teacher</div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px;">
+                                <%# Announcements %>
+                                    <div class="card">
+                                        <div class="card-header">
+                                            <div class="card-title">📣 Recent Announcements</div>
+                                        </div>
+                                        <% if (announcements.length===0) { %>
+                                            <div class="empty-state" style="padding:20px;">
+                                                <p>No announcements.</p>
+                                            </div>
+                                            <% } else { %>
+                                                <% announcements.forEach(a=> { %>
+                                                    <div
+                                                        style="padding:12px 16px; border-bottom:1px solid var(--border);">
+                                                        <div class="fw-semibold">
+                                                            <%= a.title %>
+                                                        </div>
+                                                        <p style="margin:4px 0; font-size:0.875rem;">
+                                                            <%= a.message %>
+                                                        </p>
+                                                        <small class="text-muted">
+                                                            <%= new Date(a.createdAt).toLocaleDateString() %>
+                                                        </small>
+                                                    </div>
+                                                    <% }) %>
+                                                        <% } %>
+                                    </div>
+
+                                    <%# Timetable %>
+                                        <div class="card">
+                                            <div class="card-header">
+                                                <div class="card-title">🗓️ Timetable</div>
+                                            </div>
+                                            <% const hasEntries=days.some(d=> byDay[d] && byDay[d].length > 0); %>
+                                                <% if (!hasEntries) { %>
+                                                    <div class="empty-state" style="padding:20px;">
+                                                        <p>No timetable yet.</p>
+                                                    </div>
+                                                    <% } else { %>
+                                                        <div>
+                                                            <% days.forEach(day=> { %>
+                                                                <% if (byDay[day] && byDay[day].length> 0) { %>
+                                                                    <div
+                                                                        style="padding:10px 16px; border-bottom:1px solid var(--border);">
+                                                                        <div class="fw-semibold"
+                                                                            style="font-size:0.8rem; color:var(--text-muted); margin-bottom:4px;">
+                                                                            <%= day %>
+                                                                        </div>
+                                                                        <% byDay[day].forEach(e=> { %>
+                                                                            <span
+                                                                                style="display:inline-block; background:var(--border); border-radius:6px; padding:3px 8px; font-size:0.78rem; margin:2px;">
+                                                                                <%= e.subject?.subjectName %> (<%=
+                                                                                        e.startTime %>)
+                                                                            </span>
+                                                                            <% }) %>
+                                                                    </div>
+                                                                    <% } %>
+                                                                        <% }) %>
+                                                        </div>
+                                                        <% } %>
+                                        </div>
+                            </div>
+                            <% } %>
+            </div>
+            <% }) %>
+                <% } %>

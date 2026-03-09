@@ -7,6 +7,9 @@ const bcrypt = require('bcryptjs');
 const generatePassword = require('../utils/generatePassword');
 const { sendWelcomeEmail } = require('../utils/sendEmail');
 
+const Class = require('../models/Class');
+const ClassSection = require('../models/ClassSection');
+
 // Dashboard
 const getDashboard = async (req, res) => {
     try {
@@ -14,13 +17,15 @@ const getDashboard = async (req, res) => {
         const teachers = await User.countDocuments({ role: 'teacher', school: schoolId });
         const students = await User.countDocuments({ role: 'student', school: schoolId });
         const parents = await User.countDocuments({ role: 'parent', school: schoolId });
+        const classes = await Class.countDocuments({ school: schoolId, status: 'active' });
+        const sections = await ClassSection.countDocuments({ school: schoolId, status: 'active' });
         const recentUsers = await User.find({ school: schoolId, role: { $nin: ['super_admin', 'school_admin'] } })
             .sort({ createdAt: -1 }).limit(5);
 
         res.render('admin/dashboard', {
             title: 'School Admin Dashboard',
             layout: 'layouts/main',
-            stats: { teachers, students, parents },
+            stats: { teachers, students, parents, classes, sections },
             recentUsers,
             schoolName: req.session.schoolName,
         });
@@ -30,6 +35,7 @@ const getDashboard = async (req, res) => {
         res.redirect('/auth/login');
     }
 };
+
 
 // --- TEACHERS ---
 const getTeachers = async (req, res) => {

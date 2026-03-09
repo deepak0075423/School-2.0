@@ -1,0 +1,226 @@
+<%# Teacher — My Section View %>
+    <div class="page-header">
+        <div>
+            <h1>📂 My Section</h1>
+            <% if (section) { %>
+                <p>
+                    <%= section.class?.className %> – Section <%= section.sectionName %> &middot;
+                            <code><%= section.sectionCode %></code>
+                </p>
+                <% } %>
+        </div>
+        <% if (section) { %>
+            <div style="display:flex; gap:8px;">
+                <a href="/teacher/attendance" class="btn btn-secondary">📋 Attendance</a>
+                <a href="/teacher/timetable" class="btn btn-secondary">🗓️ Timetable</a>
+            </div>
+            <% } %>
+    </div>
+
+    <% if (!section) { %>
+        <div class="card">
+            <div class="empty-state">
+                <div class="empty-icon">📂</div>
+                <h3>No Section Assigned</h3>
+                <p>You have not been assigned as a class teacher for any section yet. Please contact your School Admin.
+                </p>
+            </div>
+        </div>
+        <% } else { %>
+
+            <%# Stats %>
+                <div class="stats-grid" style="margin-bottom:20px;">
+                    <div class="stat-card">
+                        <div class="stat-icon cyan">🎒</div>
+                        <div class="stat-info">
+                            <div class="stat-value">
+                                <%= students.length %>
+                            </div>
+                            <div class="stat-label">Students</div>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon green">⭐</div>
+                        <div class="stat-info">
+                            <div class="stat-value">
+                                <%= monitors.length %>
+                            </div>
+                            <div class="stat-label">Monitors</div>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon orange">📣</div>
+                        <div class="stat-info">
+                            <div class="stat-value">
+                                <%= announcements.length %>
+                            </div>
+                            <div class="stat-label">Announcements</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div style="display:grid; grid-template-columns:1fr 1fr; gap:20px;">
+                    <%# Announcements %>
+                        <div class="card">
+                            <div class="card-header">
+                                <div class="card-title">📣 Announcements</div>
+                            </div>
+                            <div class="card-body">
+                                <form action="/teacher/announcements/create" method="POST" style="margin-bottom:16px;">
+                                    <input type="hidden" name="sectionId" value="<%= section._id %>">
+                                    <div class="form-group">
+                                        <label class="form-label">Title</label>
+                                        <input type="text" name="title" class="form-control"
+                                            placeholder="Announcement title" required>
+                                    </div>
+                                    <div class="form-group">
+                                        <label class="form-label">Message</label>
+                                        <textarea name="message" class="form-control" rows="3"
+                                            placeholder="Write your announcement..." required></textarea>
+                                    </div>
+                                    <button type="submit" class="btn btn-primary">Post Announcement</button>
+                                </form>
+                            </div>
+                            <% if (announcements.length> 0) { %>
+                                <div style="border-top:1px solid var(--border);">
+                                    <% announcements.forEach(a=> { %>
+                                        <div style="padding:12px 16px; border-bottom:1px solid var(--border);">
+                                            <div
+                                                style="display:flex; justify-content:space-between; align-items:start;">
+                                                <div>
+                                                    <strong>
+                                                        <%= a.title %>
+                                                    </strong>
+                                                    <p
+                                                        style="margin:4px 0; font-size:0.875rem; color:var(--text-muted);">
+                                                        <%= a.message %>
+                                                    </p>
+                                                    <small class="text-muted">
+                                                        <%= new Date(a.createdAt).toLocaleDateString() %>
+                                                    </small>
+                                                </div>
+                                                <form action="/teacher/announcements/<%= a._id %>/delete" method="POST"
+                                                    onsubmit="return confirm('Delete this announcement?')">
+                                                    <button type="submit" class="btn btn-danger btn-sm">🗑️</button>
+                                                </form>
+                                            </div>
+                                        </div>
+                                        <% }) %>
+                                </div>
+                                <% } %>
+                        </div>
+
+                        <%# Monitors %>
+                            <% if (isClassTeacher) { %>
+                                <div class="card">
+                                    <div class="card-header">
+                                        <div class="card-title">⭐ Class Monitors</div>
+                                    </div>
+                                    <div class="card-body">
+                                        <form action="/teacher/monitors/assign" method="POST">
+                                            <input type="hidden" name="sectionId" value="<%= section._id %>">
+                                            <div class="form-group">
+                                                <label class="form-label">Assign Monitor</label>
+                                                <select name="studentId" class="form-control" required>
+                                                    <option value="">— Select student —</option>
+                                                    <% students.forEach(p=> { %>
+                                                        <% if (!monitorStudentIds.includes(p.user._id.toString())) { %>
+                                                            <option value="<%= p.user._id %>">
+                                                                <%= p.user.name %>
+                                                            </option>
+                                                            <% } %>
+                                                                <% }) %>
+                                                </select>
+                                            </div>
+                                            <button type="submit" class="btn btn-primary">Assign Monitor</button>
+                                        </form>
+                                    </div>
+                                    <% if (monitors.length> 0) { %>
+                                        <div class="table-wrapper">
+                                            <table>
+                                                <thead>
+                                                    <tr>
+                                                        <th>Student</th>
+                                                        <th>Since</th>
+                                                        <th>Actions</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    <% monitors.forEach(m=> { %>
+                                                        <tr>
+                                                            <td class="text-primary fw-semibold">⭐ <%= m.student?.name
+                                                                    %>
+                                                            </td>
+                                                            <td class="text-muted">
+                                                                <%= new Date(m.assignedDate).toLocaleDateString() %>
+                                                            </td>
+                                                            <td>
+                                                                <form action="/teacher/monitors/remove" method="POST"
+                                                                    onsubmit="return confirm('Remove monitor?')">
+                                                                    <input type="hidden" name="sectionId"
+                                                                        value="<%= section._id %>">
+                                                                    <input type="hidden" name="studentId"
+                                                                        value="<%= m.student?._id %>">
+                                                                    <button type="submit"
+                                                                        class="btn btn-danger btn-sm">Remove</button>
+                                                                </form>
+                                                            </td>
+                                                        </tr>
+                                                        <% }) %>
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                        <% } %>
+                                </div>
+                                <% } %>
+                </div>
+
+                <%# Students Table %>
+                    <div class="card" style="margin-top:20px;">
+                        <div class="card-header">
+                            <div class="card-title">🎒 Students (<%= students.length %>)</div>
+                        </div>
+                        <div class="table-wrapper">
+                            <% if (students.length===0) { %>
+                                <div class="empty-state" style="padding:30px;">
+                                    <p>No students in this section.</p>
+                                </div>
+                                <% } else { %>
+                                    <table>
+                                        <thead>
+                                            <tr>
+                                                <th>#</th>
+                                                <th>Name</th>
+                                                <th>Email</th>
+                                                <th>Phone</th>
+                                                <th>Monitor</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            <% students.forEach((p, i)=> { %>
+                                                <tr>
+                                                    <td class="text-muted">
+                                                        <%= i + 1 %>
+                                                    </td>
+                                                    <td class="text-primary fw-semibold">🎒 <%= p.user?.name %>
+                                                    </td>
+                                                    <td>
+                                                        <%= p.user?.email %>
+                                                    </td>
+                                                    <td>
+                                                        <%= p.user?.phone || '—' %>
+                                                    </td>
+                                                    <td>
+                                                        <% if (monitorStudentIds.includes(p.user?._id?.toString())) { %>
+                                                            <span class="badge badge-orange">⭐ Monitor</span>
+                                                            <% } %>
+                                                    </td>
+                                                </tr>
+                                                <% }) %>
+                                        </tbody>
+                                    </table>
+                                    <% } %>
+                        </div>
+                    </div>
+
+                    <% } %>

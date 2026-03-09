@@ -1,12 +1,16 @@
 const express = require('express');
 const router = express.Router();
 const ctrl = require('../controllers/adminController');
+const classCtrl = require('../controllers/classController');
+const subjectCtrl = require('../controllers/subjectController');
+const reportCtrl = require('../controllers/reportController');
 const { isAuthenticated, requireRole, requirePasswordReset } = require('../middleware/auth');
 
 const guard = [isAuthenticated, requirePasswordReset, requireRole('school_admin')];
 
 router.get('/dashboard', guard, ctrl.getDashboard);
 
+// ── User Management ──────────────────────────────────────────
 router.get('/teachers', guard, ctrl.getTeachers);
 router.get('/teachers/create', guard, ctrl.getCreateTeacher);
 router.post('/teachers/create', guard, ctrl.postCreateTeacher);
@@ -22,4 +26,40 @@ router.get('/admins/create', guard, ctrl.getCreateAdmin);
 router.post('/admins/create', guard, ctrl.postCreateAdmin);
 router.post('/admins/:id/delete', guard, ctrl.deleteUser);
 
+// ── Academic Years ────────────────────────────────────────────
+router.get('/academic-years', guard, classCtrl.getAcademicYears);
+router.post('/academic-years/create', guard, classCtrl.postCreateAcademicYear);
+router.post('/academic-years/:id/delete', guard, classCtrl.postDeleteAcademicYear);
+
+// ── Classes ───────────────────────────────────────────────────
+router.get('/classes', guard, classCtrl.getClasses);
+router.get('/classes/create', guard, classCtrl.getCreateClass);
+router.post('/classes/create', guard, classCtrl.postCreateClass);
+router.get('/classes/:classId', guard, classCtrl.getClassDetail);
+router.post('/classes/:classId/delete', guard, classCtrl.postDeleteClass);
+
+// Class → Sections
+router.post('/classes/:classId/sections/create', guard, classCtrl.postCreateSection);
+router.get('/classes/:classId/subjects', guard, subjectCtrl.getClassSubjects);
+router.post('/classes/:classId/subjects/assign', guard, subjectCtrl.postAssignSubjectToClass);
+router.post('/classes/:classId/subjects/remove', guard, subjectCtrl.postRemoveSubjectFromClass);
+
+// ── Sections ──────────────────────────────────────────────────
+router.get('/sections/:sectionId', guard, classCtrl.getSectionDetail);
+router.post('/sections/:sectionId/assign-student', guard, classCtrl.postAssignStudentToSection);
+router.post('/sections/:sectionId/remove-student', guard, classCtrl.postRemoveStudentFromSection);
+router.post('/sections/:sectionId/update-teachers', guard, classCtrl.postUpdateSectionTeacher);
+router.post('/sections/:sectionId/delete', guard, classCtrl.postDeleteSection);
+router.get('/sections/:sectionId/subjects', guard, subjectCtrl.getSectionSubjectTeachers);
+router.post('/sections/:sectionId/subjects/assign', guard, subjectCtrl.postAssignSubjectTeacher);
+
+// ── Subjects ──────────────────────────────────────────────────
+router.get('/subjects', guard, subjectCtrl.getSubjects);
+router.post('/subjects/create', guard, subjectCtrl.postCreateSubject);
+router.post('/subjects/:subjectId/delete', guard, subjectCtrl.postDeleteSubject);
+
+// ── Reports ───────────────────────────────────────────────────
+router.get('/reports', guard, reportCtrl.getReports);
+
 module.exports = router;
+

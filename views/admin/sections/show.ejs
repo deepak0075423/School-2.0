@@ -1,0 +1,172 @@
+<div class="page-header">
+    <div>
+        <h1>📂 Section <%= section.sectionName %> — <%= section.class?.className %>
+        </h1>
+        <p>Code: <code><%= section.sectionCode %></code> &middot; <%= section.academicYear?.yearName %>
+        </p>
+    </div>
+    <div style="display:flex; gap:8px;">
+        <a href="/admin/sections/<%= section._id %>/subjects" class="btn btn-secondary">📚 Subject Teachers</a>
+        <a href="/admin/classes/<%= section.class?._id %>" class="btn btn-secondary">← Back to Class</a>
+    </div>
+</div>
+
+<%# Stats %>
+    <div class="stats-grid" style="margin-bottom:20px;">
+        <div class="stat-card">
+            <div class="stat-icon green">🎒</div>
+            <div class="stat-info">
+                <div class="stat-value">
+                    <%= section.currentCount %>
+                </div>
+                <div class="stat-label">Enrolled Students</div>
+            </div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-icon orange">🪑</div>
+            <div class="stat-info">
+                <div class="stat-value">
+                    <%= section.maxStudents - section.currentCount %>
+                </div>
+                <div class="stat-label">Seats Available</div>
+            </div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-icon cyan">📊</div>
+            <div class="stat-info">
+                <div class="stat-value">
+                    <%= Math.round(section.currentCount / section.maxStudents * 100) %>%
+                </div>
+                <div class="stat-label">Capacity Used</div>
+            </div>
+        </div>
+    </div>
+
+    <div style="display:grid; grid-template-columns:1fr 1fr; gap:20px; margin-bottom:20px;">
+        <%# Teacher Assignment %>
+            <div class="card">
+                <div class="card-header">
+                    <div class="card-title">👨‍🏫 Teacher Assignment</div>
+                </div>
+                <div class="card-body">
+                    <form action="/admin/sections/<%= section._id %>/update-teachers" method="POST">
+                        <div class="form-group">
+                            <label class="form-label">Class Teacher</label>
+                            <select name="classTeacher" class="form-control">
+                                <option value="">— None —</option>
+                                <% teachers.forEach(t=> { %>
+                                    <option value="<%= t._id %>"
+                                        <%=section.classTeacher?._id?.toString()===t._id.toString()?'selected':'' %>><%=
+                                            t.name %>
+                                    </option>
+                                    <% }) %>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Substitute Teacher</label>
+                            <select name="substituteTeacher" class="form-control">
+                                <option value="">— None —</option>
+                                <% teachers.forEach(t=> { %>
+                                    <option value="<%= t._id %>"
+                                        <%=section.substituteTeacher?._id?.toString()===t._id.toString()?'selected':''
+                                        %>><%= t.name %>
+                                    </option>
+                                    <% }) %>
+                            </select>
+                        </div>
+                        <button type="submit" class="btn btn-primary">Update Teachers</button>
+                    </form>
+                </div>
+            </div>
+
+            <%# Assign Student %>
+                <div class="card">
+                    <div class="card-header">
+                        <div class="card-title">➕ Assign Student</div>
+                    </div>
+                    <div class="card-body">
+                        <% if (section.currentCount>= section.maxStudents) { %>
+                            <div class="alert alert-error"
+                                style="background:rgba(239,68,68,0.1); border:1px solid var(--error); border-radius:8px; padding:12px; color:var(--error);">
+                                ⚠️ Section is at full capacity (<%= section.maxStudents %> students).
+                            </div>
+                            <% } else { %>
+                                <form action="/admin/sections/<%= section._id %>/assign-student" method="POST">
+                                    <div class="form-group">
+                                        <label class="form-label">Select Student</label>
+                                        <select name="studentId" class="form-control" required>
+                                            <option value="">— Select a student —</option>
+                                            <% unassignedProfiles.forEach(p=> { %>
+                                                <option value="<%= p.user._id %>">
+                                                    <%= p.user.name %> (<%= p.user.email %>)
+                                                </option>
+                                                <% }) %>
+                                        </select>
+                                        <% if (unassignedProfiles.length===0) { %>
+                                            <span class="form-hint">All students are already assigned to
+                                                sections.</span>
+                                            <% } %>
+                                    </div>
+                                    <div class="form-group">
+                                        <label class="form-label">Reason (optional)</label>
+                                        <input type="text" name="reason" class="form-control"
+                                            placeholder="e.g. Initial assignment">
+                                    </div>
+                                    <button type="submit" class="btn btn-primary" <%=unassignedProfiles.length===0
+                                        ? 'disabled' : '' %>>Assign Student</button>
+                                </form>
+                                <% } %>
+                    </div>
+                </div>
+    </div>
+
+    <%# Students Table %>
+        <div class="card">
+            <div class="card-header">
+                <div class="card-title">🎒 Enrolled Students (<%= studentProfiles.length %>)</div>
+            </div>
+            <div class="table-wrapper">
+                <% if (studentProfiles.length===0) { %>
+                    <div class="empty-state" style="padding:30px;">
+                        <p>No students assigned to this section yet.</p>
+                    </div>
+                    <% } else { %>
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>#</th>
+                                    <th>Name</th>
+                                    <th>Email</th>
+                                    <th>Phone</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <% studentProfiles.forEach((p, i)=> { %>
+                                    <tr>
+                                        <td class="text-muted">
+                                            <%= i + 1 %>
+                                        </td>
+                                        <td class="text-primary fw-semibold">🎒 <%= p.user?.name %>
+                                        </td>
+                                        <td>
+                                            <%= p.user?.email %>
+                                        </td>
+                                        <td>
+                                            <%= p.user?.phone || '—' %>
+                                        </td>
+                                        <td>
+                                            <form action="/admin/sections/<%= section._id %>/remove-student"
+                                                method="POST" style="display:inline;"
+                                                onsubmit="return confirm('Remove <%= p.user?.name %> from this section?')">
+                                                <input type="hidden" name="studentId" value="<%= p.user?._id %>">
+                                                <button type="submit" class="btn btn-danger btn-sm">Remove</button>
+                                            </form>
+                                        </td>
+                                    </tr>
+                                    <% }) %>
+                            </tbody>
+                        </table>
+                        <% } %>
+            </div>
+        </div>

@@ -1,0 +1,128 @@
+<div class="page-header">
+    <div>
+        <h1>🏫 My Class</h1>
+        <% if (section) { %>
+            <p>
+                <%= section.class?.className %> – Section <%= section.sectionName %> &middot; <%=
+                            section.academicYear?.yearName %>
+            </p>
+            <% } %>
+    </div>
+</div>
+
+<% if (!section) { %>
+    <div class="card">
+        <div class="empty-state">
+            <div class="empty-icon">🏫</div>
+            <h3>Not Assigned to a Class</h3>
+            <p>You haven't been assigned to any class section yet. Please contact your School Admin.</p>
+        </div>
+    </div>
+    <% } else { %>
+
+        <%# Info Cards %>
+            <div class="stats-grid" style="margin-bottom:20px;">
+                <div class="stat-card">
+                    <div class="stat-icon cyan">🏫</div>
+                    <div class="stat-info">
+                        <div class="stat-value">
+                            <%= section.class?.className %>
+                        </div>
+                        <div class="stat-label">Class</div>
+                    </div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon green">📂</div>
+                    <div class="stat-info">
+                        <div class="stat-value">Section <%= section.sectionName %>
+                        </div>
+                        <div class="stat-label">Section</div>
+                    </div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon orange">👨‍🏫</div>
+                    <div class="stat-info">
+                        <div class="stat-value" style="font-size:1rem;">
+                            <%= section.classTeacher?.name || '—' %>
+                        </div>
+                        <div class="stat-label">Class Teacher</div>
+                    </div>
+                </div>
+                <% if (isMonitor) { %>
+                    <div class="stat-card">
+                        <div class="stat-icon orange">⭐</div>
+                        <div class="stat-info">
+                            <div class="stat-value">You!</div>
+                            <div class="stat-label">Class Monitor</div>
+                        </div>
+                    </div>
+                    <% } %>
+            </div>
+
+            <div style="display:grid; grid-template-columns:1fr 1fr; gap:20px;">
+                <%# Announcements %>
+                    <div class="card">
+                        <div class="card-header">
+                            <div class="card-title">📣 Announcements</div>
+                        </div>
+                        <% if (announcements.length===0) { %>
+                            <div class="empty-state" style="padding:30px;">
+                                <p>No announcements for your class yet.</p>
+                            </div>
+                            <% } else { %>
+                                <% announcements.forEach(a=> { %>
+                                    <div style="padding:14px 16px; border-bottom:1px solid var(--border);">
+                                        <div class="fw-semibold">
+                                            <%= a.title %>
+                                        </div>
+                                        <p style="margin:6px 0; font-size:0.875rem;">
+                                            <%= a.message %>
+                                        </p>
+                                        <small class="text-muted">👨‍🏫 <%= a.createdBy?.name %> · <%= new
+                                                    Date(a.createdAt).toLocaleDateString() %></small>
+                                    </div>
+                                    <% }) %>
+                                        <% } %>
+                    </div>
+
+                    <%# Timetable %>
+                        <div class="card">
+                            <div class="card-header">
+                                <div class="card-title">🗓️ Weekly Timetable</div>
+                            </div>
+                            <% if (!timetable) { %>
+                                <div class="empty-state" style="padding:30px;">
+                                    <p>No timetable assigned yet.</p>
+                                </div>
+                                <% } else { %>
+                                    <div style="overflow-x:auto;">
+                                        <% days.forEach(day=> { %>
+                                            <% if (byDay[day] && byDay[day].length> 0) { %>
+                                                <div style="padding:10px 16px; border-bottom:1px solid var(--border);">
+                                                    <div class="fw-semibold"
+                                                        style="font-size:0.8rem; text-transform:uppercase; color:var(--text-muted); margin-bottom:6px;">
+                                                        <%= day %>
+                                                    </div>
+                                                    <div style="display:flex; gap:8px; flex-wrap:wrap;">
+                                                        <% byDay[day].forEach(e=> { %>
+                                                            <div
+                                                                style="background:var(--surface-2,var(--border)); border-radius:8px; padding:6px 10px; font-size:0.8rem;">
+                                                                <strong>
+                                                                    <%= e.subject?.subjectName %>
+                                                                </strong>
+                                                                <div
+                                                                    style="color:var(--text-muted); font-size:0.75rem;">
+                                                                    <%= e.startTime %>–<%= e.endTime %>
+                                                                </div>
+                                                            </div>
+                                                            <% }) %>
+                                                    </div>
+                                                </div>
+                                                <% } %>
+                                                    <% }) %>
+                                    </div>
+                                    <% } %>
+                        </div>
+            </div>
+
+            <% } %>

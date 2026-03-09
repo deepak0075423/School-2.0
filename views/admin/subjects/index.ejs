@@ -1,0 +1,80 @@
+<div class="page-header">
+    <div>
+        <h1>📚 Subjects</h1>
+        <p>Manage subjects at <%= session.schoolName %>
+        </p>
+    </div>
+</div>
+
+<%# Create Form %>
+    <div class="card" style="margin-bottom:20px;">
+        <div class="card-header">
+            <div class="card-title">➕ Add Subject</div>
+        </div>
+        <div class="card-body">
+            <form action="/admin/subjects/create" method="POST"
+                style="display:grid; grid-template-columns:1fr 1fr 2fr auto; gap:12px; align-items:end;">
+                <div class="form-group" style="margin:0;">
+                    <label class="form-label">Subject Name *</label>
+                    <input type="text" name="subjectName" class="form-control" placeholder="e.g. Mathematics" required>
+                </div>
+                <div class="form-group" style="margin:0;">
+                    <label class="form-label">Subject Code *</label>
+                    <input type="text" name="subjectCode" class="form-control" placeholder="e.g. MATH" required
+                        maxlength="20">
+                </div>
+                <div class="form-group" style="margin:0;">
+                    <label class="form-label">Description</label>
+                    <input type="text" name="description" class="form-control" placeholder="Optional description">
+                </div>
+                <button type="submit" class="btn btn-primary">Add</button>
+            </form>
+        </div>
+    </div>
+
+    <%# List %>
+        <div class="card">
+            <div class="table-wrapper">
+                <% if (subjects.length===0) { %>
+                    <div class="empty-state">
+                        <div class="empty-icon">📚</div>
+                        <h3>No Subjects Yet</h3>
+                        <p>Add your first subject using the form above.</p>
+                    </div>
+                    <% } else { %>
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>#</th>
+                                    <th>Subject</th>
+                                    <th>Code</th>
+                                    <th>Description</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <% subjects.forEach((s, i)=> { %>
+                                    <tr>
+                                        <td class="text-muted">
+                                            <%= i + 1 %>
+                                        </td>
+                                        <td class="text-primary fw-semibold">📚 <%= s.subjectName %>
+                                        </td>
+                                        <td><code><%= s.subjectCode %></code></td>
+                                        <td class="text-muted">
+                                            <%= s.description || '—' %>
+                                        </td>
+                                        <td>
+                                            <form action="/admin/subjects/<%= s._id %>/delete" method="POST"
+                                                style="display:inline;"
+                                                onsubmit="return confirm('Delete subject: <%= s.subjectName %>?')">
+                                                <button type="submit" class="btn btn-danger btn-sm">🗑️ Delete</button>
+                                            </form>
+                                        </td>
+                                    </tr>
+                                    <% }) %>
+                            </tbody>
+                        </table>
+                        <% } %>
+            </div>
+        </div>

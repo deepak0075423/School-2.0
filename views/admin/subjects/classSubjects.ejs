@@ -1,0 +1,79 @@
+<div class="page-header">
+    <div>
+        <h1>📚 Subjects for <%= cls.className %>
+        </h1>
+        <p>Assign subjects to this class</p>
+    </div>
+    <a href="/admin/classes/<%= cls._id %>" class="btn btn-secondary">← Back to Class</a>
+</div>
+
+<div style="display:grid; grid-template-columns:1fr 1fr; gap:20px;">
+    <%# Assign Subject %>
+        <div class="card">
+            <div class="card-header">
+                <div class="card-title">➕ Assign Subject</div>
+            </div>
+            <div class="card-body">
+                <% if (available.length===0) { %>
+                    <p class="text-muted">All available subjects have been assigned to this class.</p>
+                    <a href="/admin/subjects" class="btn btn-secondary btn-sm">Create more subjects</a>
+                    <% } else { %>
+                        <form action="/admin/classes/<%= cls._id %>/subjects/assign" method="POST">
+                            <div class="form-group">
+                                <label class="form-label">Select Subject</label>
+                                <select name="subjectId" class="form-control" required>
+                                    <option value="">— Choose subject —</option>
+                                    <% available.forEach(s=> { %>
+                                        <option value="<%= s._id %>">
+                                            <%= s.subjectName %> (<%= s.subjectCode %>)
+                                        </option>
+                                        <% }) %>
+                                </select>
+                            </div>
+                            <button type="submit" class="btn btn-primary">Assign</button>
+                        </form>
+                        <% } %>
+            </div>
+        </div>
+
+        <%# Assigned Subjects %>
+            <div class="card">
+                <div class="card-header">
+                    <div class="card-title">✅ Assigned Subjects (<%= assigned.length %>)</div>
+                </div>
+                <% if (assigned.length===0) { %>
+                    <div class="empty-state" style="padding:20px;">
+                        <p>No subjects assigned yet.</p>
+                    </div>
+                    <% } else { %>
+                        <div class="table-wrapper">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>Subject</th>
+                                        <th>Code</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <% assigned.forEach(cs=> { %>
+                                        <tr>
+                                            <td class="text-primary fw-semibold">📚 <%= cs.subject.subjectName %>
+                                            </td>
+                                            <td><code><%= cs.subject.subjectCode %></code></td>
+                                            <td>
+                                                <form action="/admin/classes/<%= cls._id %>/subjects/remove"
+                                                    method="POST" style="display:inline;"
+                                                    onsubmit="return confirm('Remove this subject from class?')">
+                                                    <input type="hidden" name="subjectId" value="<%= cs.subject._id %>">
+                                                    <button type="submit" class="btn btn-danger btn-sm">Remove</button>
+                                                </form>
+                                            </td>
+                                        </tr>
+                                        <% }) %>
+                                </tbody>
+                            </table>
+                        </div>
+                        <% } %>
+            </div>
+</div>

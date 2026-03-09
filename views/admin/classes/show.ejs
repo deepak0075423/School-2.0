@@ -1,0 +1,155 @@
+<div class="page-header">
+    <div>
+        <h1>🏫 <%= cls.className %>
+        </h1>
+        <p>
+            <%= cls.academicYear?.yearName %> &middot; Class <%= cls.classNumber %>
+        </p>
+    </div>
+    <div style="display:flex; gap:8px;">
+        <a href="/admin/classes/<%= cls._id %>/subjects" class="btn btn-secondary">📚 Manage Subjects</a>
+        <a href="/admin/classes" class="btn btn-secondary">← Classes</a>
+    </div>
+</div>
+
+<%# Section stats %>
+    <div class="stats-grid" style="margin-bottom:20px;">
+        <div class="stat-card">
+            <div class="stat-icon cyan">📂</div>
+            <div class="stat-info">
+                <div class="stat-value">
+                    <%= sections.length %>
+                </div>
+                <div class="stat-label">Sections</div>
+            </div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-icon green">🎒</div>
+            <div class="stat-info">
+                <div class="stat-value">
+                    <%= sections.reduce((s,sec)=>s+sec.currentCount,0) %>
+                </div>
+                <div class="stat-label">Students Enrolled</div>
+            </div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-icon orange">🪑</div>
+            <div class="stat-info">
+                <div class="stat-value">
+                    <%= sections.reduce((s,sec)=>s+sec.maxStudents,0) %>
+                </div>
+                <div class="stat-label">Total Capacity</div>
+            </div>
+        </div>
+    </div>
+
+    <div style="display:grid; grid-template-columns:1fr 1fr; gap:20px;">
+        <%# Create Section Form %>
+            <div class="card">
+                <div class="card-header">
+                    <div class="card-title">➕ Add Section</div>
+                </div>
+                <div class="card-body">
+                    <form action="/admin/classes/<%= cls._id %>/sections/create" method="POST">
+                        <div class="form-group">
+                            <label class="form-label">Section Name *</label>
+                            <input type="text" name="sectionName" class="form-control" placeholder="e.g. A" required
+                                maxlength="10">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Section Code *</label>
+                            <input type="text" name="sectionCode" class="form-control" placeholder="e.g. CLS5-A"
+                                required maxlength="20">
+                            <span class="form-hint">Must be globally unique (e.g. CLS5-A)</span>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Class Teacher</label>
+                            <select name="classTeacher" class="form-control">
+                                <option value="">— None —</option>
+                                <% teachers.forEach(t=> { %>
+                                    <option value="<%= t._id %>">
+                                        <%= t.name %>
+                                    </option>
+                                    <% }) %>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Substitute Teacher</label>
+                            <select name="substituteTeacher" class="form-control">
+                                <option value="">— None —</option>
+                                <% teachers.forEach(t=> { %>
+                                    <option value="<%= t._id %>">
+                                        <%= t.name %>
+                                    </option>
+                                    <% }) %>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Max Students *</label>
+                            <input type="number" name="maxStudents" class="form-control" value="40" min="1" required>
+                        </div>
+                        <button type="submit" class="btn btn-primary">Create Section</button>
+                    </form>
+                </div>
+            </div>
+
+            <%# Sections List %>
+                <div class="card">
+                    <div class="card-header">
+                        <div class="card-title">📂 Sections (<%= sections.length %>)</div>
+                    </div>
+                    <% if (sections.length===0) { %>
+                        <div class="empty-state" style="padding:30px;">
+                            <p>No sections yet. Create one using the form.</p>
+                        </div>
+                        <% } else { %>
+                            <div class="table-wrapper">
+                                <table>
+                                    <thead>
+                                        <tr>
+                                            <th>Section</th>
+                                            <th>Code</th>
+                                            <th>Students</th>
+                                            <th>Teacher</th>
+                                            <th>Status</th>
+                                            <th>Actions</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <% sections.forEach(sec=> { %>
+                                            <tr>
+                                                <td class="text-primary fw-semibold">📂 <%= sec.sectionName %>
+                                                </td>
+                                                <td><code><%= sec.sectionCode %></code></td>
+                                                <td>
+                                                    <span
+                                                        style="color:<%= sec.currentCount >= sec.maxStudents ? 'var(--error)' : 'inherit' %>">
+                                                        <%= sec.currentCount %>/<%= sec.maxStudents %>
+                                                    </span>
+                                                </td>
+                                                <td>
+                                                    <%= sec.classTeacher?.name || '—' %>
+                                                </td>
+                                                <td>
+                                                    <span
+                                                        class="badge <%= sec.status==='active'?'badge-green':'badge-orange' %>">
+                                                        <%= sec.status %>
+                                                    </span>
+                                                </td>
+                                                <td style="display:flex; gap:6px; flex-wrap:wrap;">
+                                                    <a href="/admin/sections/<%= sec._id %>"
+                                                        class="btn btn-secondary btn-sm">👁 View</a>
+                                                    <form action="/admin/sections/<%= sec._id %>/delete" method="POST"
+                                                        style="display:inline;"
+                                                        onsubmit="return confirm('Delete section <%= sec.sectionName %>?')">
+                                                        <button class="btn btn-danger btn-sm">🗑️</button>
+                                                    </form>
+                                                </td>
+                                            </tr>
+                                            <% }) %>
+                                    </tbody>
+                                </table>
+                            </div>
+                            <% } %>
+                </div>
+    </div>

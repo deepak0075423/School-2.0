@@ -1,0 +1,97 @@
+<div class="page-header">
+    <div>
+        <h1>📋 Mark Attendance</h1>
+        <% if (section) { %>
+            <p>
+                <%= section.class?.className %> – Section <%= section.sectionName %>
+            </p>
+            <% } %>
+    </div>
+    <a href="/teacher/my-section" class="btn btn-secondary">← My Section</a>
+</div>
+
+<% if (!section) { %>
+    <div class="card">
+        <div class="empty-state">
+            <div class="empty-icon">📋</div>
+            <h3>No Section Assigned</h3>
+            <p>You are not assigned to any section.</p>
+        </div>
+    </div>
+    <% } else { %>
+        <div class="card" style="margin-bottom:16px;">
+            <div class="card-body">
+                <form method="GET" style="display:flex; align-items:center; gap:12px;">
+                    <label class="form-label" style="margin:0;">Date:</label>
+                    <input type="date" name="date" class="form-control" style="width:200px;" value="<%= date %>"
+                        max="<%= new Date().toISOString().split('T')[0] %>">
+                    <button type="submit" class="btn btn-secondary">Load</button>
+                </form>
+            </div>
+        </div>
+
+        <% if (students.length===0) { %>
+            <div class="card">
+                <div class="empty-state" style="padding:30px;">
+                    <p>No students in this section.</p>
+                </div>
+            </div>
+            <% } else { %>
+                <div class="card">
+                    <div class="card-header">
+                        <div class="card-title">
+                            📋 Attendance — <%= new Date(date).toDateString() %>
+                                <% if (attendance) { %><span class="badge badge-green" style="margin-left:8px;">Already
+                                        Marked</span>
+                                    <% } %>
+                        </div>
+                    </div>
+                    <form action="/teacher/attendance/mark" method="POST">
+                        <input type="hidden" name="sectionId" value="<%= section._id %>">
+                        <input type="hidden" name="date" value="<%= date %>">
+                        <div class="table-wrapper">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>#</th>
+                                        <th>Student</th>
+                                        <th>Present</th>
+                                        <th>Absent</th>
+                                        <th>Late</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <% students.forEach((p, i)=> {
+                                        const sid = p.user?._id?.toString();
+                                        const existing = recordMap[sid];
+                                        %>
+                                        <tr>
+                                            <td class="text-muted">
+                                                <%= i + 1 %>
+                                            </td>
+                                            <td class="text-primary fw-semibold">🎒 <%= p.user?.name %>
+                                            </td>
+                                            <td style="text-align:center;">
+                                                <input type="radio" name="statuses[<%= sid %>]" value="Present"
+                                                    <%=!existing || existing.status==='Present' ? 'checked' : '' %>>
+                                            </td>
+                                            <td style="text-align:center;">
+                                                <input type="radio" name="statuses[<%= sid %>]" value="Absent"
+                                                    <%=existing && existing.status==='Absent' ? 'checked' : '' %>>
+                                            </td>
+                                            <td style="text-align:center;">
+                                                <input type="radio" name="statuses[<%= sid %>]" value="Late" <%=existing
+                                                    && existing.status==='Late' ? 'checked' : '' %>>
+                                            </td>
+                                        </tr>
+                                        <% }) %>
+                                </tbody>
+                            </table>
+                        </div>
+                        <div style="padding:16px; border-top:1px solid var(--border);">
+                            <button type="submit" class="btn btn-primary">💾 Save Attendance</button>
+                        </div>
+                    </form>
+                </div>
+                <% } %>
+                    <% } %>

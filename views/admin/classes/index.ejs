@@ -1,0 +1,74 @@
+<div class="page-header">
+    <div>
+        <h1>🏫 Classes</h1>
+        <p>Manage classes at <%= session.schoolName %>
+        </p>
+    </div>
+    <a href="/admin/classes/create" class="btn btn-primary">+ New Class</a>
+</div>
+
+<%# Year Filter %>
+    <div class="card" style="margin-bottom:16px; padding:0;">
+        <div class="card-body" style="padding:16px;">
+            <form method="GET" style="display:flex; align-items:center; gap:12px; flex-wrap:wrap;">
+                <label class="form-label" style="margin:0; font-weight:600;">Filter by Academic Year:</label>
+                <select name="year" class="form-control" style="width:220px;" onchange="this.form.submit()">
+                    <% years.forEach(y=> { %>
+                        <option value="<%= y._id %>" <%=y._id.toString()===selectedYear?.toString() ? 'selected' : '' %>
+                            >
+                            <%= y.yearName %> (<%= y.status %>)
+                        </option>
+                        <% }) %>
+                </select>
+                <a href="/admin/academic-years" class="btn btn-secondary btn-sm">📅 Manage Years</a>
+            </form>
+        </div>
+    </div>
+
+    <% if (classes.length===0) { %>
+        <div class="card">
+            <div class="empty-state">
+                <div class="empty-icon">🏫</div>
+                <h3>No Classes Yet</h3>
+                <p>Create your first class for this academic year.</p>
+                <a href="/admin/classes/create" class="btn btn-primary">Create Class</a>
+            </div>
+        </div>
+        <% } else { %>
+            <div style="display:grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap:16px;">
+                <% classes.forEach(cls=> {
+                    const info = sectionMap[cls._id.toString()] || { count: 0, students: 0 };
+                    %>
+                    <div class="card" style="cursor:pointer;" onclick="location.href='/admin/classes/<%= cls._id %>'">
+                        <div class="card-body">
+                            <div
+                                style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+                                <div style="font-size:2rem;">🏫</div>
+                                <span class="badge <%= cls.status==='active'?'badge-green':'badge-orange' %>">
+                                    <%= cls.status %>
+                                </span>
+                            </div>
+                            <h3 style="margin:0 0 4px 0; font-size:1.25rem;">
+                                <%= cls.className %>
+                            </h3>
+                            <p style="margin:0 0 12px 0; color:var(--text-muted); font-size:0.875rem;">
+                                <%= cls.academicYear?.yearName || '' %>
+                            </p>
+                            <div style="display:flex; gap:12px; font-size:0.85rem; color:var(--text-muted);">
+                                <span>📂 <%= info.count || 0 %> sections</span>
+                                <span>🎒 <%= info.students || 0 %> students</span>
+                            </div>
+                            <div style="margin-top:12px; display:flex; gap:8px;">
+                                <a href="/admin/classes/<%= cls._id %>" class="btn btn-secondary btn-sm"
+                                    onclick="event.stopPropagation()">View</a>
+                                <form action="/admin/classes/<%= cls._id %>/delete" method="POST"
+                                    style="display:inline;"
+                                    onsubmit="event.stopPropagation(); return confirm('Delete <%= cls.className %>?')">
+                                    <button type="submit" class="btn btn-danger btn-sm">Delete</button>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+                    <% }) %>
+            </div>
+            <% } %>

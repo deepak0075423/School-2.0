@@ -1,0 +1,157 @@
+const Subject = require('../models/Subject');
+const ClassSubject = require('../models/ClassSubject');
+const SectionSubjectTeacher = require('../models/SectionSubjectTeacher');
+const Class = require('../models/Class');
+const ClassSection = require('../models/ClassSection');
+const User = require('../models/User');
+const ActivityLog = require('../models/ActivityLog');
+
+/* ─────────────────────────────────────────────
+   SUBJECTS
+───────────────────────────────────────────── */
+
+const getSubjects = async (req, res) => {
+    try {
+        const subjects = await Subject.find({ school: req.session.schoolId }).sort({ subjectName: 1 });
+        res.render('admin/subjects/index', {
+            title: 'Subjects', layout: 'layouts/main', subjects,
+        });
+    } catch (err) {
+        req.flash('error', 'Failed to load subjects.'); res.redirect('/admin/dashboard');
+    }
+};
+
+const postCreateSubject = async (req, res) => {
+    try {
+        const { subjectName, subjectCode, description } = req.body;
+        await Subject.create({
+            school: req.session.schoolId,
+            subjectName: subjectName.trim(),
+            subjectCode: subjectCode.trim().toUpperCase(),
+            description: description || '',
+        });
+        req.flash('success', `Subject "${subjectName}" created.`);
+        res.redirect('/admin/subjects');
+    } catch (err) {
+        if (err.code === 11000) {
+            req.flash('error', 'A subject with that code already exists.');
+        } else {
+            req.flash('error', 'Failed to create subject: ' + err.message);
+        }
+        res.redirect('/admin/subjects');
+    }
+};
+
+const postDeleteSubject = async (req, res) => {
+    try {
+        await Subject.findOneAndDelete({ _id: req.params.subjectId, school: req.session.schoolId });
+        req.flash('success', 'Subject deleted.');
+        res.redirect('/admin/subjects');
+    } catch (err) {
+        req.flash('error', 'Failed to delete subject.'); res.redirect('/admin/subjects');
+    }
+};
+
+/* ─────────────────────────────────────────────
+   CLASS SUBJECTS (assign subjects to a class)
+───────────────────────────────────────────── */
+
+const getClassSubjects = async (req, res) => {
+    try {
+        const cls = await Class.findOne({ _id: req.params.classId, school: req.session.schoolId });
+        if (!cls) { req.flash('error', 'Class not found.'); return res.redirect('/admin/classes'); }
+
+        const assigned = await ClassSubject.find({ class: cls._id }).populate('subject');
+        const assignedIds = assigned.map(cs => cs.subject._id.toString());
+        const allSubjects = await Subject.find({ school: req.session.schoolId }).sort({ subjectName: 1 });
+        const available = allSubjects.filter(s => !assignedIds.includes(s._id.toString()));
+
+        res.render('admin/subjects/classSubjects', {
+            title: `Subjects — ${cls.className}`, layout: 'layouts/main',
+            cls, assigned, available,
+        });
+    } catch (err) {
+        req.flash('error', 'Failed to load class subjects.'); res.redirect('/admin/classes');
+    }
+};
+
+const postAssignSubjectToClass = async (req, res) => {
+    const { classId } = req.params;
+    try {
+        const { subjectId } = req.body;
+        await ClassSubject.create({ class: classId, subject: subjectId });
+        req.flash('success', 'Subject assigned to class.');
+        res.redirect(`/admin/classes/${classId}/subjects`);
+    } catch (err) {
+        if (err.code === 11000) {
+            req.flash('error', 'Subject already assigned to this class.');
+        } else {
+            req.flash('error', 'Failed to assign subject: ' + err.message);
+        }
+        res.redirect(`/admin/classes/${classId}/subjects`);
+    }
+};
+
+const postRemoveSubjectFromClass = async (req, res) => {
+    const { classId } = req.params;
+    try {
+        await ClassSubject.findOneAndDelete({ class: classId, subject: req.body.subjectId });
+        req.flash('success', 'Subject removed from class.');
+        res.redirect(`/admin/classes/${classId}/subjects`);
+    } catch (err) {
+        req.flash('error', 'Failed to remove subject.'); res.redirect(`/admin/classes/${classId}/subjects`);
+    }
+};
+
+/* ─────────────────────────────────────────────
+   SECTION SUBJECT TEACHERS
+───────────────────────────────────────────── */
+
+const getSectionSubjectTeachers = async (req, res) => {
+    try {
+        const section = await ClassSection.findOne({ _id: req.params.sectionId, school: req.session.schoolId })
+            .populate('class');
+        if (!section) { req.flash('error', 'Section not found.'); return res.redirect('/admin/classes'); }
+
+        // Subjects for this class
+        const classSubjects = await ClassSubject.find({ class: section.class._id }).populate('subject');
+        // Already assigned teacher-subject combos
+        const assignments = await SectionSubjectTeacher.find({ section: section._id })
+            .populate('subject').populate('teacher', 'name email');
+        const assignedSubjectIds = assignments.map(a => a.subject._id.toString());
+        const unassigned = classSubjects.filter(cs => !assignedSubjectIds.includes(cs.subject._id.toString()));
+
+        const teachers = await User.find({ role: 'teacher', school: req.session.schoolId, isActive: true })
+            .select('name email');
+
+        res.render('admin/sections/subjectTeachers', {
+            title: `Subject Teachers — Section ${section.sectionName}`, layout: 'layouts/main',
+            section, assignments, unassigned, teachers,
+        });
+    } catch (err) {
+        req.flash('error', 'Failed to load subject teachers.'); res.redirect('/admin/classes');
+    }
+};
+
+const postAssignSubjectTeacher = async (req, res) => {
+    const { sectionId } = req.params;
+    try {
+        const { subjectId, teacherId } = req.body;
+        await SectionSubjectTeacher.findOneAndUpdate(
+            { section: sectionId, subject: subjectId },
+            { teacher: teacherId },
+            { upsert: true, new: true }
+        );
+        req.flash('success', 'Teacher assigned to subject.');
+        res.redirect(`/admin/sections/${sectionId}/subjects`);
+    } catch (err) {
+        req.flash('error', 'Failed to assign teacher: ' + err.message);
+        res.redirect(`/admin/sections/${sectionId}/subjects`);
+    }
+};
+
+module.exports = {
+    getSubjects, postCreateSubject, postDeleteSubject,
+    getClassSubjects, postAssignSubjectToClass, postRemoveSubjectFromClass,
+    getSectionSubjectTeachers, postAssignSubjectTeacher,
+};

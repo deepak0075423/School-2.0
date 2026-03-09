@@ -1,0 +1,349 @@
+<div class="page-header">
+    <div>
+        <h1>📊 Reports</h1>
+        <p>Class management analytics for <%= session.schoolName %>
+        </p>
+    </div>
+</div>
+
+<%# Tabs %>
+    <div style="display:flex; gap:8px; margin-bottom:20px; flex-wrap:wrap;" id="report-tabs">
+        <% const tabs=[ {id:'students-class', label:'🏫 Students / Class'}, {id:'students-section', label:'📂 Students /
+            Section'}, {id:'teachers', label:'👨‍🏫 Teacher Sections'}, {id:'monitors', label:'⭐ Monitors'},
+            {id:'capacity', label:'🪑 Capacity'}, {id:'attendance', label:'📋 Attendance (7d)'}, ]; %>
+            <% tabs.forEach((t,i)=>{ %>
+                <button class="btn <%= i===0 ? 'btn-primary' : 'btn-secondary' %> tab-btn" data-tab="<%= t.id %>">
+                    <%= t.label %>
+                </button>
+                <% }) %>
+    </div>
+
+    <%# Tab 1: Students Per Class %>
+        <div class="tab-content" id="tab-students-class">
+            <div class="card">
+                <div class="card-header">
+                    <div class="card-title">🏫 Students per Class</div>
+                </div>
+                <div class="table-wrapper">
+                    <% if (studentsPerClass.length===0) { %>
+                        <div class="empty-state" style="padding:30px;">
+                            <p>No classes found.</p>
+                        </div>
+                        <% } else { %>
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>Class</th>
+                                        <th>Academic Year</th>
+                                        <th>Sections</th>
+                                        <th>Total Students</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <% studentsPerClass.forEach(({cls, total, sections})=> { %>
+                                        <tr>
+                                            <td class="text-primary fw-semibold">
+                                                <%= cls.className %>
+                                            </td>
+                                            <td>
+                                                <%= cls.academicYear?.yearName || '—' %>
+                                            </td>
+                                            <td>
+                                                <%= sections %>
+                                            </td>
+                                            <td><strong>
+                                                    <%= total %>
+                                                </strong></td>
+                                        </tr>
+                                        <% }) %>
+                                </tbody>
+                            </table>
+                            <% } %>
+                </div>
+            </div>
+        </div>
+
+        <%# Tab 2: Students Per Section %>
+            <div class="tab-content" id="tab-students-section" style="display:none;">
+                <div class="card">
+                    <div class="card-header">
+                        <div class="card-title">📂 Students per Section</div>
+                    </div>
+                    <div class="table-wrapper">
+                        <% if (sections.length===0) { %>
+                            <div class="empty-state" style="padding:30px;">
+                                <p>No sections found.</p>
+                            </div>
+                            <% } else { %>
+                                <table>
+                                    <thead>
+                                        <tr>
+                                            <th>Class</th>
+                                            <th>Section</th>
+                                            <th>Code</th>
+                                            <th>Enrolled</th>
+                                            <th>Max</th>
+                                            <th>Fill %</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <% sections.forEach(sec=> { %>
+                                            <tr>
+                                                <td>
+                                                    <%= sec.class?.className || '—' %>
+                                                </td>
+                                                <td class="text-primary fw-semibold">
+                                                    <%= sec.sectionName %>
+                                                </td>
+                                                <td><code><%= sec.sectionCode %></code></td>
+                                                <td>
+                                                    <%= sec.currentCount %>
+                                                </td>
+                                                <td>
+                                                    <%= sec.maxStudents %>
+                                                </td>
+                                                <td>
+                                                    <div style="display:flex; align-items:center; gap:8px;">
+                                                        <div
+                                                            style="background:var(--border); border-radius:4px; height:8px; width:80px; overflow:hidden;">
+                                                            <div
+                                                                style="background:<%= sec.currentCount >= sec.maxStudents ? 'var(--error)' : 'var(--success)' %>; height:100%; width:<%= Math.min(Math.round(sec.currentCount/sec.maxStudents*100),100) %>%;">
+                                                            </div>
+                                                        </div>
+                                                        <%= Math.round(sec.currentCount/sec.maxStudents*100) %>%
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                            <% }) %>
+                                    </tbody>
+                                </table>
+                                <% } %>
+                    </div>
+                </div>
+            </div>
+
+            <%# Tab 3: Teachers %>
+                <div class="tab-content" id="tab-teachers" style="display:none;">
+                    <div class="card">
+                        <div class="card-header">
+                            <div class="card-title">👨‍🏫 Teacher Assigned Sections</div>
+                        </div>
+                        <div class="table-wrapper">
+                            <% if (teacherSections.length===0) { %>
+                                <div class="empty-state" style="padding:30px;">
+                                    <p>No teachers found.</p>
+                                </div>
+                                <% } else { %>
+                                    <table>
+                                        <thead>
+                                            <tr>
+                                                <th>Teacher</th>
+                                                <th>Email</th>
+                                                <th>Sections</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            <% teacherSections.forEach(({teacher, sections})=> { %>
+                                                <tr>
+                                                    <td class="text-primary fw-semibold">👨‍🏫 <%= teacher.name %>
+                                                    </td>
+                                                    <td>
+                                                        <%= teacher.email %>
+                                                    </td>
+                                                    <td>
+                                                        <% if (sections.length===0) { %>
+                                                            <span class="text-muted">—</span>
+                                                            <% } else { %>
+                                                                <% sections.forEach(s=> { %><span
+                                                                        class="badge badge-cyan" style="margin:2px;">
+                                                                        <%= s.class?.className %> - <%= s.sectionName %>
+                                                                    </span>
+                                                                    <% }) %>
+                                                                        <% } %>
+                                                    </td>
+                                                </tr>
+                                                <% }) %>
+                                        </tbody>
+                                    </table>
+                                    <% } %>
+                        </div>
+                    </div>
+                </div>
+
+                <%# Tab 4: Monitors %>
+                    <div class="tab-content" id="tab-monitors" style="display:none;">
+                        <div class="card">
+                            <div class="card-header">
+                                <div class="card-title">⭐ Class Monitor List</div>
+                            </div>
+                            <div class="table-wrapper">
+                                <% if (validMonitors.length===0) { %>
+                                    <div class="empty-state" style="padding:30px;">
+                                        <p>No class monitors assigned.</p>
+                                    </div>
+                                    <% } else { %>
+                                        <table>
+                                            <thead>
+                                                <tr>
+                                                    <th>Class / Section</th>
+                                                    <th>Monitor (Student)</th>
+                                                    <th>Assigned By</th>
+                                                    <th>Date</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                <% validMonitors.forEach(m=> { %>
+                                                    <tr>
+                                                        <td>
+                                                            <%= m.section?.class?.className %> – <%=
+                                                                    m.section?.sectionName %>
+                                                        </td>
+                                                        <td class="text-primary fw-semibold">⭐ <%= m.student?.name %>
+                                                        </td>
+                                                        <td>
+                                                            <%= m.assignedBy?.name || '—' %>
+                                                        </td>
+                                                        <td>
+                                                            <%= m.assignedDate ? new
+                                                                Date(m.assignedDate).toLocaleDateString() : '—' %>
+                                                        </td>
+                                                    </tr>
+                                                    <% }) %>
+                                            </tbody>
+                                        </table>
+                                        <% } %>
+                            </div>
+                        </div>
+                    </div>
+
+                    <%# Tab 5: Capacity %>
+                        <div class="tab-content" id="tab-capacity" style="display:none;">
+                            <div class="card">
+                                <div class="card-header">
+                                    <div class="card-title">🪑 Section Capacity Usage</div>
+                                </div>
+                                <div class="table-wrapper">
+                                    <% if (capacityData.length===0) { %>
+                                        <div class="empty-state" style="padding:30px;">
+                                            <p>No sections found.</p>
+                                        </div>
+                                        <% } else { %>
+                                            <table>
+                                                <thead>
+                                                    <tr>
+                                                        <th>Class</th>
+                                                        <th>Section</th>
+                                                        <th>Used</th>
+                                                        <th>Max</th>
+                                                        <th>Available</th>
+                                                        <th>Usage</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    <% capacityData.forEach(({section, used, max, pct})=> { %>
+                                                        <tr>
+                                                            <td>
+                                                                <%= section.class?.className || '—' %>
+                                                            </td>
+                                                            <td class="text-primary fw-semibold">
+                                                                <%= section.sectionName %>
+                                                            </td>
+                                                            <td>
+                                                                <%= used %>
+                                                            </td>
+                                                            <td>
+                                                                <%= max %>
+                                                            </td>
+                                                            <td
+                                                                style="color:<%= max - used === 0 ? 'var(--error)' : 'var(--success)' %>">
+                                                                <%= max - used %>
+                                                            </td>
+                                                            <td>
+                                                                <div
+                                                                    style="display:flex; align-items:center; gap:8px; min-width:120px;">
+                                                                    <div
+                                                                        style="background:var(--border); border-radius:4px; height:8px; flex:1; overflow:hidden;">
+                                                                        <div
+                                                                            style="background:<%= pct >= 100 ? 'var(--error)' : pct >= 80 ? 'var(--warning, #ff9800)' : 'var(--success)' %>; height:100%; width:<%= Math.min(pct,100) %>%;">
+                                                                        </div>
+                                                                    </div>
+                                                                    <span style="font-size:0.8rem;">
+                                                                        <%= pct %>%
+                                                                    </span>
+                                                                </div>
+                                                            </td>
+                                                        </tr>
+                                                        <% }) %>
+                                                </tbody>
+                                            </table>
+                                            <% } %>
+                                </div>
+                            </div>
+                        </div>
+
+                        <%# Tab 6: Attendance %>
+                            <div class="tab-content" id="tab-attendance" style="display:none;">
+                                <div class="card">
+                                    <div class="card-header">
+                                        <div class="card-title">📋 Attendance Summary (Last 7 Days)</div>
+                                    </div>
+                                    <div class="table-wrapper">
+                                        <% if (attendanceSummary.length===0) { %>
+                                            <div class="empty-state" style="padding:30px;">
+                                                <p>No attendance has been marked in the last 7 days.</p>
+                                            </div>
+                                            <% } else { %>
+                                                <table>
+                                                    <thead>
+                                                        <tr>
+                                                            <th>Section</th>
+                                                            <th>Date</th>
+                                                            <th>Total</th>
+                                                            <th>Present</th>
+                                                            <th>Absent</th>
+                                                            <th>Late</th>
+                                                        </tr>
+                                                    </thead>
+                                                    <tbody>
+                                                        <% attendanceSummary.forEach(({attendance, present, absent,
+                                                            late, total})=> { %>
+                                                            <tr>
+                                                                <td>
+                                                                    <%= attendance.section?.class?.className %> – <%=
+                                                                            attendance.section?.sectionName %>
+                                                                </td>
+                                                                <td>
+                                                                    <%= new Date(attendance.date).toLocaleDateString()
+                                                                        %>
+                                                                </td>
+                                                                <td>
+                                                                    <%= total %>
+                                                                </td>
+                                                                <td class="text-muted"><span class="badge badge-green">
+                                                                        <%= present %>
+                                                                    </span></td>
+                                                                <td><span class="badge badge-red">
+                                                                        <%= absent %>
+                                                                    </span></td>
+                                                                <td><span class="badge badge-orange">
+                                                                        <%= late %>
+                                                                    </span></td>
+                                                            </tr>
+                                                            <% }) %>
+                                                    </tbody>
+                                                </table>
+                                                <% } %>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <script>
+                                document.querySelectorAll('.tab-btn').forEach(btn => {
+                                    btn.addEventListener('click', () => {
+                                        document.querySelectorAll('.tab-btn').forEach(b => { b.className = 'btn btn-secondary tab-btn'; });
+                                        btn.className = 'btn btn-primary tab-btn';
+                                        document.querySelectorAll('.tab-content').forEach(c => c.style.display = 'none');
+                                        document.getElementById('tab-' + btn.dataset.tab).style.display = '';
+                                    });
+                                });
+                            </script>

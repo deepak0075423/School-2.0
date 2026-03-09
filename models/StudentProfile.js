@@ -11,6 +11,7 @@ const StudentProfileSchema = new mongoose.Schema({
         ref: 'School',
         required: true,
     },
+    // Legacy plain-text fields (kept for backward compat)
     class: {
         type: String,
         default: '',
@@ -18,6 +19,17 @@ const StudentProfileSchema = new mongoose.Schema({
     section: {
         type: String,
         default: '',
+    },
+    // New FK — assigned section
+    currentSection: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'ClassSection',
+        default: null,
+    },
+    admissionNumber: {
+        type: String,
+        default: '',
+        trim: true,
     },
     dob: {
         type: Date,
@@ -43,3 +55,4 @@ const StudentProfileSchema = new mongoose.Schema({
 });
 
 module.exports = mongoose.model('StudentProfile', StudentProfileSchema);
+

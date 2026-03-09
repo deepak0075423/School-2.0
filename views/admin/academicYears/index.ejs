@@ -1,0 +1,88 @@
+<div class="page-header">
+    <div>
+        <h1>📅 Academic Years</h1>
+        <p>Manage academic sessions for <%= session.schoolName %>
+        </p>
+    </div>
+</div>
+
+<%# Create Form %>
+    <div class="card" style="margin-bottom:20px;">
+        <div class="card-header">
+            <div class="card-title">➕ New Academic Year</div>
+        </div>
+        <div class="card-body">
+            <form action="/admin/academic-years/create" method="POST"
+                style="display:grid; grid-template-columns:1fr 1fr 1fr auto; gap:12px; align-items:end;">
+                <div class="form-group" style="margin:0;">
+                    <label class="form-label">Year Name *</label>
+                    <input type="text" name="yearName" class="form-control" placeholder="e.g. 2025–2026" required>
+                </div>
+                <div class="form-group" style="margin:0;">
+                    <label class="form-label">Start Date *</label>
+                    <input type="date" name="startDate" class="form-control" required>
+                </div>
+                <div class="form-group" style="margin:0;">
+                    <label class="form-label">End Date *</label>
+                    <input type="date" name="endDate" class="form-control" required>
+                </div>
+                <button type="submit" class="btn btn-primary">Create</button>
+            </form>
+        </div>
+    </div>
+
+    <%# List %>
+        <div class="card">
+            <div class="table-wrapper">
+                <% if (years.length===0) { %>
+                    <div class="empty-state">
+                        <div class="empty-icon">📅</div>
+                        <h3>No Academic Years Yet</h3>
+                        <p>Create your first academic year above.</p>
+                    </div>
+                    <% } else { %>
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>#</th>
+                                    <th>Year Name</th>
+                                    <th>Start Date</th>
+                                    <th>End Date</th>
+                                    <th>Status</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <% years.forEach((y, i)=> { %>
+                                    <tr>
+                                        <td class="text-muted">
+                                            <%= i + 1 %>
+                                        </td>
+                                        <td class="text-primary fw-semibold">📅 <%= y.yearName %>
+                                        </td>
+                                        <td>
+                                            <%= y.startDate ? new Date(y.startDate).toLocaleDateString() : '—' %>
+                                        </td>
+                                        <td>
+                                            <%= y.endDate ? new Date(y.endDate).toLocaleDateString() : '—' %>
+                                        </td>
+                                        <td>
+                                            <span
+                                                class="badge <%= y.status==='active'?'badge-green':y.status==='inactive'?'badge-orange':'badge-red' %>">
+                                                <%= y.status %>
+                                            </span>
+                                        </td>
+                                        <td>
+                                            <form action="/admin/academic-years/<%= y._id %>/delete" method="POST"
+                                                style="display:inline;"
+                                                onsubmit="return confirm('Delete academic year <%= y.yearName %>?')">
+                                                <button type="submit" class="btn btn-danger btn-sm">🗑️ Delete</button>
+                                            </form>
+                                        </td>
+                                    </tr>
+                                    <% }) %>
+                            </tbody>
+                        </table>
+                        <% } %>
+            </div>
+        </div>
