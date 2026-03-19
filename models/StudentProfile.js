@@ -11,6 +11,23 @@ const StudentProfileSchema = new mongoose.Schema({
         ref: 'School',
         required: true,
     },
+    gender: {
+        type: String,
+        enum: ['Male', 'Female', 'Other', ''],
+        default: '',
+    },
+    bloodGroup: {
+        type: String,
+        default: '',
+    },
+    religion: {
+        type: String,
+        default: '',
+    },
+    category: {
+        type: String,
+        default: '',
+    },
     // Legacy plain-text fields (kept for backward compat)
     class: {
         type: String,

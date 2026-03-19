@@ -329,6 +329,31 @@ const postUpdateSectionTeacher = async (req, res) => {
     }
 };
 
+const postUpdateSectionCapacity = async (req, res) => {
+    const { sectionId } = req.params;
+    try {
+        const maxStudents = parseInt(req.body.maxStudents);
+        if (!maxStudents || maxStudents < 1) {
+            req.flash('error', 'Capacity must be at least 1.');
+            return res.redirect(`/admin/sections/${sectionId}`);
+        }
+        const section = await ClassSection.findOne({ _id: sectionId, school: req.session.schoolId });
+        if (!section) { req.flash('error', 'Section not found.'); return res.redirect('/admin/classes'); }
+
+        if (maxStudents < section.currentCount) {
+            req.flash('error', `Capacity cannot be less than current enrollment (${section.currentCount} students).`);
+            return res.redirect(`/admin/sections/${sectionId}`);
+        }
+
+        await ClassSection.findByIdAndUpdate(sectionId, { maxStudents });
+        req.flash('success', `Capacity updated to ${maxStudents} students.`);
+        res.redirect(`/admin/sections/${sectionId}`);
+    } catch (err) {
+        req.flash('error', 'Failed to update capacity: ' + err.message);
+        res.redirect(`/admin/sections/${sectionId}`);
+    }
+};
+
 const postDeleteSection = async (req, res) => {
     const { sectionId } = req.params;
     try {
@@ -349,5 +374,5 @@ module.exports = {
     // Sections
     postCreateSection, getSectionDetail,
     postAssignStudentToSection, postRemoveStudentFromSection,
-    postUpdateSectionTeacher, postDeleteSection,
+    postUpdateSectionTeacher, postUpdateSectionCapacity, postDeleteSection,
 };

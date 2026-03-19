@@ -154,7 +154,7 @@
                 <% if (success && success.length> 0) { %>
                     <% success.forEach(msg=> { %>
                         <div class="alert alert-success">
-                            ✅ <%= msg %>
+                            ✅ <%- msg %>
                                 <button class="alert-close">×</button>
                         </div>
                         <% }) %>
@@ -162,7 +162,7 @@
                                 <% if (error && error.length> 0) { %>
                                     <% error.forEach(msg=> { %>
                                         <div class="alert alert-error">
-                                            ❌ <%= msg %>
+                                            ❌ <%- msg %>
                                                 <button class="alert-close">×</button>
                                         </div>
                                         <% }) %>

@@ -11,6 +11,26 @@ const ParentProfileSchema = new mongoose.Schema({
         ref: 'School',
         required: true,
     },
+    fatherOccupation: {
+        type: String,
+        default: '',
+    },
+    motherOccupation: {
+        type: String,
+        default: '',
+    },
+    guardianOccupation: {
+        type: String,
+        default: '',
+    },
+    emergencyContact: {
+        type: String,
+        default: '',
+    },
+    annualIncome: {
+        type: String,
+        default: '',
+    },
     relationship: {
         type: String,
         enum: ['Father', 'Mother', 'Guardian'],

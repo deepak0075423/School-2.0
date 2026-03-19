@@ -12,9 +12,15 @@ router.get('/schools/create', guard, ctrl.getCreateSchool);
 router.post('/schools/create', guard, ctrl.postCreateSchool);
 router.post('/schools/:id/delete', guard, ctrl.deleteSchool);
 
+const upload = require('../middleware/upload');
+
 router.get('/users', guard, ctrl.getUsers);
 router.get('/users/create', guard, ctrl.getCreateUser);
 router.post('/users/create', guard, ctrl.postCreateUser);
+router.post('/users/bulk-teachers', guard, upload.single('excelFile'), ctrl.postBulkTeachers);
+router.post('/users/bulk-students', guard, upload.single('excelFile'), ctrl.postBulkStudents);
+router.get('/users/template/teachers', guard, ctrl.downloadTeacherTemplate);
+router.get('/users/template/students', guard, ctrl.downloadStudentTemplate);
 router.post('/users/:id/toggle', guard, ctrl.toggleUserStatus);
 router.post('/users/:id/delete', guard, ctrl.deleteUser);
 router.post('/users/:id/login-link', guard, ctrl.postGenerateLoginLink);

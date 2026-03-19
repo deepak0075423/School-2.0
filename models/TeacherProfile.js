@@ -11,6 +11,32 @@ const TeacherProfileSchema = new mongoose.Schema({
         ref: 'School',
         required: true,
     },
+    employeeId: {
+        type: String,
+        default: '',
+        trim: true,
+    },
+    gender: {
+        type: String,
+        enum: ['Male', 'Female', 'Other', ''],
+        default: '',
+    },
+    dob: {
+        type: Date,
+        default: null,
+    },
+    joiningDate: {
+        type: Date,
+        default: null,
+    },
+    designation: {
+        type: String,
+        default: '',
+    },
+    department: {
+        type: String,
+        default: '',
+    },
     subjects: {
         type: [String],
         default: [],

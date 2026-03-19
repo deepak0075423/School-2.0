@@ -6,6 +6,72 @@
     <a href="/super-admin/users" class="btn btn-secondary">← Back</a>
 </div>
 
+<form action="/super-admin/users/bulk-teachers" method="POST" enctype="multipart/form-data">
+    <div class="form-section" style="border: 2px dashed #bfdbfe; background: #f8fafc;">
+        <div class="form-section-header" style="display: flex; justify-content: space-between; align-items: center;">
+            <div style="display: flex; align-items: center; gap: 8px;">
+                <span>👨‍🏫</span>
+                <h3>Bulk Upload Teachers (Excel)</h3>
+            </div>
+            <a href="/super-admin/users/template/teachers" class="btn btn-sm btn-secondary" style="background: white; color: #1e40af; border: 1px solid #1e40af; padding: 4px 12px; font-size: 0.875rem;">📥 Download Template</a>
+        </div>
+        <div class="form-section-body">
+            <div class="form-grid">
+                <div class="form-group">
+                    <label class="form-label">Select School *</label>
+                    <select name="school" class="form-control" required>
+                        <option value="">— Select School —</option>
+                        <% schools.forEach(s=> { %>
+                            <option value="<%= s._id %>"><%= s.name %></option>
+                        <% }) %>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label class="form-label" style="font-weight:600; color:#1e40af;">Upload Excel File (.xlsx)</label>
+                    <input type="file" name="excelFile" class="form-control" accept=".xlsx, .xls" required />
+                    <small class="text-muted" style="display:block; margin-top:8px;">Format: Name, Email, Phone, Employee ID, Gender, DOB, Joining Date, Designation, Department, Subjects, Classes, Qualification, Experience</small>
+                </div>
+            </div>
+            <button type="submit" class="btn btn-secondary">Upload Teachers</button>
+        </div>
+    </div>
+</form>
+
+<hr style="margin: 30px 0; border: 1px solid #e5e7eb;">
+
+<form action="/super-admin/users/bulk-students" method="POST" enctype="multipart/form-data">
+    <div class="form-section" style="border: 2px dashed #bfdbfe; background: #f8fafc;">
+        <div class="form-section-header" style="display: flex; justify-content: space-between; align-items: center;">
+            <div style="display: flex; align-items: center; gap: 8px;">
+                <span>🎒</span>
+                <h3>Bulk Upload Students (Excel)</h3>
+            </div>
+            <a href="/super-admin/users/template/students" class="btn btn-sm btn-secondary" style="background: white; color: #1e40af; border: 1px solid #1e40af; padding: 4px 12px; font-size: 0.875rem;">📥 Download Template</a>
+        </div>
+        <div class="form-section-body">
+            <div class="form-grid">
+                <div class="form-group">
+                    <label class="form-label">Select School *</label>
+                    <select name="school" class="form-control" required>
+                        <option value="">— Select School —</option>
+                        <% schools.forEach(s=> { %>
+                            <option value="<%= s._id %>"><%= s.name %></option>
+                        <% }) %>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label class="form-label" style="font-weight:600; color:#1e40af;">Upload Excel File (.xlsx)</label>
+                    <input type="file" name="excelFile" class="form-control" accept=".xlsx, .xls" required />
+                    <small class="text-muted" style="display:block; margin-top:8px;">Format: Student Name, Student Email, Student Phone, Gender, DOB, Blood Group, Religion, Category, Admission Number, Roll Number, Class, Section, Address, Parent Name, Parent Email, Parent Phone, Relationship, Father Occupation, Mother Occupation, Guardian Occupation, Emergency Contact, Annual Income</small>
+                </div>
+            </div>
+            <button type="submit" class="btn btn-secondary">Upload Students</button>
+        </div>
+    </div>
+</form>
+
+<hr style="margin: 30px 0; border: 1px solid #e5e7eb;">
+
 <form action="/super-admin/users/create" method="POST">
     <div class="form-section">
         <div class="form-section-header">

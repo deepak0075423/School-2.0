@@ -5,6 +5,7 @@ const classCtrl = require('../controllers/classController');
 const subjectCtrl = require('../controllers/subjectController');
 const reportCtrl = require('../controllers/reportController');
 const { isAuthenticated, requireRole, requirePasswordReset } = require('../middleware/auth');
+const upload = require('../middleware/upload');
 
 const guard = [isAuthenticated, requirePasswordReset, requireRole('school_admin')];
 
@@ -14,11 +15,15 @@ router.get('/dashboard', guard, ctrl.getDashboard);
 router.get('/teachers', guard, ctrl.getTeachers);
 router.get('/teachers/create', guard, ctrl.getCreateTeacher);
 router.post('/teachers/create', guard, ctrl.postCreateTeacher);
+router.post('/teachers/bulk', guard, upload.single('excelFile'), ctrl.postBulkTeachers);
+router.get('/teachers/template', guard, ctrl.downloadTeacherTemplate);
 router.post('/teachers/:id/delete', guard, ctrl.deleteUser);
 
 router.get('/students', guard, ctrl.getStudents);
 router.get('/students/create', guard, ctrl.getCreateStudent);
 router.post('/students/create', guard, ctrl.postCreateStudent);
+router.post('/students/bulk', guard, upload.single('excelFile'), ctrl.postBulkStudents);
+router.get('/students/template', guard, ctrl.downloadStudentTemplate);
 router.post('/students/:id/delete', guard, ctrl.deleteUser);
 
 router.get('/admins', guard, ctrl.getAdmins);
@@ -49,6 +54,7 @@ router.get('/sections/:sectionId', guard, classCtrl.getSectionDetail);
 router.post('/sections/:sectionId/assign-student', guard, classCtrl.postAssignStudentToSection);
 router.post('/sections/:sectionId/remove-student', guard, classCtrl.postRemoveStudentFromSection);
 router.post('/sections/:sectionId/update-teachers', guard, classCtrl.postUpdateSectionTeacher);
+router.post('/sections/:sectionId/update-capacity', guard, classCtrl.postUpdateSectionCapacity);
 router.post('/sections/:sectionId/delete', guard, classCtrl.postDeleteSection);
 router.get('/sections/:sectionId/subjects', guard, subjectCtrl.getSectionSubjectTeachers);
 router.post('/sections/:sectionId/subjects/assign', guard, subjectCtrl.postAssignSubjectTeacher);

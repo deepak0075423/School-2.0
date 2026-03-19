@@ -6,6 +6,30 @@
     <a href="/admin/students" class="btn btn-secondary">← Back</a>
 </div>
 
+<form action="/admin/students/bulk" method="POST" enctype="multipart/form-data">
+    <div class="form-section" style="border: 2px dashed #bfdbfe; background: #f8fafc;">
+        <div class="form-section-header" style="display: flex; justify-content: space-between; align-items: center;">
+            <div style="display: flex; align-items: center; gap: 8px;">
+                <span>🎒</span>
+                <h3>Bulk Upload Students (Excel)</h3>
+            </div>
+            <a href="/admin/students/template" class="btn btn-sm btn-secondary" style="background: white; color: #1e40af; border: 1px solid #1e40af; padding: 4px 12px; font-size: 0.875rem;">📥 Download Template</a>
+        </div>
+        <div class="form-section-body">
+            <div class="form-grid">
+                <div class="form-group col-span-2">
+                    <label class="form-label" style="font-weight:600; color:#1e40af;">Upload Excel File (.xlsx)</label>
+                    <input type="file" name="excelFile" class="form-control" accept=".xlsx, .xls" required />
+                    <small class="text-muted" style="display:block; margin-top:8px;">Format: Student Name, Student Email, Student Phone, Gender, DOB, Blood Group, Religion, Category, Admission Number, Roll Number, Class, Section, Address, Parent Name, Parent Email, Parent Phone, Relationship, Father Occupation, Mother Occupation, Guardian Occupation, Emergency Contact, Annual Income</small>
+                </div>
+            </div>
+            <button type="submit" class="btn btn-secondary">Upload & Create Students</button>
+        </div>
+    </div>
+</form>
+
+<hr style="margin: 30px 0; border: 1px solid #e5e7eb;">
+
 <form action="/admin/students/create" method="POST">
     <!-- Student Section -->
     <div class="form-section">
@@ -33,6 +57,35 @@
                 <div class="form-group">
                     <label class="form-label">Date of Birth</label>
                     <input type="date" name="studentDob" class="form-control" />
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Gender</label>
+                    <select name="gender" class="form-control">
+                        <option value="">— Select —</option>
+                        <option value="Male">Male</option>
+                        <option value="Female">Female</option>
+                        <option value="Other">Other</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Blood Group</label>
+                    <input type="text" name="bloodGroup" class="form-control" placeholder="e.g. O+" />
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Religion</label>
+                    <input type="text" name="religion" class="form-control" />
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Category</label>
+                    <input type="text" name="category" class="form-control" placeholder="e.g. General/OBC/SC" />
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Admission Number</label>
+                    <input type="text" name="admissionNumber" class="form-control" />
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Roll Number</label>
+                    <input type="text" name="rollNumber" class="form-control" />
                 </div>
                 <div class="form-group">
                     <label class="form-label">Class *</label>
@@ -81,6 +134,29 @@
                         <option value="Mother">Mother</option>
                         <option value="Guardian">Guardian</option>
                     </select>
+                </div>
+                <div class="form-group" style="grid-column: span 2;">
+                    <small class="text-muted">* Note: At least one occupation (Father, Mother, or Guardian) is required.</small>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Father Occupation</label>
+                    <input type="text" name="fatherOccupation" class="form-control" />
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Mother Occupation</label>
+                    <input type="text" name="motherOccupation" class="form-control" />
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Guardian Occupation</label>
+                    <input type="text" name="guardianOccupation" class="form-control" />
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Annual Income</label>
+                    <input type="text" name="annualIncome" class="form-control" placeholder="e.g. 500000" />
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Emergency Contact</label>
+                    <input type="text" name="emergencyContact" class="form-control" placeholder="+91 XXXXX XXXXX" />
                 </div>
             </div>
         </div>

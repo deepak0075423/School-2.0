@@ -120,6 +120,22 @@
                 </div>
     </div>
 
+    <%# Update Capacity %>
+        <div class="card" style="margin-bottom:20px;">
+            <div class="card-header">
+                <div class="card-title">🪑 Update Student Capacity</div>
+            </div>
+            <div class="card-body">
+                <form action="/admin/sections/<%= section._id %>/update-capacity" method="POST" style="display:flex; align-items:flex-end; gap:12px; flex-wrap:wrap;">
+                    <div class="form-group" style="margin-bottom:0; flex:1; min-width:160px;">
+                        <label class="form-label">Max Students <span class="text-muted">(currently <%= section.currentCount %> enrolled)</span></label>
+                        <input type="number" name="maxStudents" class="form-control" value="<%= section.maxStudents %>" min="<%= section.currentCount || 1 %>" required>
+                    </div>
+                    <button type="submit" class="btn btn-primary">Update Capacity</button>
+                </form>
+            </div>
+        </div>
+
     <%# Students Table %>
         <div class="card">
             <div class="card-header">
