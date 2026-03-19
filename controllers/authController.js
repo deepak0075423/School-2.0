@@ -37,6 +37,7 @@ const postLogin = async (req, res) => {
         req.session.userEmail = user.email;
         req.session.schoolId = user.school ? user.school._id.toString() : null;
         req.session.schoolName = user.school ? user.school.name : null;
+        req.session.profileImage = user.profileImage || null;
         req.session.isFirstLogin = user.isFirstLogin;
 
         // Save session BEFORE redirecting to avoid race condition
@@ -283,6 +284,7 @@ const getMagicLogin = async (req, res) => {
         req.session.userEmail = user.email;
         req.session.schoolId = user.school ? user.school._id.toString() : null;
         req.session.schoolName = user.school ? user.school.name : null;
+        req.session.profileImage = user.profileImage || null;
         req.session.isFirstLogin = user.isFirstLogin;
 
         req.session.save((err) => {

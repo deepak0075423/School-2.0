@@ -56,6 +56,7 @@ app.use('/admin', require('./routes/admin'));
 app.use('/teacher', require('./routes/teacher'));
 app.use('/student', require('./routes/student'));
 app.use('/parent', require('./routes/parent'));
+app.use('/profile', require('./routes/profile'));
 
 // Home → redirect to login
 app.get('/', (req, res) => {
