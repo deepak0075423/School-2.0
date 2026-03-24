@@ -1,0 +1,112 @@
+<div class="page-header">
+    <div>
+        <h1>🔔 Attendance Correction Requests</h1>
+        <% if(section) { %><p><%= section.class?.className %> — Section <%= section.sectionName %></p><% } %>
+    </div>
+    <a href="/teacher/attendance-dashboard" class="btn btn-secondary">← Dashboard</a>
+</div>
+
+<!-- Filter Tabs -->
+<div style="display:flex; gap:8px; margin-bottom:20px;">
+    <% ['Pending','Approved','Rejected','All'].forEach(f => { %>
+        <a href="/teacher/correction-requests?status=<%= f %>"
+            class="btn <%= filter === f ? 'btn-primary' : 'btn-secondary' %>"
+            style="padding:6px 16px; font-size:13px;">
+            <%= f === 'Pending' ? '⏳ ' : f === 'Approved' ? '✅ ' : f === 'Rejected' ? '❌ ' : '📋 ' %><%= f %>
+            <% if(f === 'Pending' && pendingCount > 0) { %><span class="badge badge-red" style="margin-left:4px;"><%= pendingCount %></span><% } %>
+        </a>
+    <% }) %>
+</div>
+
+<div class="card">
+    <% if (requests.length === 0) { %>
+        <div class="empty-state" style="padding:40px;">
+            <div class="empty-icon">🔔</div>
+            <h3>No <%= filter %> Requests</h3>
+            <p>Student correction requests will appear here.</p>
+        </div>
+    <% } else { %>
+    <div class="table-wrapper">
+        <table>
+            <thead>
+                <tr>
+                    <th>Student</th>
+                    <th>Date</th>
+                    <th>Current</th>
+                    <th>Requested</th>
+                    <th>Reason</th>
+                    <th>Status</th>
+                    <th>Action</th>
+                </tr>
+            </thead>
+            <tbody>
+                <% requests.forEach(r => { %>
+                <tr>
+                    <td class="fw-semibold text-primary"><%= r.student?.name || '—' %></td>
+                    <td class="text-muted"><%= new Date(r.date).toLocaleDateString('en-IN', { day:'numeric', month:'short', year:'numeric' }) %></td>
+                    <td>
+                        <% if(r.currentStatus==='Present') { %><span class="badge badge-green">Present</span>
+                        <% } else if(r.currentStatus==='Absent') { %><span class="badge" style="background:rgba(239,68,68,0.15);color:#ef4444;">Absent</span>
+                        <% } else if(r.currentStatus==='Late') { %><span class="badge" style="background:rgba(245,158,11,0.15);color:#f59e0b;">Late</span>
+                        <% } else { %><span class="badge badge-gray">Not Marked</span><% } %>
+                    </td>
+                    <td>
+                        <% if(r.requestedStatus==='Present') { %><span class="badge badge-green">Present</span>
+                        <% } else if(r.requestedStatus==='Absent') { %><span class="badge" style="background:rgba(239,68,68,0.15);color:#ef4444;">Absent</span>
+                        <% } else { %><span class="badge" style="background:rgba(245,158,11,0.15);color:#f59e0b;">Late</span><% } %>
+                    </td>
+                    <td class="text-muted" style="max-width:180px; font-size:12px;"><%= r.reason %></td>
+                    <td>
+                        <% if(r.status === 'Pending') { %><span class="badge" style="background:rgba(245,158,11,0.15);color:#f59e0b;">⏳ Pending</span>
+                        <% } else if(r.status === 'Approved') { %><span class="badge badge-green">✅ Approved</span>
+                        <% } else { %><span class="badge" style="background:rgba(239,68,68,0.15);color:#ef4444;">❌ Rejected</span><% } %>
+                    </td>
+                    <td>
+                        <% if(r.status === 'Pending') { %>
+                        <button onclick="openReviewModal('<%= r._id %>', '<%= r.student?.name %>', '<%= r.date %>')" class="btn btn-primary" style="padding:4px 10px; font-size:12px;">Review</button>
+                        <% } else { %>
+                        <span class="text-muted" style="font-size:12px;"><%= r.teacherRemarks || '—' %></span>
+                        <% } %>
+                    </td>
+                </tr>
+                <% }) %>
+            </tbody>
+        </table>
+    </div>
+    <% } %>
+</div>
+
+<!-- Review Modal -->
+<div id="reviewModal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.6); z-index:1000; align-items:center; justify-content:center;">
+    <div style="background:var(--card-bg,#1a1d2e); border-radius:16px; padding:32px; width:440px; box-shadow:0 20px 60px rgba(0,0,0,0.5);">
+        <h3 style="margin:0 0 8px; color:var(--text,#e2e8f0);">Review Request</h3>
+        <p id="modalStudentInfo" style="color:var(--text-muted,#94a3b8); font-size:14px; margin-bottom:20px;"></p>
+        <form action="/teacher/correction-requests/review" method="POST">
+            <input type="hidden" name="correctionId" id="modalCorrectionId">
+            <div style="margin-bottom:16px;">
+                <label class="form-label">Your Remarks (optional)</label>
+                <textarea name="teacherRemarks" class="form-control" rows="3" placeholder="Add a note..."></textarea>
+            </div>
+            <div style="display:flex; gap:12px;">
+                <button type="submit" name="action" value="approve" class="btn btn-primary" style="flex:1;">✅ Approve</button>
+                <button type="submit" name="action" value="reject" class="btn btn-secondary" style="flex:1; border-color:#ef4444; color:#ef4444;">❌ Reject</button>
+            </div>
+            <button type="button" onclick="closeModal()" style="width:100%; margin-top:10px; background:none; border:none; color:var(--text-muted,#94a3b8); cursor:pointer; font-size:13px;">Cancel</button>
+        </form>
+    </div>
+</div>
+
+<script>
+function openReviewModal(id, name, date) {
+    document.getElementById('modalCorrectionId').value = id;
+    document.getElementById('modalStudentInfo').textContent =
+        name + ' — ' + new Date(date).toLocaleDateString('en-IN', { day:'numeric', month:'long', year:'numeric' });
+    document.getElementById('reviewModal').style.display = 'flex';
+}
+function closeModal() {
+    document.getElementById('reviewModal').style.display = 'none';
+}
+document.getElementById('reviewModal').addEventListener('click', function(e) {
+    if (e.target === this) closeModal();
+});
+</script>

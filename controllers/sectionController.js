@@ -2,11 +2,13 @@ const ClassAnnouncement = require('../models/ClassAnnouncement');
 const ClassSection = require('../models/ClassSection');
 const ClassMonitor = require('../models/ClassMonitor');
 const StudentProfile = require('../models/StudentProfile');
+const ParentProfile = require('../models/ParentProfile');
 const User = require('../models/User');
 const Timetable = require('../models/Timetable');
 const TimetableEntry = require('../models/TimetableEntry');
 const Attendance = require('../models/Attendance');
 const AttendanceRecord = require('../models/AttendanceRecord');
+const { sendAttendanceNotification } = require('../utils/sendEmail');
 
 /* ─────────────────────────────────────────────
    TEACHER — MY SECTION
@@ -197,8 +199,32 @@ const postMarkAttendance = async (req, res) => {
                     { upsert: true }
                 );
             }
+
+            // Fire parent notifications asynchronously (non-blocking)
+            setImmediate(async () => {
+                try {
+                    const schoolName = req.session.schoolName || '';
+                    for (const [studentId, status] of Object.entries(statuses)) {
+                        const studentProfile = await StudentProfile.findOne({ user: studentId })
+                            .populate('user', 'name');
+                        if (!studentProfile || !studentProfile.parent) continue;
+                        const parentUser = await User.findById(studentProfile.parent).select('name email');
+                        if (!parentUser || !parentUser.email) continue;
+                        await sendAttendanceNotification({
+                            to: parentUser.email,
+                            parentName: parentUser.name,
+                            studentName: studentProfile.user.name,
+                            date: new Date(date),
+                            status,
+                            schoolName,
+                        });
+                    }
+                } catch (notifErr) {
+                    console.error('Attendance notification error:', notifErr.message);
+                }
+            });
         }
-        req.flash('success', 'Attendance saved.');
+        req.flash('success', 'Attendance saved. Parents will be notified.');
         res.redirect(`/teacher/attendance?date=${date}`);
     } catch (err) {
         req.flash('error', 'Failed to save attendance: ' + err.message);

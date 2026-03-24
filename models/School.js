@@ -31,6 +31,14 @@ const SchoolSchema = new mongoose.Schema({
         type: Boolean,
         default: true,
     },
+    // Per-school module feature flags — controlled by Super Admin
+    modules: {
+        attendance: {
+            type: Boolean,
+            default: false,
+        },
+        // Future modules can be added here (e.g. grades, assignments, fees)
+    },
     createdAt: {
         type: Date,
         default: Date.now,

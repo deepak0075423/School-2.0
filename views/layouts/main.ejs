@@ -31,83 +31,165 @@
             </div>
 
             <nav class="sidebar-nav">
-                <% if (session && session.userRole==='super_admin' ) { %>
+                <%
+                    // Resolve which modules this school has enabled.
+                    // currentUser is set by loadUser middleware on every authenticated request.
+                    const _schoolModules = (currentUser && currentUser.school && currentUser.school.modules) || {};
+                    const _hasAttendance = !!_schoolModules.attendance;
+                    const _path = (typeof locals !== 'undefined' && locals.title) ? title : '';
+                %>
+
+                <% if (session && session.userRole === 'super_admin') { %>
                     <div class="nav-section-label">Overview</div>
                     <a href="/super-admin/dashboard"
-                        class="nav-item <%= title.includes('Dashboard') ? 'active' : '' %>">
+                        class="nav-item <%= _path.includes('Dashboard') ? 'active' : '' %>">
                         <span class="nav-icon">📊</span> Dashboard
                     </a>
+
                     <div class="nav-section-label">Management</div>
                     <a href="/super-admin/schools"
-                        class="nav-item <%= title.includes('Schools') || title.includes('School') ? 'active' : '' %>">
+                        class="nav-item <%= _path.includes('School') ? 'active' : '' %>">
                         <span class="nav-icon">🏫</span> Schools
                     </a>
+                    <a href="/super-admin/schools/create" class="nav-item">
+                        <span class="nav-icon">🏗️</span> Add School
+                    </a>
                     <a href="/super-admin/users"
-                        class="nav-item <%= title.includes('Users') || title.includes('User') ? 'active' : '' %>">
+                        class="nav-item <%= _path.includes('User') ? 'active' : '' %>">
                         <span class="nav-icon">👥</span> All Users
                     </a>
                     <a href="/super-admin/users/create" class="nav-item">
                         <span class="nav-icon">➕</span> Add User
                     </a>
-                    <a href="/super-admin/schools/create" class="nav-item">
-                        <span class="nav-icon">🏗️</span> Add School
+
+                    <div class="nav-section-label">Settings</div>
+                    <a href="/super-admin/permissions"
+                        class="nav-item <%= _path.includes('Permission') ? 'active' : '' %>">
+                        <span class="nav-icon">🔐</span> Module Permissions
                     </a>
 
-                    <% } else if (session && session.userRole==='school_admin' ) { %>
-                        <div class="nav-section-label">Overview</div>
-                        <a href="/admin/dashboard" class="nav-item <%= title.includes('Dashboard') ? 'active' : '' %>">
-                            <span class="nav-icon">📊</span> Dashboard
-                        </a>
-                        <div class="nav-section-label">Staff & Students</div>
-                        <a href="/admin/teachers" class="nav-item <%= title.includes('Teacher') ? 'active' : '' %>">
-                            <span class="nav-icon">👨‍🏫</span> Teachers
-                        </a>
-                        <a href="/admin/teachers/create" class="nav-item">
-                            <span class="nav-icon">➕</span> Add Teacher
-                        </a>
-                        <a href="/admin/students" class="nav-item <%= title.includes('Student') ? 'active' : '' %>">
-                            <span class="nav-icon">🎒</span> Students
-                        </a>
-                        <a href="/admin/students/create" class="nav-item">
-                            <span class="nav-icon">➕</span> Add Student
-                        </a>
-                        <div class="nav-section-label">Administration</div>
-                        <a href="/admin/admins" class="nav-item <%= title.includes('Co-Admin') ? 'active' : '' %>">
-                            <span class="nav-icon">🛡️</span> Co-Admins
-                        </a>
-                        <a href="/admin/admins/create" class="nav-item">
-                            <span class="nav-icon">➕</span> Add Co-Admin
-                        </a>
+                <% } else if (session && session.userRole === 'school_admin') { %>
+                    <div class="nav-section-label">Overview</div>
+                    <a href="/admin/dashboard"
+                        class="nav-item <%= _path === 'Admin Dashboard' ? 'active' : '' %>">
+                        <span class="nav-icon">📊</span> Dashboard
+                    </a>
 
-                        <% } else if (session && session.userRole==='teacher' ) { %>
-                            <div class="nav-section-label">Classroom</div>
-                            <a href="/teacher/dashboard" class="nav-item active">
-                                <span class="nav-icon">📊</span> Dashboard
-                            </a>
-                            <a href="#" class="nav-item"><span class="nav-icon">👥</span> My Students</a>
-                            <a href="#" class="nav-item"><span class="nav-icon">📋</span> Attendance</a>
-                            <a href="#" class="nav-item"><span class="nav-icon">📝</span> Assignments</a>
+                    <div class="nav-section-label">Staff & Students</div>
+                    <a href="/admin/teachers"
+                        class="nav-item <%= _path.includes('Teacher') ? 'active' : '' %>">
+                        <span class="nav-icon">👨‍🏫</span> Teachers
+                    </a>
+                    <a href="/admin/teachers/create" class="nav-item">
+                        <span class="nav-icon">➕</span> Add Teacher
+                    </a>
+                    <a href="/admin/students"
+                        class="nav-item <%= _path.includes('Student') ? 'active' : '' %>">
+                        <span class="nav-icon">🎒</span> Students
+                    </a>
+                    <a href="/admin/students/create" class="nav-item">
+                        <span class="nav-icon">➕</span> Add Student
+                    </a>
 
-                            <% } else if (session && session.userRole==='student' ) { %>
-                                <div class="nav-section-label">My School</div>
-                                <a href="/student/dashboard" class="nav-item active">
-                                    <span class="nav-icon">📊</span> Dashboard
-                                </a>
-                                <a href="#" class="nav-item"><span class="nav-icon">📅</span> Timetable</a>
-                                <a href="#" class="nav-item"><span class="nav-icon">📝</span> Assignments</a>
-                                <a href="#" class="nav-item"><span class="nav-icon">📊</span> Grades</a>
-                                <a href="#" class="nav-item"><span class="nav-icon">📢</span> Announcements</a>
+                    <div class="nav-section-label">Administration</div>
+                    <a href="/admin/admins"
+                        class="nav-item <%= _path.includes('Co-Admin') ? 'active' : '' %>">
+                        <span class="nav-icon">🛡️</span> Co-Admins
+                    </a>
+                    <a href="/admin/admins/create" class="nav-item">
+                        <span class="nav-icon">➕</span> Add Co-Admin
+                    </a>
 
-                                <% } else if (session && session.userRole==='parent' ) { %>
-                                    <div class="nav-section-label">My Child</div>
-                                    <a href="/parent/dashboard" class="nav-item active">
-                                        <span class="nav-icon">📊</span> Dashboard
-                                    </a>
-                                    <a href="#" class="nav-item"><span class="nav-icon">📊</span> Grades</a>
-                                    <a href="#" class="nav-item"><span class="nav-icon">✅</span> Attendance</a>
-                                    <a href="#" class="nav-item"><span class="nav-icon">📢</span> Announcements</a>
-                                    <a href="#" class="nav-item"><span class="nav-icon">💬</span> Contact Teachers</a>
-                                    <% } %>
+                    <% if (_hasAttendance) { %>
+                    <div class="nav-section-label">Attendance</div>
+                    <a href="/admin/regularization-requests"
+                        class="nav-item <%= _path.includes('Regularization') ? 'active' : '' %>">
+                        <span class="nav-icon">📋</span> Regularization
+                    </a>
+                    <% } %>
+
+                <% } else if (session && session.userRole === 'teacher') { %>
+                    <div class="nav-section-label">Classroom</div>
+                    <a href="/teacher/dashboard"
+                        class="nav-item <%= _path.includes('Dashboard') ? 'active' : '' %>">
+                        <span class="nav-icon">📊</span> Dashboard
+                    </a>
+                    <a href="/teacher/my-section"
+                        class="nav-item <%= _path.includes('Section') ? 'active' : '' %>">
+                        <span class="nav-icon">👥</span> My Section
+                    </a>
+                    <a href="/teacher/timetable"
+                        class="nav-item <%= _path.includes('Timetable') ? 'active' : '' %>">
+                        <span class="nav-icon">📅</span> Timetable
+                    </a>
+
+                    <% if (_hasAttendance) { %>
+                    <div class="nav-section-label">Attendance</div>
+                    <a href="/teacher/attendance"
+                        class="nav-item <%= _path === 'Attendance' ? 'active' : '' %>">
+                        <span class="nav-icon">📋</span> Mark Attendance
+                    </a>
+                    <a href="/teacher/attendance-dashboard"
+                        class="nav-item <%= _path.includes('Dashboard') && _path.includes('Attendance') ? 'active' : '' %>">
+                        <span class="nav-icon">📊</span> Class Analytics
+                    </a>
+                    <a href="/teacher/my-attendance"
+                        class="nav-item <%= _path.includes('My Attendance') ? 'active' : '' %>">
+                        <span class="nav-icon">🗓️</span> My Attendance
+                    </a>
+                    <a href="/teacher/regularization"
+                        class="nav-item <%= _path.includes('Regularization') ? 'active' : '' %>">
+                        <span class="nav-icon">📝</span> Regularization
+                    </a>
+                    <a href="/teacher/correction-requests"
+                        class="nav-item <%= _path.includes('Correction') ? 'active' : '' %>">
+                        <span class="nav-icon">🔔</span> Correction Requests
+                    </a>
+                    <% } %>
+
+                <% } else if (session && session.userRole === 'student') { %>
+                    <div class="nav-section-label">My School</div>
+                    <a href="/student/dashboard"
+                        class="nav-item <%= _path.includes('Dashboard') ? 'active' : '' %>">
+                        <span class="nav-icon">📊</span> Dashboard
+                    </a>
+                    <a href="/student/my-class"
+                        class="nav-item <%= _path.includes('Class') ? 'active' : '' %>">
+                        <span class="nav-icon">🏫</span> My Class
+                    </a>
+
+                    <% if (_hasAttendance) { %>
+                    <div class="nav-section-label">Attendance</div>
+                    <a href="/student/my-attendance"
+                        class="nav-item <%= _path.includes('Attendance') ? 'active' : '' %>">
+                        <span class="nav-icon">📅</span> My Attendance
+                    </a>
+                    <a href="/student/correction"
+                        class="nav-item <%= _path.includes('Correction') ? 'active' : '' %>">
+                        <span class="nav-icon">📝</span> Request Correction
+                    </a>
+                    <% } %>
+
+                <% } else if (session && session.userRole === 'parent') { %>
+                    <div class="nav-section-label">My Child</div>
+                    <a href="/parent/dashboard"
+                        class="nav-item <%= _path.includes('Dashboard') ? 'active' : '' %>">
+                        <span class="nav-icon">📊</span> Dashboard
+                    </a>
+                    <a href="/parent/child-class"
+                        class="nav-item <%= _path.includes('Child') && !_path.includes('Attendance') ? 'active' : '' %>">
+                        <span class="nav-icon">🏫</span> Child's Class
+                    </a>
+
+                    <% if (_hasAttendance) { %>
+                    <div class="nav-section-label">Attendance</div>
+                    <a href="/parent/child-attendance"
+                        class="nav-item <%= _path.includes('Attendance') ? 'active' : '' %>">
+                        <span class="nav-icon">✅</span> Child's Attendance
+                    </a>
+                    <% } %>
+
+                <% } %>
             </nav>
 
             <div class="sidebar-bottom">

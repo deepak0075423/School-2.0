@@ -1,0 +1,140 @@
+<div class="page-header">
+    <div>
+        <h1>📝 Request Attendance Correction</h1>
+        <p>Submit a correction request for your class teacher to review</p>
+    </div>
+    <a href="/student/my-attendance" class="btn btn-secondary">← My Attendance</a>
+</div>
+
+<div style="display:grid; grid-template-columns:1fr 1.5fr; gap:20px; align-items:start;">
+
+    <!-- Submit Form -->
+    <div class="card">
+        <div class="card-header"><div class="card-title">➕ New Request</div></div>
+        <div class="card-body">
+            <% if (attendanceDays.length === 0) { %>
+                <div class="empty-state" style="padding:20px;">
+                    <div class="empty-icon">📋</div>
+                    <p>No attendance sessions found in the last 30 days.</p>
+                </div>
+            <% } else { %>
+            <form action="/student/correction/submit" method="POST" id="correctionForm">
+                <div style="margin-bottom:16px;">
+                    <label class="form-label">Select Date *</label>
+                    <select name="sessionId" class="form-control" required id="sessionSelect" onchange="updateCurrentStatus()">
+                        <option value="">— Select a date —</option>
+                        <% attendanceDays.forEach(day => { %>
+                        <option value="<%= day.sessionId %>"
+                            data-status="<%= day.currentStatus %>"
+                            data-record="<%= day.recordId || '' %>">
+                            <%= new Date(day.date).toLocaleDateString('en-IN', { weekday:'short', day:'numeric', month:'short', year:'numeric' }) %> — <%= day.currentStatus %>
+                        </option>
+                        <% }) %>
+                    </select>
+                </div>
+
+                <input type="hidden" name="recordId" id="recordIdInput">
+                <input type="hidden" name="currentStatus" id="currentStatusInput">
+
+                <div style="margin-bottom:16px;" id="currentStatusDisplay" style="display:none;">
+                    <label class="form-label">Current Status</label>
+                    <div id="currentStatusBadge" style="margin-top:6px;"></div>
+                </div>
+
+                <div style="margin-bottom:16px;">
+                    <label class="form-label">Requested Status *</label>
+                    <select name="requestedStatus" class="form-control" required>
+                        <option value="">— Select Status —</option>
+                        <option value="Present">✅ Present</option>
+                        <option value="Absent">❌ Absent</option>
+                        <option value="Late">⏰ Late</option>
+                    </select>
+                </div>
+
+                <div style="margin-bottom:20px;">
+                    <label class="form-label">Reason *</label>
+                    <textarea name="reason" class="form-control" rows="3" required maxlength="500"
+                        placeholder="Explain why the attendance should be corrected..."></textarea>
+                </div>
+
+                <div style="background:rgba(245,158,11,0.1); border-left:3px solid #f59e0b; border-radius:0 8px 8px 0; padding:12px 14px; margin-bottom:16px; font-size:13px; color:#f59e0b;">
+                    ⚠️ Only one pending request per day is allowed. Your class teacher or vice class teacher will review it.
+                </div>
+
+                <button type="submit" class="btn btn-primary" style="width:100%;">📤 Submit Request</button>
+            </form>
+            <% } %>
+        </div>
+    </div>
+
+    <!-- My Requests History -->
+    <div class="card">
+        <div class="card-header"><div class="card-title">📑 My Requests</div></div>
+        <% if (myRequests.length === 0) { %>
+            <div class="empty-state" style="padding:30px;">
+                <div class="empty-icon">📝</div>
+                <p>No correction requests submitted yet.</p>
+            </div>
+        <% } else { %>
+        <div class="table-wrapper">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Date</th>
+                        <th>Current</th>
+                        <th>Requested</th>
+                        <th>Status</th>
+                        <th>Teacher Note</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <% myRequests.forEach(r => { %>
+                    <tr>
+                        <td class="text-muted"><%= new Date(r.date).toLocaleDateString('en-IN', { day:'numeric', month:'short', year:'numeric' }) %></td>
+                        <td>
+                            <% if(r.currentStatus==='Present') { %><span class="badge badge-green">Present</span>
+                            <% } else if(r.currentStatus==='Absent') { %><span class="badge" style="background:rgba(239,68,68,0.15);color:#ef4444;">Absent</span>
+                            <% } else if(r.currentStatus==='Late') { %><span class="badge" style="background:rgba(245,158,11,0.15);color:#f59e0b;">Late</span>
+                            <% } else { %><span class="badge badge-gray">Not Marked</span><% } %>
+                        </td>
+                        <td>
+                            <% if(r.requestedStatus==='Present') { %><span class="badge badge-green">Present</span>
+                            <% } else if(r.requestedStatus==='Absent') { %><span class="badge" style="background:rgba(239,68,68,0.15);color:#ef4444;">Absent</span>
+                            <% } else { %><span class="badge" style="background:rgba(245,158,11,0.15);color:#f59e0b;">Late</span><% } %>
+                        </td>
+                        <td>
+                            <% if(r.status === 'Pending') { %><span class="badge" style="background:rgba(245,158,11,0.15);color:#f59e0b;">⏳ Pending</span>
+                            <% } else if(r.status === 'Approved') { %><span class="badge badge-green">✅ Approved</span>
+                            <% } else { %><span class="badge" style="background:rgba(239,68,68,0.15);color:#ef4444;">❌ Rejected</span><% } %>
+                        </td>
+                        <td class="text-muted" style="font-size:12px;"><%= r.teacherRemarks || '—' %></td>
+                    </tr>
+                    <% }) %>
+                </tbody>
+            </table>
+        </div>
+        <% } %>
+    </div>
+</div>
+
+<script>
+function updateCurrentStatus() {
+    const sel = document.getElementById('sessionSelect');
+    const opt = sel.options[sel.selectedIndex];
+    const status = opt.getAttribute('data-status') || '';
+    const recordId = opt.getAttribute('data-record') || '';
+    document.getElementById('recordIdInput').value = recordId;
+    document.getElementById('currentStatusInput').value = status;
+
+    const display = document.getElementById('currentStatusDisplay');
+    const badge = document.getElementById('currentStatusBadge');
+    if (status) {
+        display.style.display = 'block';
+        const colorMap = { Present: '#10b981', Absent: '#ef4444', Late: '#f59e0b', 'Not Marked': '#94a3b8' };
+        const bgMap    = { Present: 'rgba(16,185,129,0.15)', Absent: 'rgba(239,68,68,0.15)', Late: 'rgba(245,158,11,0.15)', 'Not Marked': 'rgba(148,163,184,0.15)' };
+        badge.innerHTML = `<span style="display:inline-block;padding:4px 12px;border-radius:20px;background:${bgMap[status]||''};color:${colorMap[status]||'#94a3b8'};font-size:13px;font-weight:600;">${status}</span>`;
+    } else {
+        display.style.display = 'none';
+    }
+}
+</script>

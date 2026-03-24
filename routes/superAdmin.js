@@ -25,4 +25,9 @@ router.post('/users/:id/toggle', guard, ctrl.toggleUserStatus);
 router.post('/users/:id/delete', guard, ctrl.deleteUser);
 router.post('/users/:id/login-link', guard, ctrl.postGenerateLoginLink);
 
+// ── Module Permissions ────────────────────────────────────────
+router.get('/permissions', guard, ctrl.getPermissions);
+router.post('/permissions/update', guard, ctrl.postUpdatePermissions);
+router.post('/permissions/bulk', guard, ctrl.postBulkUpdatePermissions);
+
 module.exports = router;

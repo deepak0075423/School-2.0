@@ -487,8 +487,83 @@ const downloadStudentTemplate = (req, res) => {
     res.send(buffer);
 };
 
+/* ─────────────────────────────────────────────
+   MODULE PERMISSIONS
+─────────────────────────────────────────────── */
+
+// All known modules with their display metadata
+const ALL_MODULES = [
+    { key: 'attendance', label: 'Attendance Management', icon: '📋', description: 'Student & teacher attendance tracking, calendars, correction requests, regularisation, parent notifications.' },
+    // Add future modules here — e.g. { key: 'grades', label: 'Grades & Report Cards', ... }
+];
+
+const getPermissions = async (req, res) => {
+    try {
+        const schools = await School.find().sort({ name: 1 });
+        res.render('superAdmin/permissions', {
+            title: 'Module Permissions',
+            layout: 'layouts/main',
+            schools,
+            allModules: ALL_MODULES,
+        });
+    } catch (err) {
+        req.flash('error', 'Failed to load permissions: ' + err.message);
+        res.redirect('/super-admin/dashboard');
+    }
+};
+
+const postUpdatePermissions = async (req, res) => {
+    try {
+        const { schoolId, modules } = req.body;
+        // modules arrives as an object: { attendance: 'on', ... } — only checked boxes appear
+
+        const school = await School.findById(schoolId);
+        if (!school) {
+            req.flash('error', 'School not found.');
+            return res.redirect('/super-admin/permissions');
+        }
+
+        // Build the update: each known module is set to true if present in body, false otherwise
+        const moduleUpdate = {};
+        ALL_MODULES.forEach(({ key }) => {
+            moduleUpdate[`modules.${key}`] = !!(modules && modules[key] === 'on');
+        });
+
+        await School.findByIdAndUpdate(schoolId, { $set: moduleUpdate });
+
+        req.flash('success', `Module permissions updated for "${school.name}".`);
+        res.redirect('/super-admin/permissions');
+    } catch (err) {
+        req.flash('error', 'Failed to update permissions: ' + err.message);
+        res.redirect('/super-admin/permissions');
+    }
+};
+
+const postBulkUpdatePermissions = async (req, res) => {
+    try {
+        // action = 'enable-all' | 'disable-all', module = 'attendance'
+        const { action, module: moduleName } = req.body;
+
+        const knownModule = ALL_MODULES.find(m => m.key === moduleName);
+        if (!knownModule) {
+            req.flash('error', 'Unknown module.');
+            return res.redirect('/super-admin/permissions');
+        }
+
+        const enable = action === 'enable-all';
+        await School.updateMany({}, { $set: { [`modules.${moduleName}`]: enable } });
+
+        req.flash('success', `"${knownModule.label}" ${enable ? 'enabled' : 'disabled'} for all schools.`);
+        res.redirect('/super-admin/permissions');
+    } catch (err) {
+        req.flash('error', 'Bulk update failed: ' + err.message);
+        res.redirect('/super-admin/permissions');
+    }
+};
+
 module.exports = {
     getDashboard, getSchools, getCreateSchool, postCreateSchool, deleteSchool,
     getUsers, getCreateUser, postCreateUser, toggleUserStatus, deleteUser,
     postGenerateLoginLink, postBulkTeachers, postBulkStudents, downloadTeacherTemplate, downloadStudentTemplate,
+    getPermissions, postUpdatePermissions, postBulkUpdatePermissions,
 };

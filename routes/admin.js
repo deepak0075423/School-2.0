@@ -4,10 +4,13 @@ const ctrl = require('../controllers/adminController');
 const classCtrl = require('../controllers/classController');
 const subjectCtrl = require('../controllers/subjectController');
 const reportCtrl = require('../controllers/reportController');
+const attendanceCtrl = require('../controllers/attendanceController');
 const { isAuthenticated, requireRole, requirePasswordReset } = require('../middleware/auth');
+const requireModule = require('../middleware/requireModule');
 const upload = require('../middleware/upload');
 
 const guard = [isAuthenticated, requirePasswordReset, requireRole('school_admin')];
+const attendanceGuard = [...guard, requireModule('attendance')];
 
 router.get('/dashboard', guard, ctrl.getDashboard);
 
@@ -66,6 +69,10 @@ router.post('/subjects/:subjectId/delete', guard, subjectCtrl.postDeleteSubject)
 
 // ── Reports ───────────────────────────────────────────────────
 router.get('/reports', guard, reportCtrl.getReports);
+
+// ── Teacher Regularization Requests ──────────────────────────
+router.get('/regularization-requests', attendanceGuard, attendanceCtrl.getAdminRegularizationRequests);
+router.post('/regularization-requests/review', attendanceGuard, attendanceCtrl.postAdminReviewRegularization);
 
 module.exports = router;
 

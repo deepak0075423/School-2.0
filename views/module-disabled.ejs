@@ -1,0 +1,25 @@
+<div style="min-height:60vh; display:flex; align-items:center; justify-content:center; padding:40px;">
+    <div style="text-align:center; max-width:460px;">
+        <div style="font-size:64px; margin-bottom:20px;">🔒</div>
+        <h2 style="margin:0 0 10px; color:var(--text,#e2e8f0); font-size:22px;">
+            Module Not Enabled
+        </h2>
+        <p style="color:var(--text-muted,#94a3b8); font-size:15px; margin-bottom:6px;">
+            <strong style="color:var(--text,#e2e8f0);"><%= moduleName %></strong> has not been activated
+            <% if(schoolName) { %>for <strong style="color:#a5b4fc;"><%= schoolName %></strong><% } %>.
+        </p>
+        <p style="color:var(--text-muted,#94a3b8); font-size:13px; margin-bottom:28px;">
+            Please ask your Super Administrator to enable this module from the Permissions page.
+        </p>
+        <a href="javascript:history.back()" class="btn btn-secondary" style="margin-right:10px;">← Go Back</a>
+        <% if(typeof session !== 'undefined' && session.userRole === 'school_admin') { %>
+            <a href="/admin/dashboard" class="btn btn-secondary">Dashboard</a>
+        <% } else if(typeof session !== 'undefined' && session.userRole === 'teacher') { %>
+            <a href="/teacher/dashboard" class="btn btn-secondary">Dashboard</a>
+        <% } else if(typeof session !== 'undefined' && session.userRole === 'student') { %>
+            <a href="/student/dashboard" class="btn btn-secondary">Dashboard</a>
+        <% } else if(typeof session !== 'undefined' && session.userRole === 'parent') { %>
+            <a href="/parent/dashboard" class="btn btn-secondary">Dashboard</a>
+        <% } %>
+    </div>
+</div>

@@ -1,0 +1,160 @@
+<div class="page-header">
+    <div>
+        <h1>📅 My Attendance</h1>
+        <p>View your attendance history and class ranking</p>
+    </div>
+    <div style="display:flex; gap:10px;">
+        <a href="/student/correction" class="btn btn-secondary">
+            📝 Request Correction
+            <% if(pendingCorrections > 0) { %><span class="badge" style="background:rgba(245,158,11,0.15);color:#f59e0b;margin-left:4px;"><%= pendingCorrections %> Pending</span><% } %>
+        </a>
+        <a href="/student/dashboard" class="btn btn-secondary">← Dashboard</a>
+    </div>
+</div>
+
+<!-- Stats -->
+<div class="stats-grid" style="grid-template-columns:repeat(5,1fr); margin-bottom:20px;">
+    <div class="stat-card">
+        <div class="stat-icon cyan">📅</div>
+        <div class="stat-info"><div class="stat-value"><%= stats.total %></div><div class="stat-label">Total Days</div></div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-icon green">✅</div>
+        <div class="stat-info"><div class="stat-value"><%= stats.present %></div><div class="stat-label">Present</div></div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-icon red">❌</div>
+        <div class="stat-info"><div class="stat-value"><%= stats.absent %></div><div class="stat-label">Absent</div></div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-icon yellow">⏰</div>
+        <div class="stat-info"><div class="stat-value"><%= stats.late %></div><div class="stat-label">Late</div></div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-icon <%= stats.percentage >= 75 ? 'green' : stats.percentage >= 50 ? 'yellow' : 'red' %>">📊</div>
+        <div class="stat-info">
+            <div class="stat-value" style="color:<%= stats.percentage >= 75 ? '#10b981' : stats.percentage >= 50 ? '#f59e0b' : '#ef4444' %>">
+                <%= stats.percentage %>%
+            </div>
+            <div class="stat-label">Attendance</div>
+        </div>
+    </div>
+</div>
+
+<div style="display:grid; grid-template-columns:1fr 280px; gap:20px; align-items:start;">
+
+    <!-- Calendar -->
+    <div class="card">
+        <div class="card-header">
+            <div class="card-title" id="calMonthTitle"></div>
+            <div style="display:flex; gap:8px;">
+                <button onclick="changeMonth(-1)" class="btn btn-secondary" style="padding:4px 12px; font-size:13px;">◀</button>
+                <button onclick="changeMonth(1)" class="btn btn-secondary" style="padding:4px 12px; font-size:13px;">▶</button>
+            </div>
+        </div>
+        <div class="card-body">
+            <div id="attendanceCalendar"></div>
+            <div style="display:flex; gap:14px; flex-wrap:wrap; margin-top:14px; font-size:12px;">
+                <span><span style="display:inline-block;width:12px;height:12px;border-radius:3px;background:#10b981;margin-right:4px;"></span>Present</span>
+                <span><span style="display:inline-block;width:12px;height:12px;border-radius:3px;background:#ef4444;margin-right:4px;"></span>Absent</span>
+                <span><span style="display:inline-block;width:12px;height:12px;border-radius:3px;background:#f59e0b;margin-right:4px;"></span>Late</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Rank Card -->
+    <div style="display:flex; flex-direction:column; gap:16px;">
+        <div class="card">
+            <div class="card-header"><div class="card-title">🏆 Class Ranking</div></div>
+            <div class="card-body" style="text-align:center; padding:28px;">
+                <div style="font-size:48px; margin-bottom:8px;">
+                    <% if(rank === 1) { %>🥇<% } else if(rank === 2) { %>🥈<% } else if(rank === 3) { %>🥉<% } else { %>🎖️<% } %>
+                </div>
+                <div style="font-size:28px; font-weight:700; color:#4f46e5;">#<%= rank %></div>
+                <div class="text-muted" style="font-size:13px;">of <%= totalStudents %> students</div>
+                <div style="margin-top:16px; padding:12px; background:var(--bg-secondary,rgba(79,70,229,0.1)); border-radius:8px;">
+                    <div style="font-size:22px; font-weight:700; color:<%= stats.percentage >= 75 ? '#10b981' : stats.percentage >= 50 ? '#f59e0b' : '#ef4444' %>">
+                        <%= stats.percentage %>%
+                    </div>
+                    <div class="text-muted" style="font-size:12px;">Your Attendance</div>
+                </div>
+                <% if(stats.percentage < 75) { %>
+                <div style="margin-top:12px; padding:10px; background:rgba(239,68,68,0.1); border-radius:8px; color:#ef4444; font-size:12px;">
+                    ⚠️ Below 75% threshold
+                </div>
+                <% } %>
+            </div>
+        </div>
+
+        <!-- Attendance Bar -->
+        <div class="card">
+            <div class="card-header"><div class="card-title">📊 Breakdown</div></div>
+            <div class="card-body" style="display:flex; flex-direction:column; gap:12px;">
+                <% const total = stats.total || 1; %>
+                <% [['Present','#10b981',stats.present],['Absent','#ef4444',stats.absent],['Late','#f59e0b',stats.late]].forEach(([label,color,count]) => { %>
+                <div>
+                    <div style="display:flex; justify-content:space-between; font-size:12px; margin-bottom:4px;">
+                        <span style="color:<%= color %>; font-weight:600;"><%= label %></span>
+                        <span class="text-muted"><%= count %> days</span>
+                    </div>
+                    <div style="height:8px; background:var(--border,rgba(255,255,255,0.1)); border-radius:4px;">
+                        <div style="width:<%= Math.round((count/total)*100) %>%; height:100%; background:<%= color %>; border-radius:4px;"></div>
+                    </div>
+                </div>
+                <% }) %>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+(function() {
+    const calMap = <%- calendarMap %>;
+    const statusColors = { Present: '#10b981', Absent: '#ef4444', Late: '#f59e0b' };
+    const statusBg    = { Present: 'rgba(16,185,129,0.15)', Absent: 'rgba(239,68,68,0.15)', Late: 'rgba(245,158,11,0.15)' };
+    const dayNames = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+    const monthNames = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+    const todayStr = new Date().toISOString().split('T')[0];
+
+    let viewYear = new Date().getFullYear();
+    let viewMonth = new Date().getMonth();
+
+    function renderCalendar() {
+        const firstDay = new Date(viewYear, viewMonth, 1).getDay();
+        const daysInMonth = new Date(viewYear, viewMonth + 1, 0).getDate();
+        document.getElementById('calMonthTitle').textContent = '📅 ' + monthNames[viewMonth] + ' ' + viewYear;
+
+        let html = '<table style="width:100%; border-collapse:collapse; font-size:13px;">';
+        html += '<thead><tr>';
+        dayNames.forEach(d => { html += `<th style="padding:6px 2px;text-align:center;color:var(--text-muted,#94a3b8);font-weight:600;font-size:11px;">${d}</th>`; });
+        html += '</tr></thead><tbody><tr>';
+        for (let i = 0; i < firstDay; i++) html += '<td></td>';
+        let col = firstDay;
+        for (let day = 1; day <= daysInMonth; day++) {
+            const dateStr = `${viewYear}-${String(viewMonth+1).padStart(2,'0')}-${String(day).padStart(2,'0')}`;
+            const status = calMap[dateStr];
+            const isToday = dateStr === todayStr;
+            const color = status ? statusColors[status] : 'transparent';
+            const bg = status ? statusBg[status] : 'transparent';
+            const border = isToday ? '2px solid #4f46e5' : `1px solid ${status ? color : 'var(--border,rgba(255,255,255,0.08))'}`;
+            html += `<td style="padding:3px;text-align:center;">
+                <div title="${status ? dateStr+': '+status : dateStr}" style="width:32px;height:32px;border-radius:6px;margin:auto;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:${isToday?'700':'400'};color:${status?color:'var(--text,#e2e8f0)'};background:${bg};border:${border};">
+                    ${day}
+                </div></td>`;
+            col++;
+            if (col === 7 && day < daysInMonth) { html += '</tr><tr>'; col = 0; }
+        }
+        html += '</tr></tbody></table>';
+        document.getElementById('attendanceCalendar').innerHTML = html;
+    }
+
+    window.changeMonth = function(dir) {
+        viewMonth += dir;
+        if (viewMonth > 11) { viewMonth = 0; viewYear++; }
+        if (viewMonth < 0)  { viewMonth = 11; viewYear--; }
+        renderCalendar();
+    };
+
+    renderCalendar();
+})();
+</script>

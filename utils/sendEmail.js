@@ -166,4 +166,97 @@ const sendOtpEmail = async ({ to, name, otp }) => {
   }
 };
 
-module.exports = { sendWelcomeEmail, sendOtpEmail };
+/* ─────────────────────────────────────────────
+   ATTENDANCE NOTIFICATION — sent to parents
+─────────────────────────────────────────────── */
+const sendAttendanceNotification = async ({ to, parentName, studentName, date, status, schoolName }) => {
+    const isPresent = status === 'Present';
+    const isLate = status === 'Late';
+    const statusColor = isPresent ? '#10b981' : isLate ? '#f59e0b' : '#ef4444';
+    const statusBg = isPresent ? '#d1fae5' : isLate ? '#fef3c7' : '#fee2e2';
+    const statusIcon = isPresent ? '✅' : isLate ? '⏰' : '❌';
+    const message = isPresent
+        ? `Your child is marked <strong>present</strong> today.`
+        : isLate
+        ? `Your child is marked as <strong>late</strong> today.`
+        : `Your child is marked <strong>absent</strong> today.`;
+
+    const formattedDate = new Date(date).toLocaleDateString('en-IN', {
+        weekday: 'long', year: 'numeric', month: 'long', day: 'numeric',
+    });
+
+    const html = `
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Attendance Update — ${process.env.APP_NAME}</title>
+<style>
+  body { margin:0; padding:0; background:#f0f4ff; font-family:'Segoe UI',sans-serif; }
+  .wrapper { max-width:520px; margin:40px auto; background:#ffffff; border-radius:16px; overflow:hidden; box-shadow:0 8px 40px rgba(79,70,229,0.12); }
+  .header { background:linear-gradient(135deg,#4f46e5 0%,#7c3aed 100%); padding:36px 32px; text-align:center; }
+  .header h1 { margin:0; color:#fff; font-size:24px; font-weight:700; }
+  .header p { margin:8px 0 0; color:rgba(255,255,255,0.8); font-size:13px; }
+  .body { padding:36px 32px; }
+  .status-box { border-radius:12px; padding:24px; text-align:center; margin:20px 0; background:${statusBg}; border:2px solid ${statusColor}; }
+  .status-icon { font-size:48px; margin-bottom:8px; }
+  .status-text { font-size:18px; font-weight:700; color:${statusColor}; }
+  .info-row { display:flex; justify-content:space-between; padding:10px 0; border-bottom:1px solid #e5e7eb; font-size:14px; }
+  .info-row:last-child { border-bottom:none; }
+  .info-label { color:#6b7280; }
+  .info-value { color:#111827; font-weight:600; }
+  .footer { background:#f9fafb; border-top:1px solid #e5e7eb; padding:20px 32px; text-align:center; }
+  .footer p { color:#9ca3af; font-size:12px; margin:0; }
+</style>
+</head>
+<body>
+<div class="wrapper">
+  <div class="header">
+    <h1>🎓 ${process.env.APP_NAME}</h1>
+    <p>${schoolName || 'Attendance Notification'}</p>
+  </div>
+  <div class="body">
+    <p style="color:#374151; font-size:15px; margin-bottom:20px;">Dear <strong>${parentName}</strong>,</p>
+    <div class="status-box">
+      <div class="status-icon">${statusIcon}</div>
+      <div class="status-text">${status.toUpperCase()}</div>
+      <p style="margin:8px 0 0; color:#374151; font-size:14px;">${message}</p>
+    </div>
+    <div style="border:1px solid #e5e7eb; border-radius:10px; padding:16px; margin-top:16px;">
+      <div class="info-row">
+        <span class="info-label">🎒 Student</span>
+        <span class="info-value">${studentName}</span>
+      </div>
+      <div class="info-row">
+        <span class="info-label">📅 Date</span>
+        <span class="info-value">${formattedDate}</span>
+      </div>
+      <div class="info-row">
+        <span class="info-label">🏫 School</span>
+        <span class="info-value">${schoolName || 'Your School'}</span>
+      </div>
+    </div>
+    <p style="color:#6b7280; font-size:12px; margin-top:20px;">If you believe this is incorrect, please contact the class teacher or submit a correction request through the parent portal.</p>
+  </div>
+  <div class="footer">
+    <p>© ${new Date().getFullYear()} ${process.env.APP_NAME} — Automated attendance notification.</p>
+  </div>
+</div>
+</body>
+</html>`;
+
+    try {
+        await transporter.sendMail({
+            from: process.env.EMAIL_FROM,
+            to,
+            subject: `${statusIcon} Attendance Update: ${studentName} is ${status} — ${formattedDate}`,
+            html,
+        });
+        console.log(`📧 Attendance notification sent to ${to}`);
+    } catch (err) {
+        console.error(`❌ Attendance email failed for ${to}:`, err.message);
+    }
+};
+
+module.exports = { sendWelcomeEmail, sendOtpEmail, sendAttendanceNotification };

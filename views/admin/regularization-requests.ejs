@@ -1,0 +1,126 @@
+<div class="page-header">
+    <div>
+        <h1>📋 Teacher Regularization Requests</h1>
+        <p>Review and approve/reject teacher attendance correction requests</p>
+    </div>
+    <div style="display:flex; gap:10px;">
+        <% if(pendingCount > 0) { %>
+            <span class="badge" style="background:rgba(239,68,68,0.15);color:#ef4444;padding:8px 14px;border-radius:8px;font-size:13px;align-self:center;">
+                ⏳ <%= pendingCount %> Pending
+            </span>
+        <% } %>
+        <a href="/admin/dashboard" class="btn btn-secondary">← Dashboard</a>
+    </div>
+</div>
+
+<!-- Filter Tabs -->
+<div style="display:flex; gap:8px; margin-bottom:20px;">
+    <% ['Pending','Approved','Rejected','All'].forEach(f => { %>
+        <a href="/admin/regularization-requests?status=<%= f %>"
+            class="btn <%= filter === f ? 'btn-primary' : 'btn-secondary' %>"
+            style="padding:6px 16px; font-size:13px;">
+            <%= f === 'Pending' ? '⏳ ' : f === 'Approved' ? '✅ ' : f === 'Rejected' ? '❌ ' : '📋 ' %><%= f %>
+            <% if(f === 'Pending' && pendingCount > 0) { %><span class="badge badge-red" style="margin-left:4px;"><%= pendingCount %></span><% } %>
+        </a>
+    <% }) %>
+</div>
+
+<div class="card">
+    <% if (requests.length === 0) { %>
+        <div class="empty-state" style="padding:40px;">
+            <div class="empty-icon">📋</div>
+            <h3>No <%= filter %> Requests</h3>
+            <p>Teacher regularization requests will appear here.</p>
+        </div>
+    <% } else { %>
+    <div class="table-wrapper">
+        <table>
+            <thead>
+                <tr>
+                    <th>Teacher</th>
+                    <th>Date</th>
+                    <th>Request Type</th>
+                    <th>Requested Status</th>
+                    <th>Reason</th>
+                    <th>Submitted</th>
+                    <th>Status</th>
+                    <th>Action</th>
+                </tr>
+            </thead>
+            <tbody>
+                <% requests.forEach(r => { %>
+                <tr>
+                    <td>
+                        <div class="fw-semibold text-primary"><%= r.teacher?.name || '—' %></div>
+                        <div class="text-muted" style="font-size:11px;"><%= r.teacher?.email || '' %></div>
+                    </td>
+                    <td class="text-muted"><%= new Date(r.date).toLocaleDateString('en-IN', { day:'numeric', month:'short', year:'numeric' }) %></td>
+                    <td><span class="badge badge-cyan"><%= r.requestType %></span></td>
+                    <td>
+                        <% if(r.requestedStatus==='Present') { %><span class="badge badge-green">Present</span>
+                        <% } else if(r.requestedStatus==='Half-Day') { %><span class="badge" style="background:rgba(245,158,11,0.15);color:#f59e0b;">Half-Day</span>
+                        <% } else if(r.requestedStatus==='Leave') { %><span class="badge badge-purple">Leave</span>
+                        <% } else { %><span class="badge" style="background:rgba(239,68,68,0.15);color:#ef4444;">Absent</span><% } %>
+                    </td>
+                    <td class="text-muted" style="max-width:200px; font-size:12px;"><%= r.reason %></td>
+                    <td class="text-muted" style="font-size:12px;"><%= new Date(r.createdAt).toLocaleDateString('en-IN', { day:'numeric', month:'short' }) %></td>
+                    <td>
+                        <% if(r.status === 'Pending') { %><span class="badge" style="background:rgba(245,158,11,0.15);color:#f59e0b;">⏳ Pending</span>
+                        <% } else if(r.status === 'Approved') { %>
+                            <div><span class="badge badge-green">✅ Approved</span></div>
+                            <div class="text-muted" style="font-size:11px; margin-top:2px;">by <%= r.reviewedBy?.name || 'Admin' %></div>
+                        <% } else { %>
+                            <div><span class="badge" style="background:rgba(239,68,68,0.15);color:#ef4444;">❌ Rejected</span></div>
+                            <div class="text-muted" style="font-size:11px; margin-top:2px;">by <%= r.reviewedBy?.name || 'Admin' %></div>
+                        <% } %>
+                    </td>
+                    <td>
+                        <% if(r.status === 'Pending') { %>
+                        <button onclick="openModal('<%= r._id %>', '<%= r.teacher?.name %>', '<%= r.date %>', '<%= r.requestType %>')"
+                            class="btn btn-primary" style="padding:4px 10px; font-size:12px;">Review</button>
+                        <% } else { %>
+                        <span class="text-muted" style="font-size:12px;"><%= r.adminRemarks || '—' %></span>
+                        <% } %>
+                    </td>
+                </tr>
+                <% }) %>
+            </tbody>
+        </table>
+    </div>
+    <% } %>
+</div>
+
+<!-- Review Modal -->
+<div id="reviewModal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.6); z-index:1000; align-items:center; justify-content:center;">
+    <div style="background:var(--card-bg,#1a1d2e); border-radius:16px; padding:32px; width:460px; box-shadow:0 20px 60px rgba(0,0,0,0.5);">
+        <h3 style="margin:0 0 4px; color:var(--text,#e2e8f0);">Review Regularization</h3>
+        <p id="modalInfo" style="color:var(--text-muted,#94a3b8); font-size:13px; margin-bottom:20px;"></p>
+        <form action="/admin/regularization-requests/review" method="POST">
+            <input type="hidden" name="requestId" id="modalRequestId">
+            <div style="margin-bottom:16px;">
+                <label class="form-label">Admin Remarks (optional)</label>
+                <textarea name="adminRemarks" class="form-control" rows="3" placeholder="Add a note for the teacher..."></textarea>
+            </div>
+            <div style="display:flex; gap:12px;">
+                <button type="submit" name="action" value="approve" class="btn btn-primary" style="flex:1;">✅ Approve</button>
+                <button type="submit" name="action" value="reject" class="btn btn-secondary" style="flex:1; border-color:#ef4444; color:#ef4444;">❌ Reject</button>
+            </div>
+            <button type="button" onclick="closeModal()" style="width:100%; margin-top:10px; background:none; border:none; color:var(--text-muted,#94a3b8); cursor:pointer; font-size:13px;">Cancel</button>
+        </form>
+    </div>
+</div>
+
+<script>
+function openModal(id, name, date, type) {
+    document.getElementById('modalRequestId').value = id;
+    document.getElementById('modalInfo').textContent =
+        name + ' — ' + new Date(date).toLocaleDateString('en-IN', { day:'numeric', month:'long', year:'numeric' }) + ' (' + type + ')';
+    document.getElementById('reviewModal').style.display = 'flex';
+}
+function closeModal() {
+    document.getElementById('reviewModal').style.display = 'none';
+}
+document.getElementById('reviewModal').addEventListener('click', function(e) {
+    if (e.target === this) closeModal();
+});
+</script>

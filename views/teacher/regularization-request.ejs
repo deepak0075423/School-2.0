@@ -1,0 +1,99 @@
+<div class="page-header">
+    <div>
+        <h1>📋 Regularization Requests</h1>
+        <p>Submit attendance correction or missed punch requests for admin approval</p>
+    </div>
+    <a href="/teacher/my-attendance" class="btn btn-secondary">← My Attendance</a>
+</div>
+
+<div style="display:grid; grid-template-columns:1fr 1.5fr; gap:20px; align-items:start;">
+
+    <!-- Submit Form -->
+    <div class="card">
+        <div class="card-header">
+            <div class="card-title">➕ New Request</div>
+        </div>
+        <div class="card-body">
+            <form action="/teacher/regularization/submit" method="POST">
+                <div style="margin-bottom:16px;">
+                    <label class="form-label">Date *</label>
+                    <input type="date" name="date" class="form-control" required
+                        max="<%= today %>">
+                </div>
+                <div style="margin-bottom:16px;">
+                    <label class="form-label">Request Type *</label>
+                    <select name="requestType" class="form-control" required>
+                        <option value="">— Select Type —</option>
+                        <option value="Missed Punch">Missed Punch</option>
+                        <option value="Correction">Correction (Wrong Status)</option>
+                        <option value="Leave Adjustment">Leave Adjustment</option>
+                        <option value="Other">Other</option>
+                    </select>
+                </div>
+                <div style="margin-bottom:16px;">
+                    <label class="form-label">Requested Status *</label>
+                    <select name="requestedStatus" class="form-control" required>
+                        <option value="">— Select Status —</option>
+                        <option value="Present">✅ Present</option>
+                        <option value="Half-Day">🌗 Half-Day</option>
+                        <option value="Leave">📅 Leave</option>
+                        <option value="Absent">❌ Absent</option>
+                    </select>
+                </div>
+                <div style="margin-bottom:20px;">
+                    <label class="form-label">Reason *</label>
+                    <textarea name="reason" class="form-control" rows="3" required maxlength="500"
+                        placeholder="Describe why this correction is needed..."></textarea>
+                </div>
+                <button type="submit" class="btn btn-primary" style="width:100%;">📤 Submit Request</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- My Requests History -->
+    <div class="card">
+        <div class="card-header">
+            <div class="card-title">📑 My Requests</div>
+        </div>
+        <% if (myRequests.length === 0) { %>
+            <div class="empty-state" style="padding:30px;">
+                <div class="empty-icon">📋</div>
+                <p>No requests submitted yet.</p>
+            </div>
+        <% } else { %>
+        <div class="table-wrapper">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Date</th>
+                        <th>Type</th>
+                        <th>Requested</th>
+                        <th>Status</th>
+                        <th>Admin Remarks</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <% myRequests.forEach(r => { %>
+                    <tr>
+                        <td class="text-muted"><%= new Date(r.date).toLocaleDateString('en-IN', { day:'numeric', month:'short', year:'numeric' }) %></td>
+                        <td><%= r.requestType %></td>
+                        <td>
+                            <% if(r.requestedStatus === 'Present') { %><span class="badge badge-green">Present</span>
+                            <% } else if(r.requestedStatus === 'Absent') { %><span class="badge" style="background:rgba(239,68,68,0.15);color:#ef4444;">Absent</span>
+                            <% } else if(r.requestedStatus === 'Half-Day') { %><span class="badge" style="background:rgba(245,158,11,0.15);color:#f59e0b;">Half-Day</span>
+                            <% } else { %><span class="badge badge-purple">Leave</span><% } %>
+                        </td>
+                        <td>
+                            <% if(r.status === 'Pending') { %><span class="badge" style="background:rgba(245,158,11,0.15);color:#f59e0b;">⏳ Pending</span>
+                            <% } else if(r.status === 'Approved') { %><span class="badge badge-green">✅ Approved</span>
+                            <% } else { %><span class="badge" style="background:rgba(239,68,68,0.15);color:#ef4444;">❌ Rejected</span><% } %>
+                        </td>
+                        <td class="text-muted" style="font-size:12px;"><%= r.adminRemarks || '—' %></td>
+                    </tr>
+                    <% }) %>
+                </tbody>
+            </table>
+        </div>
+        <% } %>
+    </div>
+</div>

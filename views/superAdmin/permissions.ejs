@@ -1,0 +1,217 @@
+<div class="page-header">
+    <div>
+        <h1>🔐 Module Permissions</h1>
+        <p>Control which schools have access to each feature module</p>
+    </div>
+    <a href="/super-admin/dashboard" class="btn btn-secondary">← Dashboard</a>
+</div>
+
+<!-- Module Overview Cards -->
+<div style="display:grid; grid-template-columns:repeat(auto-fill, minmax(300px, 1fr)); gap:16px; margin-bottom:28px;">
+    <% allModules.forEach(mod => {
+        const enabledCount = schools.filter(s => s.modules && s.modules[mod.key]).length;
+        const total = schools.length;
+    %>
+    <div class="card">
+        <div class="card-body" style="padding:20px;">
+            <div style="display:flex; align-items:center; gap:12px; margin-bottom:12px;">
+                <span style="font-size:28px;"><%= mod.icon %></span>
+                <div>
+                    <div class="fw-semibold text-primary" style="font-size:15px;"><%= mod.label %></div>
+                    <div class="text-muted" style="font-size:12px;"><%= enabledCount %> / <%= total %> schools enabled</div>
+                </div>
+            </div>
+            <p class="text-muted" style="font-size:12px; margin:0 0 14px;"><%= mod.description %></p>
+
+            <!-- Progress bar -->
+            <div style="height:6px; background:var(--border,rgba(255,255,255,0.1)); border-radius:3px; margin-bottom:14px;">
+                <div style="width:<%= total > 0 ? Math.round((enabledCount/total)*100) : 0 %>%; height:100%; background:#4f46e5; border-radius:3px; transition:width 0.3s;"></div>
+            </div>
+
+            <!-- Bulk actions -->
+            <div style="display:flex; gap:8px;">
+                <form action="/super-admin/permissions/bulk" method="POST" style="flex:1;">
+                    <input type="hidden" name="module" value="<%= mod.key %>">
+                    <button type="submit" name="action" value="enable-all"
+                        class="btn btn-primary" style="width:100%; padding:6px; font-size:12px;"
+                        onclick="return confirm('Enable <%= mod.label %> for ALL schools?')">
+                        ✅ Enable All
+                    </button>
+                </form>
+                <form action="/super-admin/permissions/bulk" method="POST" style="flex:1;">
+                    <input type="hidden" name="module" value="<%= mod.key %>">
+                    <button type="submit" name="action" value="disable-all"
+                        class="btn btn-secondary" style="width:100%; padding:6px; font-size:12px; border-color:#ef4444; color:#ef4444;"
+                        onclick="return confirm('Disable <%= mod.label %> for ALL schools?')">
+                        ❌ Disable All
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+    <% }) %>
+</div>
+
+<!-- Per-School Permission Table -->
+<div class="card">
+    <div class="card-header" style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:12px;">
+        <div class="card-title">🏫 Schools</div>
+        <div style="display:flex; gap:10px; align-items:center;">
+            <input type="text" id="schoolSearch" class="form-control" placeholder="🔍 Search school..."
+                style="width:220px; padding:6px 12px; font-size:13px;"
+                oninput="filterSchools(this.value)">
+            <span class="text-muted" style="font-size:13px;"><%= schools.length %> schools</span>
+        </div>
+    </div>
+
+    <% if (schools.length === 0) { %>
+        <div class="empty-state" style="padding:40px;">
+            <div class="empty-icon">🏫</div>
+            <h3>No Schools</h3>
+            <p>Create schools first before managing permissions.</p>
+        </div>
+    <% } else { %>
+    <div class="table-wrapper">
+        <table id="schoolsTable">
+            <thead>
+                <tr>
+                    <th style="min-width:220px;">School</th>
+                    <th>Status</th>
+                    <% allModules.forEach(mod => { %>
+                    <th style="text-align:center; min-width:160px;"><%= mod.icon %> <%= mod.label %></th>
+                    <% }) %>
+                    <th style="width:100px;">Save</th>
+                </tr>
+            </thead>
+            <tbody>
+                <% schools.forEach(school => { %>
+                <tr class="school-row" data-name="<%= school.name.toLowerCase() %>">
+                    <td>
+                        <div class="fw-semibold text-primary"><%= school.name %></div>
+                        <% if(school.email) { %><div class="text-muted" style="font-size:11px;"><%= school.email %></div><% } %>
+                    </td>
+                    <td>
+                        <% if(school.isActive) { %>
+                            <span class="badge badge-green">Active</span>
+                        <% } else { %>
+                            <span class="badge" style="background:rgba(239,68,68,0.15);color:#ef4444;">Inactive</span>
+                        <% } %>
+                    </td>
+
+                    <% allModules.forEach(mod => {
+                        const isEnabled = school.modules && school.modules[mod.key];
+                    %>
+                    <td style="text-align:center;">
+                        <label class="toggle-switch" title="<%= isEnabled ? 'Enabled — click to disable' : 'Disabled — click to enable' %>">
+                            <input type="checkbox" class="module-toggle"
+                                data-school="<%= school._id %>"
+                                data-module="<%= mod.key %>"
+                                <%= isEnabled ? 'checked' : '' %>>
+                            <span class="toggle-slider"></span>
+                        </label>
+                    </td>
+                    <% }) %>
+
+                    <td>
+                        <button onclick="savePermissions('<%= school._id %>', '<%= school.name %>')"
+                            class="btn btn-primary" style="padding:5px 12px; font-size:12px;"
+                            id="save-btn-<%= school._id %>">
+                            💾 Save
+                        </button>
+                    </td>
+                </tr>
+                <% }) %>
+            </tbody>
+        </table>
+    </div>
+    <% } %>
+</div>
+
+<!-- Hidden form used for AJAX-style saving without JS framework -->
+<form id="permissionsForm" action="/super-admin/permissions/update" method="POST" style="display:none;">
+    <input type="hidden" name="schoolId" id="formSchoolId">
+    <% allModules.forEach(mod => { %>
+    <input type="hidden" name="modules[<%= mod.key %>]" id="formModule_<%= mod.key %>" value="">
+    <% }) %>
+</form>
+
+<style>
+/* Toggle Switch */
+.toggle-switch {
+    position: relative;
+    display: inline-block;
+    width: 48px;
+    height: 26px;
+    cursor: pointer;
+}
+.toggle-switch input {
+    opacity: 0;
+    width: 0;
+    height: 0;
+}
+.toggle-slider {
+    position: absolute;
+    inset: 0;
+    background: var(--border, rgba(255,255,255,0.1));
+    border-radius: 26px;
+    transition: background 0.25s;
+    border: 1px solid var(--border, rgba(255,255,255,0.15));
+}
+.toggle-slider::before {
+    content: '';
+    position: absolute;
+    width: 18px;
+    height: 18px;
+    left: 3px;
+    bottom: 3px;
+    background: #94a3b8;
+    border-radius: 50%;
+    transition: transform 0.25s, background 0.25s;
+}
+.toggle-switch input:checked + .toggle-slider {
+    background: rgba(79, 70, 229, 0.25);
+    border-color: #4f46e5;
+}
+.toggle-switch input:checked + .toggle-slider::before {
+    transform: translateX(22px);
+    background: #4f46e5;
+}
+</style>
+
+<script>
+const allModuleKeys = [<% allModules.forEach((m, i) => { %>'<%= m.key %>'<% if(i < allModules.length-1) { %>,<% } %><% }) %>];
+
+function savePermissions(schoolId, schoolName) {
+    document.getElementById('formSchoolId').value = schoolId;
+
+    // Read all toggle states for this school
+    allModuleKeys.forEach(key => {
+        const toggle = document.querySelector(
+            `.module-toggle[data-school="${schoolId}"][data-module="${key}"]`
+        );
+        document.getElementById('formModule_' + key).value = toggle && toggle.checked ? 'on' : '';
+    });
+
+    document.getElementById('permissionsForm').submit();
+}
+
+function filterSchools(query) {
+    const q = query.toLowerCase().trim();
+    document.querySelectorAll('.school-row').forEach(row => {
+        const name = row.getAttribute('data-name') || '';
+        row.style.display = name.includes(q) ? '' : 'none';
+    });
+}
+
+// Visual feedback: highlight save button when a toggle changes
+document.querySelectorAll('.module-toggle').forEach(toggle => {
+    toggle.addEventListener('change', function() {
+        const schoolId = this.getAttribute('data-school');
+        const btn = document.getElementById('save-btn-' + schoolId);
+        if (btn) {
+            btn.style.background = 'linear-gradient(135deg,#f59e0b,#d97706)';
+            btn.textContent = '💾 Save*';
+        }
+    });
+});
+</script>

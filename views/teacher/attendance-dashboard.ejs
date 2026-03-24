@@ -1,0 +1,146 @@
+<div class="page-header">
+    <div>
+        <h1>📊 Attendance Dashboard</h1>
+        <% if (section) { %><p><%= section.class?.className %> — Section <%= section.sectionName %></p><% } %>
+    </div>
+    <div style="display:flex; gap:10px;">
+        <a href="/teacher/correction-requests" class="btn btn-secondary">
+            🔔 Corrections
+            <% if(pendingCorrections > 0) { %><span class="badge badge-red" style="margin-left:4px;"><%= pendingCorrections %></span><% } %>
+        </a>
+        <a href="/teacher/attendance" class="btn btn-primary">📋 Mark Attendance</a>
+    </div>
+</div>
+
+<!-- Summary Stats -->
+<div class="stats-grid" style="grid-template-columns: repeat(4, 1fr); margin-bottom:20px;">
+    <div class="stat-card">
+        <div class="stat-icon cyan">👥</div>
+        <div class="stat-info">
+            <div class="stat-value"><%= rankedStudents.length %></div>
+            <div class="stat-label">Total Students</div>
+        </div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-icon green">📅</div>
+        <div class="stat-info">
+            <div class="stat-value"><%= totalSessions %></div>
+            <div class="stat-label">Sessions Held</div>
+        </div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-icon purple">🏆</div>
+        <div class="stat-info">
+            <div class="stat-value">
+                <%= rankedStudents.length > 0 ? statsMap[rankedStudents[0].user._id.toString()]?.percentage + '%' : '—' %>
+            </div>
+            <div class="stat-label">Top Attendance</div>
+        </div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-icon red">⚠️</div>
+        <div class="stat-info">
+            <div class="stat-value">
+                <%
+                    const below75 = rankedStudents.filter(s => (statsMap[s.user._id.toString()]?.percentage || 0) < 75).length;
+                %>
+                <%= below75 %>
+            </div>
+            <div class="stat-label">Below 75%</div>
+        </div>
+    </div>
+</div>
+
+<!-- Trend Chart + Ranking Table -->
+<div style="display:grid; grid-template-columns:1fr 2fr; gap:20px;">
+
+    <!-- 7-Day Trend -->
+    <div class="card">
+        <div class="card-header"><div class="card-title">📈 Last 7 Days Trend</div></div>
+        <div class="card-body">
+            <div id="trendChart" style="display:flex; flex-direction:column; gap:8px;"></div>
+        </div>
+    </div>
+
+    <!-- Attendance Ranking Table -->
+    <div class="card">
+        <div class="card-header">
+            <div class="card-title">🏆 Student Attendance Ranking</div>
+            <span class="text-muted" style="font-size:12px;">Highest to lowest</span>
+        </div>
+        <% if (rankedStudents.length === 0) { %>
+            <div class="empty-state" style="padding:30px;"><p>No students found.</p></div>
+        <% } else { %>
+        <div class="table-wrapper">
+            <table>
+                <thead>
+                    <tr>
+                        <th style="width:40px;">#</th>
+                        <th>Student</th>
+                        <th>Present</th>
+                        <th>Absent</th>
+                        <th>Late</th>
+                        <th>Attendance %</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <% rankedStudents.forEach((sp, idx) => {
+                        const uid = sp.user._id.toString();
+                        const st = statsMap[uid] || { present:0, absent:0, late:0, percentage:0 };
+                        const pct = st.percentage;
+                        const barColor = pct >= 75 ? '#10b981' : pct >= 50 ? '#f59e0b' : '#ef4444';
+                    %>
+                    <tr>
+                        <td class="text-muted fw-semibold">
+                            <% if(idx === 0) { %>🥇<% } else if(idx === 1) { %>🥈<% } else if(idx === 2) { %>🥉<% } else { %><%= idx+1 %><% } %>
+                        </td>
+                        <td>
+                            <div class="fw-semibold text-primary"><%= sp.user.name %></div>
+                            <div class="text-muted" style="font-size:11px;">Roll: <%= sp.rollNumber || '—' %></div>
+                        </td>
+                        <td><span class="badge badge-green"><%= st.present %></span></td>
+                        <td><span class="badge" style="background:rgba(239,68,68,0.15);color:#ef4444;"><%= st.absent %></span></td>
+                        <td><span class="badge" style="background:rgba(245,158,11,0.15);color:#f59e0b;"><%= st.late %></span></td>
+                        <td style="min-width:120px;">
+                            <div style="display:flex; align-items:center; gap:8px;">
+                                <div style="flex:1; height:6px; background:var(--border,rgba(255,255,255,0.1)); border-radius:3px;">
+                                    <div style="width:<%= pct %>%; height:100%; background:<%= barColor %>; border-radius:3px;"></div>
+                                </div>
+                                <span style="font-size:13px; font-weight:600; color:<%= barColor %>; min-width:36px;"><%= pct %>%</span>
+                            </div>
+                        </td>
+                        <td>
+                            <a href="/teacher/students/<%= sp.user._id %>/profile" class="btn btn-secondary" style="padding:4px 10px; font-size:12px;">View</a>
+                        </td>
+                    </tr>
+                    <% }) %>
+                </tbody>
+            </table>
+        </div>
+        <% } %>
+    </div>
+</div>
+
+<script>
+(function() {
+    const trend = <%- trendData %>;
+    const container = document.getElementById('trendChart');
+    const maxStudents = <%= rankedStudents.length %> || 1;
+
+    trend.forEach(day => {
+        const pct = Math.round((day.present / (maxStudents || 1)) * 100);
+        const color = pct >= 75 ? '#10b981' : pct >= 50 ? '#f59e0b' : '#ef4444';
+        const row = document.createElement('div');
+        row.style.cssText = 'display:flex; align-items:center; gap:10px; font-size:12px;';
+        row.innerHTML = `
+            <span style="min-width:64px; color:var(--text-muted,#94a3b8);">${day.label}</span>
+            <div style="flex:1; height:14px; background:var(--border,rgba(255,255,255,0.1)); border-radius:4px; overflow:hidden;">
+                <div style="width:${pct}%; height:100%; background:${color}; border-radius:4px; transition:width 0.3s;"></div>
+            </div>
+            <span style="min-width:48px; text-align:right; color:${color}; font-weight:600;">${day.present}/${day.total}</span>
+        `;
+        container.appendChild(row);
+    });
+})();
+</script>
