@@ -1,7 +1,6 @@
 const ClassSection = require('../models/ClassSection');
 const StudentProfile = require('../models/StudentProfile');
 const ParentProfile = require('../models/ParentProfile');
-const TeacherProfile = require('../models/TeacherProfile');
 const User = require('../models/User');
 const Attendance = require('../models/Attendance');
 const AttendanceRecord = require('../models/AttendanceRecord');
