@@ -34,12 +34,10 @@
                 <%
                     // Resolve which modules this school has enabled.
                     // currentUser is set by loadUser middleware on every authenticated request.
-                    const _schoolModules    = (currentUser && currentUser.school && currentUser.school.modules) || {};
+                    const _schoolModules   = (currentUser && currentUser.school && currentUser.school.modules) || {};
                     const _hasAttendance   = !!_schoolModules.attendance;
                     const _hasNotification = !!_schoolModules.notification;
-                    // Super admin is never gated — they manage all modules
-                    const _isSuperAdmin    = session && session.userRole === 'super_admin';
-                    const _path      = (typeof locals !== 'undefined' && locals.title) ? title : '';
+                    const _path = (typeof locals !== 'undefined' && locals.title) ? title : '';
                     const _unreadCount = (typeof unreadNotificationCount !== 'undefined') ? unreadNotificationCount : 0;
                 %>
 
@@ -270,8 +268,8 @@
                         <div class="topbar-btn">🏫 <%= session.schoolName %></div>
                     <% } %>
 
-                    <!-- ── Bell Icon (shown only when notification module is enabled) ── -->
-                    <% if (session && session.userId && (_isSuperAdmin || _hasNotification)) { %>
+                    <!-- ── Bell Icon (visible when notification module is enabled, or for super_admin) -->
+                    <% if (session && session.userId && (session.userRole === 'super_admin' || _hasNotification)) { %>
                     <div style="position:relative;" id="bellWrapper">
                         <button id="bellBtn" onclick="toggleBell(event)"
                             style="position:relative; background:var(--card-bg,#1a1d2e); border:1px solid var(--border,#2a2d3e);
@@ -351,7 +349,7 @@
     </div>
     <script src="/js/main.js"></script>
 
-    <% if (session && session.userId && (_isSuperAdmin || _hasNotification)) { %>
+    <% if (session && session.userId && (session.userRole === 'super_admin' || _hasNotification)) { %>
 
     <!-- Toast container -->
     <div id="toastContainer" style="position:fixed;bottom:24px;right:24px;z-index:99999;display:flex;flex-direction:column;gap:10px;pointer-events:none;"></div>
