@@ -345,138 +345,185 @@
     <script src="/js/main.js"></script>
 
     <% if (session && session.userId) { %>
-    <script>
-    /* ── Bell Icon Logic ──────────────────────────────────────── */
-    let bellOpen = false;
-    let bellLoaded = false;
 
-    function toggleBell(e) {
-        e.stopPropagation();
-        bellOpen = !bellOpen;
-        document.getElementById('bellDropdown').style.display = bellOpen ? 'block' : 'none';
-        if (bellOpen && !bellLoaded) loadBell();
+    <!-- Toast container -->
+    <div id="toastContainer" style="position:fixed;bottom:24px;right:24px;z-index:99999;display:flex;flex-direction:column;gap:10px;pointer-events:none;"></div>
+
+    <script>
+    /* ════════════════════════════════════════════════════════════
+       NOTIFICATION SYSTEM  — SSE + BroadcastChannel + Browser API
+    ════════════════════════════════════════════════════════════ */
+
+    /* ── Helpers ─────────────────────────────────────────────── */
+    function escHtml(s){ return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+    function roleIcon(r){ return {super_admin:'👑',school_admin:'🛡️',teacher:'👨‍🏫'}[r]||'🔔'; }
+    function timeAgo(d){
+        const m=Math.floor((Date.now()-new Date(d))/60000);
+        if(m<1)return'Just now'; if(m<60)return m+'m ago';
+        const h=Math.floor(m/60); if(h<24)return h+'h ago';
+        return Math.floor(h/24)+'d ago';
     }
 
-    document.addEventListener('click', function (e) {
-        if (!document.getElementById('bellWrapper').contains(e.target)) {
-            bellOpen = false;
-            document.getElementById('bellDropdown').style.display = 'none';
-        }
+    /* ── Bell state ──────────────────────────────────────────── */
+    let bellOpen=false, bellLoaded=false, _unreadLocal=<%= _unreadCount %>;
+
+    function setBadge(n){
+        const b=document.getElementById('bellBadge');
+        _unreadLocal=n;
+        if(n>0){ b.style.display='flex'; b.textContent=n>9?'9+':n; }
+        else    { b.style.display='none'; }
+    }
+    function incrementBadge(){ setBadge(_unreadLocal+1); }
+
+    function toggleBell(e){
+        e.stopPropagation();
+        bellOpen=!bellOpen;
+        document.getElementById('bellDropdown').style.display=bellOpen?'block':'none';
+        if(bellOpen && !bellLoaded) loadBell();
+    }
+    document.addEventListener('click',function(e){
+        const w=document.getElementById('bellWrapper');
+        if(w && !w.contains(e.target)){ bellOpen=false; document.getElementById('bellDropdown').style.display='none'; }
     });
 
-    function roleIcon(role) {
-        return { super_admin:'👑', school_admin:'🛡️', teacher:'👨‍🏫' }[role] || '🔔';
-    }
-
-    function timeAgo(dateStr) {
-        const diff = Date.now() - new Date(dateStr);
-        const mins  = Math.floor(diff / 60000);
-        const hours = Math.floor(diff / 3600000);
-        const days  = Math.floor(diff / 86400000);
-        if (mins  < 1)   return 'Just now';
-        if (mins  < 60)  return mins  + 'm ago';
-        if (hours < 24)  return hours + 'h ago';
-        return days + 'd ago';
-    }
-
-    function renderBell(data) {
-        const list = document.getElementById('bellList');
-        const badge = document.getElementById('bellBadge');
-        const countEl = document.getElementById('dropUnreadCount');
-
-        // Update badge
-        if (data.unreadCount > 0) {
-            badge.style.display = 'flex';
-            badge.textContent = data.unreadCount > 9 ? '9+' : data.unreadCount;
-        } else {
-            badge.style.display = 'none';
-        }
-        countEl.textContent = data.unreadCount > 0 ? '(' + data.unreadCount + ' unread)' : '';
-
-        if (!data.notifications || data.notifications.length === 0) {
-            list.innerHTML = '<div style="padding:40px 20px; text-align:center; color:var(--text-muted,#94a3b8); font-size:13px;">🔕 No notifications</div>';
+    /* ── Render bell list ────────────────────────────────────── */
+    function renderBell(data){
+        const list=document.getElementById('bellList');
+        const countEl=document.getElementById('dropUnreadCount');
+        setBadge(data.unreadCount||0);
+        countEl.textContent=data.unreadCount>0?'('+data.unreadCount+' unread)':'';
+        if(!data.notifications||!data.notifications.length){
+            list.innerHTML='<div style="padding:40px 20px;text-align:center;color:var(--text-muted,#94a3b8);font-size:13px;">🔕 No notifications</div>';
             return;
         }
-
-        list.innerHTML = data.notifications.map(n => `
+        list.innerHTML=data.notifications.map(n=>`
             <div id="receipt-${n.receiptId}"
-                 style="padding:14px 18px; border-bottom:1px solid var(--border,#2a2d3e);
-                        background:${n.isRead ? 'transparent' : 'rgba(59,130,246,.06)'};
-                        transition:background .2s;">
-                <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:8px;">
-                    <div style="flex:1; min-width:0;">
-                        <div style="display:flex; align-items:center; gap:6px; margin-bottom:4px;">
-                            ${!n.isRead ? '<span style="width:7px;height:7px;border-radius:50%;background:#3b82f6;flex-shrink:0;display:inline-block;"></span>' : ''}
-                            <span style="font-weight:${n.isRead ? '500' : '700'}; font-size:13px; color:var(--text,#e2e8f0);">
-                                ${escHtml(n.title || '—')}
-                            </span>
-                        </div>
-                        <div style="font-size:12px; color:var(--text-muted,#94a3b8); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; max-width:220px;">
-                            ${escHtml(n.body || '')}
-                        </div>
-                        <div style="font-size:10px; color:var(--text-muted,#94a3b8); margin-top:4px;">
-                            ${roleIcon(n.senderRole)} ${(n.senderRole||'').replace('_',' ')} &bull; ${timeAgo(n.createdAt)}
-                        </div>
-                    </div>
-                    <button onclick="clearOne('${n.receiptId}')" title="Dismiss"
-                        style="background:none; border:none; cursor:pointer; color:var(--text-muted,#94a3b8);
-                               font-size:16px; padding:0 0 0 8px; flex-shrink:0; opacity:.6;"
-                        onmouseover="this.style.opacity=1" onmouseout="this.style.opacity=.6">×</button>
+                 style="padding:14px 18px;border-bottom:1px solid var(--border,#2a2d3e);
+                        background:${n.isRead?'transparent':'rgba(59,130,246,.06)'};transition:background .2s;">
+              <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;">
+                <div style="flex:1;min-width:0;">
+                  <div style="display:flex;align-items:center;gap:6px;margin-bottom:4px;">
+                    ${!n.isRead?'<span style="width:7px;height:7px;border-radius:50%;background:#3b82f6;flex-shrink:0;display:inline-block;"></span>':''}
+                    <span style="font-weight:${n.isRead?'500':'700'};font-size:13px;color:var(--text,#e2e8f0);">${escHtml(n.title||'—')}</span>
+                  </div>
+                  <div style="font-size:12px;color:var(--text-muted,#94a3b8);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:220px;">${escHtml(n.body||'')}</div>
+                  <div style="font-size:10px;color:var(--text-muted,#94a3b8);margin-top:4px;">${roleIcon(n.senderRole)} ${(n.senderRole||'').replace('_',' ')} &bull; ${timeAgo(n.createdAt)}</div>
                 </div>
-            </div>`
-        ).join('');
+                <button onclick="clearOne('${n.receiptId}')" title="Dismiss"
+                    style="background:none;border:none;cursor:pointer;color:var(--text-muted,#94a3b8);font-size:16px;padding:0 0 0 8px;flex-shrink:0;opacity:.6;"
+                    onmouseover="this.style.opacity=1" onmouseout="this.style.opacity=.6">×</button>
+              </div>
+            </div>`).join('');
     }
 
-    function escHtml(str) {
-        return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    function loadBell(){ bellLoaded=true; fetch('/notifications/api/inbox').then(r=>r.json()).then(renderBell).catch(()=>{}); }
+    function markAllRead(){ fetch('/notifications/api/mark-all-read',{method:'POST'}).then(()=>loadBell()); }
+    function clearAll(){
+        fetch('/notifications/api/clear-all',{method:'POST'}).then(()=>{
+            renderBell({unreadCount:0,notifications:[]}); bellLoaded=false;
+        });
+    }
+    function clearOne(id){
+        fetch('/notifications/api/'+id+'/clear',{method:'POST'}).then(()=>{
+            const el=document.getElementById('receipt-'+id);
+            if(el){ el.style.opacity='0'; el.style.transition='opacity .3s'; setTimeout(()=>el.remove(),300); }
+            loadBell();
+        });
     }
 
-    function loadBell() {
-        bellLoaded = true;
-        fetch('/notifications/api/inbox')
-            .then(r => r.json())
-            .then(renderBell)
-            .catch(() => {});
+    /* ── Toast ───────────────────────────────────────────────── */
+    function showToast(title, body, senderRole){
+        const tc=document.getElementById('toastContainer');
+        const t=document.createElement('div');
+        t.style.cssText='pointer-events:auto;background:var(--card-bg,#1a1d2e);border:1px solid var(--border,#2a2d3e);'+
+            'border-left:4px solid #3b82f6;border-radius:12px;padding:14px 16px;width:300px;'+
+            'box-shadow:0 8px 32px rgba(0,0,0,.5);animation:slideInToast .3s ease;position:relative;';
+        t.innerHTML=`
+            <div style="font-weight:700;font-size:13px;color:var(--text,#e2e8f0);margin-bottom:4px;padding-right:20px;">🔔 ${escHtml(title)}</div>
+            <div style="font-size:12px;color:var(--text-muted,#94a3b8);line-height:1.4;max-height:40px;overflow:hidden;">${escHtml(body)}</div>
+            <div style="font-size:10px;color:#3b82f6;margin-top:6px;">${roleIcon(senderRole)} ${(senderRole||'').replace('_',' ')}</div>
+            <button onclick="this.closest('div[style]').remove()"
+                style="position:absolute;top:10px;right:10px;background:none;border:none;cursor:pointer;
+                       color:var(--text-muted,#94a3b8);font-size:16px;line-height:1;">×</button>`;
+        tc.appendChild(t);
+        setTimeout(()=>{ t.style.animation='fadeOutToast .4s ease forwards'; setTimeout(()=>t.remove(),400); }, 5000);
     }
 
-    function markAllRead() {
-        fetch('/notifications/api/mark-all-read', { method:'POST' })
-            .then(() => loadBell());
+    /* ── Browser Notification (background tabs/windows) ─────── */
+    (function askPermission(){
+        if('Notification' in window && Notification.permission==='default'){
+            // Delay ask so it doesn't pop on first load — wait for user interaction
+            document.addEventListener('click', function ask(){
+                Notification.requestPermission();
+                document.removeEventListener('click', ask);
+            }, {once:true});
+        }
+    })();
+
+    function showBrowserNotification(title, body){
+        if(!('Notification' in window) || Notification.permission!=='granted') return;
+        try {
+            const n=new Notification(title,{body, icon:'/favicon.ico', tag:'school-notif'});
+            n.onclick=()=>{ window.focus(); n.close(); };
+        } catch { /* Safari may throw */ }
     }
 
-    function clearAll() {
-        fetch('/notifications/api/clear-all', { method:'POST' })
-            .then(() => {
-                renderBell({ unreadCount: 0, notifications: [] });
-                bellLoaded = false;
-            });
+    /* ── BroadcastChannel (cross-tab sync) ──────────────────── */
+    let bc;
+    try { bc=new BroadcastChannel('school_notif'); } catch{ bc=null; }
+
+    function onNewNotification(data){
+        incrementBadge();
+        showToast(data.title, data.body, data.senderRole);
+        if(bellOpen){ bellLoaded=false; loadBell(); }   // refresh open dropdown
+        if(document.hidden) showBrowserNotification(data.title, data.body);
     }
 
-    function clearOne(receiptId) {
-        fetch('/notifications/api/' + receiptId + '/clear', { method:'POST' })
-            .then(() => {
-                const el = document.getElementById('receipt-' + receiptId);
-                if (el) { el.style.opacity = '0'; el.style.transition = 'opacity .3s'; setTimeout(() => el.remove(), 300); }
-                loadBell();
-            });
+    if(bc){
+        bc.onmessage=function(e){
+            if(e.data && e.data.type==='notification') onNewNotification(e.data.payload);
+        };
     }
 
-    // Silently refresh badge count every 60 s
-    setInterval(() => {
-        fetch('/notifications/api/inbox')
-            .then(r => r.json())
-            .then(data => {
-                const badge = document.getElementById('bellBadge');
-                if (data.unreadCount > 0) {
-                    badge.style.display = 'flex';
-                    badge.textContent = data.unreadCount > 9 ? '9+' : data.unreadCount;
-                } else {
-                    badge.style.display = 'none';
-                }
-                if (bellOpen) renderBell(data);
-            }).catch(() => {});
-    }, 60000);
+    /* ── SSE connection ──────────────────────────────────────── */
+    (function connectSSE(){
+        if(!window.EventSource) return;  // very old browser — fall back to poll
+
+        const es=new EventSource('/notifications/sse');
+
+        es.addEventListener('notification', function(e){
+            try {
+                const data=JSON.parse(e.data);
+                onNewNotification(data);
+                // Tell other tabs on this device
+                if(bc) bc.postMessage({type:'notification', payload:data});
+            } catch { /* malformed JSON */ }
+        });
+
+        es.onerror=function(){
+            // EventSource auto-reconnects with exponential back-off — nothing to do
+        };
+    })();
+
+    /* ── Fallback poll every 90 s (catches missed SSE events) ── */
+    setInterval(function(){
+        fetch('/notifications/api/inbox').then(r=>r.json()).then(function(data){
+            setBadge(data.unreadCount||0);
+            if(bellOpen) renderBell(data);
+        }).catch(()=>{});
+    }, 90000);
+
     </script>
+
+    <style>
+    @keyframes slideInToast {
+        from { opacity:0; transform:translateX(40px); }
+        to   { opacity:1; transform:translateX(0); }
+    }
+    @keyframes fadeOutToast {
+        to { opacity:0; transform:translateX(40px); }
+    }
+    </style>
     <% } %>
 </body>
 

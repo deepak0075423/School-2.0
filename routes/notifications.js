@@ -10,6 +10,9 @@ const { isAuthenticated, requirePasswordReset } = require('../middleware/auth');
 
 const guard = [isAuthenticated, requirePasswordReset];
 
+// SSE — real-time push stream (one persistent connection per tab)
+router.get('/sse', guard, ctrl.getSSE);
+
 // Bell icon — inbox API
 router.get('/api/inbox',                    guard, ctrl.getInboxApi);
 router.post('/api/mark-all-read',           guard, ctrl.postMarkAllRead);

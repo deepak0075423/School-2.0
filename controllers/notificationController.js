@@ -6,6 +6,7 @@ const StudentProfile      = require('../models/StudentProfile');
 const ClassSection        = require('../models/ClassSection');
 const Class               = require('../models/Class');
 const { sendNotificationEmail } = require('../utils/sendEmail');
+const sseClients          = require('../utils/sseClients');
 
 /* ─────────────────────────────────────────────────────────────
    RECIPIENT RESOLUTION
@@ -216,6 +217,14 @@ const postSendNotification = async (req, res) => {
             }));
             // ordered:false — skip duplicates without aborting the whole batch
             await NotificationReceipt.insertMany(receipts, { ordered: false }).catch(() => {});
+
+            // Push live SSE event to every connected recipient tab
+            sseClients.pushMany(recipientIds, 'notification', {
+                title:      notification.title,
+                body:       notification.body,
+                senderRole: notification.senderRole,
+                createdAt:  notification.createdAt,
+            });
         }
 
         // ── Email delivery ─────────────────────────────────────
@@ -371,9 +380,7 @@ const postClearOne = async (req, res) => {
     }
 };
 
-/* ─────────────────────────────────────────────────────────────
-   AJAX  — sections by class (used in create form dropdown)
-───────────────────────────────────────────────────────────── */
+// AJAX — sections by class (used in create form dropdown)
 const getSectionsByClass = async (req, res) => {
     try {
         const sections = await ClassSection.find({
@@ -387,6 +394,38 @@ const getSectionsByClass = async (req, res) => {
     }
 };
 
+/* ─────────────────────────────────────────────────────────────
+   SSE ENDPOINT  GET /notifications/sse
+   Keeps a persistent HTTP connection open per browser tab.
+   Events pushed: "notification" | "ping" (keepalive)
+───────────────────────────────────────────────────────────── */
+const getSSE = (req, res) => {
+    // Disable all buffering (critical for nginx + Node streaming)
+    res.set({
+        'Content-Type':      'text/event-stream',
+        'Cache-Control':     'no-cache, no-transform',
+        'Connection':        'keep-alive',
+        'X-Accel-Buffering': 'no',   // nginx proxy_buffering off
+    });
+    res.flushHeaders();
+
+    // Confirm connection to client
+    res.write('event: connected\ndata: {"ok":true}\n\n');
+
+    const userId = req.session.userId;
+    sseClients.add(userId, res);
+
+    // Heartbeat every 25 s — keeps the connection alive through nginx (60 s timeout)
+    const ping = setInterval(() => {
+        try { res.write(':ping\n\n'); } catch { clearInterval(ping); }
+    }, 25000);
+
+    req.on('close', () => {
+        clearInterval(ping);
+        sseClients.remove(userId, res);
+    });
+};
+
 module.exports = {
     getCreateNotification,
     postSendNotification,
@@ -397,4 +436,5 @@ module.exports = {
     postClearAll,
     postClearOne,
     getSectionsByClass,
+    getSSE,
 };
