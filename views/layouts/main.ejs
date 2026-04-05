@@ -486,32 +486,46 @@
     }
 
     /* ── SSE connection ──────────────────────────────────────── */
+    let _sseOk = false;
+
     (function connectSSE(){
         if(!window.EventSource) return;  // very old browser — fall back to poll
 
-        const es=new EventSource('/notifications/sse');
+        const es = new EventSource('/notifications/sse');
+
+        es.addEventListener('connected', function(){
+            _sseOk = true;
+        });
 
         es.addEventListener('notification', function(e){
             try {
-                const data=JSON.parse(e.data);
+                const data = JSON.parse(e.data);
                 onNewNotification(data);
-                // Tell other tabs on this device
                 if(bc) bc.postMessage({type:'notification', payload:data});
             } catch { /* malformed JSON */ }
         });
 
-        es.onerror=function(){
-            // EventSource auto-reconnects with exponential back-off — nothing to do
+        es.onerror = function(){
+            _sseOk = false;
+            // EventSource auto-reconnects natively — no manual retry needed
+        };
+
+        es.onopen = function(){
+            _sseOk = true;
         };
     })();
 
-    /* ── Fallback poll every 90 s (catches missed SSE events) ── */
+    /* ── Polling fallback ────────────────────────────────────────
+       Runs every 30 s. When SSE is live it just refreshes the badge.
+       When SSE is blocked (nginx buffer issue, etc.) this is the
+       sole delivery mechanism — 30 s lag is acceptable as backup.
+    ─────────────────────────────────────────────────────────── */
     setInterval(function(){
         fetch('/notifications/api/inbox').then(r=>r.json()).then(function(data){
             setBadge(data.unreadCount||0);
             if(bellOpen) renderBell(data);
         }).catch(()=>{});
-    }, 90000);
+    }, 30000);
 
     </script>
 
