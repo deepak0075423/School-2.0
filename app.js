@@ -49,6 +49,22 @@ app.use((req, res, next) => {
     next();
 });
 
+// Global notification count injected into every authenticated view
+const NotificationReceipt = require('./models/NotificationReceipt');
+app.use(async (req, res, next) => {
+    res.locals.unreadNotificationCount = 0;
+    if (req.session && req.session.userId) {
+        try {
+            res.locals.unreadNotificationCount = await NotificationReceipt.countDocuments({
+                recipient: req.session.userId,
+                isRead: false,
+                isCleared: false,
+            });
+        } catch { /* non-fatal */ }
+    }
+    next();
+});
+
 // Routes
 app.use('/auth', require('./routes/auth'));
 app.use('/super-admin', require('./routes/superAdmin'));
@@ -57,6 +73,7 @@ app.use('/teacher', require('./routes/teacher'));
 app.use('/student', require('./routes/student'));
 app.use('/parent', require('./routes/parent'));
 app.use('/profile', require('./routes/profile'));
+app.use('/notifications', require('./routes/notifications'));
 
 // Home → redirect to login
 app.get('/', (req, res) => {

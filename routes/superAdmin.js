@@ -30,4 +30,10 @@ router.get('/permissions', guard, ctrl.getPermissions);
 router.post('/permissions/update', guard, ctrl.postUpdatePermissions);
 router.post('/permissions/bulk', guard, ctrl.postBulkUpdatePermissions);
 
+// ── Notifications ─────────────────────────────────────────────
+const notifCtrl = require('../controllers/notificationController');
+router.get('/notifications',      guard, notifCtrl.getNotificationList);
+router.get('/notifications/create', guard, notifCtrl.getCreateNotification);
+router.post('/notifications/send',  guard, notifCtrl.postSendNotification);
+
 module.exports = router;

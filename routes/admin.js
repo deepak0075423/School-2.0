@@ -74,5 +74,11 @@ router.get('/reports', guard, reportCtrl.getReports);
 router.get('/regularization-requests', attendanceGuard, attendanceCtrl.getAdminRegularizationRequests);
 router.post('/regularization-requests/review', attendanceGuard, attendanceCtrl.postAdminReviewRegularization);
 
+// ── Notifications ─────────────────────────────────────────────
+const notifCtrl = require('../controllers/notificationController');
+router.get('/notifications',        guard, notifCtrl.getNotificationList);
+router.get('/notifications/create', guard, notifCtrl.getCreateNotification);
+router.post('/notifications/send',  guard, notifCtrl.postSendNotification);
+
 module.exports = router;
 

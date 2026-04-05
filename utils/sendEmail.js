@@ -259,4 +259,65 @@ const sendAttendanceNotification = async ({ to, parentName, studentName, date, s
     }
 };
 
-module.exports = { sendWelcomeEmail, sendOtpEmail, sendAttendanceNotification };
+/* ─────────────────────────────────────────────
+   NOTIFICATION EMAIL — sent to any recipient
+─────────────────────────────────────────────── */
+const sendNotificationEmail = async ({ to, recipientName, title, body, senderRole }) => {
+    const roleLabel = {
+        super_admin:  'Super Admin',
+        school_admin: 'School Admin',
+        teacher:      'Teacher',
+    }[senderRole] || 'School';
+
+    const html = `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8"/>
+  <style>
+    body { margin:0; padding:0; background:#f1f5f9; font-family:'Segoe UI',Arial,sans-serif; }
+    .wrapper { max-width:560px; margin:32px auto; }
+    .header { background:linear-gradient(135deg,#3b82f6,#6366f1); border-radius:14px 14px 0 0; padding:28px 32px; text-align:center; color:#fff; }
+    .header h1 { margin:0 0 4px; font-size:22px; }
+    .header p  { margin:0; font-size:13px; opacity:.85; }
+    .body { background:#fff; padding:32px; border-radius:0 0 14px 14px; }
+    .title-box { background:#f8fafc; border-left:4px solid #3b82f6; border-radius:0 8px 8px 0; padding:14px 18px; margin-bottom:20px; }
+    .title-box h2 { margin:0 0 4px; color:#1e293b; font-size:17px; }
+    .title-box .from { font-size:12px; color:#64748b; }
+    .message-body { color:#374151; font-size:14px; line-height:1.7; white-space:pre-line; }
+    .footer { text-align:center; margin-top:24px; font-size:11px; color:#94a3b8; }
+  </style>
+</head>
+<body>
+<div class="wrapper">
+  <div class="header">
+    <h1>🎓 ${process.env.APP_NAME || 'School Management'}</h1>
+    <p>You have a new notification</p>
+  </div>
+  <div class="body">
+    <p style="color:#374151;font-size:15px;margin-bottom:20px;">
+      Dear <strong>${recipientName}</strong>,
+    </p>
+    <div class="title-box">
+      <h2>${title}</h2>
+      <div class="from">From: ${roleLabel}</div>
+    </div>
+    <div class="message-body">${body}</div>
+    <div class="footer">
+      This is an automated notification from ${process.env.APP_NAME || 'School Management System'}.<br/>
+      Please do not reply to this email.
+    </div>
+  </div>
+</div>
+</body>
+</html>`;
+
+    await transporter.sendMail({
+        from:    `"${process.env.APP_NAME || 'School'}" <${process.env.EMAIL_FROM}>`,
+        to,
+        subject: `[Notification] ${title}`,
+        html,
+    });
+};
+
+module.exports = { sendWelcomeEmail, sendOtpEmail, sendAttendanceNotification, sendNotificationEmail };

@@ -1,0 +1,239 @@
+<div class="page-header">
+    <div>
+        <h1>🔔 Send Notification</h1>
+        <p>Compose and send a notification to your target audience</p>
+    </div>
+    <div style="display:flex;gap:10px;">
+        <% if (role === 'super_admin') { %>
+            <a href="/super-admin/notifications" class="btn btn-secondary">← All Notifications</a>
+        <% } else if (role === 'school_admin') { %>
+            <a href="/admin/notifications" class="btn btn-secondary">← All Notifications</a>
+        <% } else { %>
+            <a href="/teacher/notifications" class="btn btn-secondary">← All Notifications</a>
+        <% } %>
+    </div>
+</div>
+
+<div style="display:grid; grid-template-columns:1fr 340px; gap:24px; align-items:start;">
+
+    <!-- ── Main form ─────────────────────────────────────────── -->
+    <div>
+        <% const postUrl = role === 'super_admin' ? '/super-admin/notifications/send'
+                         : role === 'school_admin' ? '/admin/notifications/send'
+                         : '/teacher/notifications/send'; %>
+        <form action="<%= postUrl %>" method="POST" id="notifForm">
+
+            <!-- Title -->
+            <div class="card" style="margin-bottom:20px; padding:24px;">
+                <h3 style="margin:0 0 18px; font-size:15px; color:var(--text);">📝 Message Details</h3>
+
+                <div class="form-group">
+                    <label class="form-label">Subject / Title <span style="color:#ef4444;">*</span></label>
+                    <input type="text" name="title" class="form-control"
+                           placeholder="e.g. School will remain closed on Friday"
+                           maxlength="120" required />
+                </div>
+
+                <div class="form-group" style="margin-top:16px;">
+                    <label class="form-label">Message Body <span style="color:#ef4444;">*</span></label>
+                    <textarea name="body" class="form-control" rows="6" required
+                              placeholder="Write your full message here..."></textarea>
+                </div>
+            </div>
+
+            <!-- Target audience -->
+            <div class="card" style="padding:24px; margin-bottom:20px;">
+                <h3 style="margin:0 0 18px; font-size:15px; color:var(--text);">🎯 Target Audience</h3>
+
+                <div class="form-group">
+                    <label class="form-label">Send To <span style="color:#ef4444;">*</span></label>
+                    <select name="targetType" id="targetType" class="form-control" required onchange="handleTargetChange(this.value)">
+                        <option value="" disabled selected>— Select recipients —</option>
+
+                        <% if (role === 'super_admin') { %>
+                            <option value="all_schools">🌐 All Schools (everyone)</option>
+                            <option value="specific_school">🏫 Specific School</option>
+
+                        <% } else if (role === 'school_admin') { %>
+                            <option value="all">👥 Everyone in School</option>
+                            <option value="all_teachers">👨‍🏫 All Teachers</option>
+                            <option value="all_students">🎒 All Students</option>
+                            <option value="all_parents">👪 All Parents</option>
+                            <% if (classes && classes.length > 0) { %>
+                            <option value="class_students">🏫 Class — Students</option>
+                            <option value="class_parents">🏫 Class — Parents</option>
+                            <% } %>
+                            <% if (sections && sections.length > 0) { %>
+                            <option value="section_students">📚 Section — Students</option>
+                            <option value="section_parents">📚 Section — Parents</option>
+                            <% } %>
+
+                        <% } else { %> <%/* teacher */%>
+                            <% if (sections && sections.length > 0) { %>
+                            <option value="section_all">👥 My Section (Students + Parents)</option>
+                            <option value="section_students">🎒 My Section — Students only</option>
+                            <option value="section_parents">👪 My Section — Parents only</option>
+                            <% } else { %>
+                            <option value="" disabled>No section assigned yet</option>
+                            <% } %>
+                        <% } %>
+                    </select>
+                </div>
+
+                <!-- Super admin: school picker -->
+                <% if (role === 'super_admin') { %>
+                <div id="schoolPicker" style="display:none; margin-top:14px;">
+                    <label class="form-label">Select School</label>
+                    <select name="targetSchoolId" id="targetSchoolId" class="form-control">
+                        <option value="">— Choose school —</option>
+                        <% schools.forEach(s => { %>
+                            <option value="<%= s._id %>"><%= s.name %></option>
+                        <% }) %>
+                    </select>
+                </div>
+                <% } %>
+
+                <!-- Admin: class picker -->
+                <% if (role === 'school_admin' && classes && classes.length > 0) { %>
+                <div id="classPicker" style="display:none; margin-top:14px;">
+                    <label class="form-label">Select Class</label>
+                    <select name="targetClassId" id="targetClassId" class="form-control" onchange="loadSections(this.value)">
+                        <option value="">— Choose class —</option>
+                        <% classes.forEach(c => { %>
+                            <option value="<%= c._id %>">Class <%= c.classNumber %> — <%= c.className %></option>
+                        <% }) %>
+                    </select>
+                </div>
+                <% } %>
+
+                <!-- Admin + Teacher: section picker -->
+                <% if ((role === 'school_admin' && sections && sections.length > 0) || role === 'teacher') { %>
+                <div id="sectionPicker" style="display:none; margin-top:14px;">
+                    <label class="form-label">Select Section</label>
+                    <select name="targetSectionId" id="targetSectionId" class="form-control">
+                        <option value="">— Choose section —</option>
+                        <% sections.forEach(s => { %>
+                            <option value="<%= s._id %>">
+                                <% if (s.class) { %>Class <%= s.class.classNumber %> — <% } %><%= s.sectionName %> (<%= s.sectionCode %>)
+                            </option>
+                        <% }) %>
+                    </select>
+                </div>
+                <% } %>
+            </div>
+
+            <!-- Channel -->
+            <div class="card" style="padding:24px; margin-bottom:20px;">
+                <h3 style="margin:0 0 18px; font-size:15px; color:var(--text);">📡 Delivery Channel</h3>
+                <div style="display:flex; gap:24px; flex-wrap:wrap;">
+                    <label style="display:flex; align-items:center; gap:10px; cursor:pointer; padding:14px 20px; border:2px solid var(--border,#2a2d3e); border-radius:10px; flex:1;">
+                        <input type="checkbox" name="channels" value="inapp" checked style="width:18px;height:18px;accent-color:#3b82f6;">
+                        <div>
+                            <div style="font-weight:600; color:var(--text);">🔔 In-App Notification</div>
+                            <div style="font-size:12px; color:var(--text-muted,#94a3b8);">Bell icon + notification panel</div>
+                        </div>
+                    </label>
+                    <label style="display:flex; align-items:center; gap:10px; cursor:pointer; padding:14px 20px; border:2px solid var(--border,#2a2d3e); border-radius:10px; flex:1;">
+                        <input type="checkbox" name="channels" value="email" style="width:18px;height:18px;accent-color:#3b82f6;">
+                        <div>
+                            <div style="font-weight:600; color:var(--text);">📧 Email Notification</div>
+                            <div style="font-size:12px; color:var(--text-muted,#94a3b8);">Sent to registered email addresses</div>
+                        </div>
+                    </label>
+                </div>
+            </div>
+
+            <button type="submit" class="btn btn-primary" style="width:100%; padding:14px; font-size:15px;">
+                🚀 Send Notification
+            </button>
+        </form>
+    </div>
+
+    <!-- ── Preview / Tips panel ─────────────────────────────── -->
+    <div>
+        <div class="card" style="padding:22px; margin-bottom:18px;">
+            <h3 style="margin:0 0 14px; font-size:14px; color:var(--text);">👁 Live Preview</h3>
+            <div style="background:var(--body-bg,#0f1117); border-radius:10px; padding:16px;">
+                <div style="font-weight:600; color:var(--text); font-size:13px; margin-bottom:6px;" id="previewTitle">Your subject will appear here</div>
+                <div style="font-size:12px; color:var(--text-muted,#94a3b8); line-height:1.6; white-space:pre-line;" id="previewBody">Your message body will appear here...</div>
+            </div>
+        </div>
+
+        <div class="card" style="padding:22px;">
+            <h3 style="margin:0 0 12px; font-size:14px; color:var(--text);">💡 Tips</h3>
+            <ul style="margin:0; padding:0 0 0 18px; color:var(--text-muted,#94a3b8); font-size:12px; line-height:2;">
+                <li>Select <strong>In-App</strong> for instant bell icon alerts</li>
+                <li>Select <strong>Email</strong> to reach users even when offline</li>
+                <li>Both channels can be selected simultaneously</li>
+                <li>Recipients can clear notifications from their bell panel</li>
+                <% if (role !== 'super_admin') { %>
+                <li>Notifications are visible in the school's notification log</li>
+                <% } %>
+            </ul>
+        </div>
+    </div>
+</div>
+
+<script>
+// ── Live preview ───────────────────────────────────────────────
+document.querySelector('[name="title"]').addEventListener('input', function () {
+    document.getElementById('previewTitle').textContent = this.value || 'Your subject will appear here';
+});
+document.querySelector('[name="body"]').addEventListener('input', function () {
+    document.getElementById('previewBody').textContent = this.value || 'Your message body will appear here...';
+});
+
+// ── Target type → show/hide sub-pickers ───────────────────────
+function handleTargetChange(val) {
+    const show = (id) => { const el = document.getElementById(id); if (el) el.style.display = 'block'; };
+    const hide = (id) => { const el = document.getElementById(id); if (el) el.style.display = 'none'; };
+
+    hide('schoolPicker');
+    hide('classPicker');
+    hide('sectionPicker');
+
+    // Reset optional fields
+    const sp = document.getElementById('targetSchoolId');  if (sp) sp.value = '';
+    const cp = document.getElementById('targetClassId');   if (cp) cp.value = '';
+    const sep = document.getElementById('targetSectionId'); if (sep) sep.value = '';
+
+    if (val === 'specific_school') { show('schoolPicker'); }
+    if (val === 'class_students' || val === 'class_parents') { show('classPicker'); }
+    if (val === 'section_students' || val === 'section_parents' || val === 'section_all') { show('sectionPicker'); }
+}
+
+<% if (role === 'school_admin') { %>
+// ── Load sections when a class is picked (admin only) ─────────
+function loadSections(classId) {
+    if (!classId) return;
+    fetch('/notifications/api/classes/' + classId + '/sections')
+        .then(r => r.json())
+        .then(data => {
+            const sel = document.getElementById('targetSectionId');
+            if (!sel || !data.success) return;
+            sel.innerHTML = '<option value="">— Choose section —</option>';
+            data.sections.forEach(s => {
+                const opt = document.createElement('option');
+                opt.value = s._id;
+                opt.textContent = s.sectionName + ' (' + s.sectionCode + ')';
+                sel.appendChild(opt);
+            });
+        });
+}
+<% } else { %>
+function loadSections() {}
+<% } %>
+
+// ── Pre-select section for teacher (only one section expected) ─
+<% if (role === 'teacher' && sections && sections.length > 0) { %>
+window.addEventListener('DOMContentLoaded', () => {
+    const ttype = document.getElementById('targetType');
+    ttype.value = 'section_all';
+    handleTargetChange('section_all');
+    <% if (sections.length === 1) { %>
+    const sectionSel = document.getElementById('targetSectionId');
+    if (sectionSel) sectionSel.value = '<%= sections[0]._id %>';
+    <% } %>
+});
+<% } %>
+</script>

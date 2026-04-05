@@ -1,0 +1,135 @@
+<%
+const createUrl = role === 'super_admin' ? '/super-admin/notifications/create'
+                : role === 'school_admin' ? '/admin/notifications/create'
+                : '/teacher/notifications/create';
+
+const targetLabel = {
+    all_schools:      '🌐 All Schools',
+    specific_school:  '🏫 Specific School',
+    all:              '👥 Everyone in School',
+    all_teachers:     '👨‍🏫 All Teachers',
+    all_students:     '🎒 All Students',
+    all_parents:      '👪 All Parents',
+    class_students:   '🏫 Class — Students',
+    class_parents:    '🏫 Class — Parents',
+    section_students: '📚 Section — Students',
+    section_parents:  '📚 Section — Parents',
+    section_all:      '👥 Section — Everyone',
+};
+%>
+
+<div class="page-header">
+    <div>
+        <h1>🔔 <%= title %></h1>
+        <p>
+            <% if (role === 'super_admin') { %>All notifications sent by Super Admin<% } %>
+            <% if (role === 'school_admin') { %>Notifications sent by school admin and teachers<% } %>
+            <% if (role === 'teacher') { %>Notifications you have sent<% } %>
+        </p>
+    </div>
+    <a href="<%= createUrl %>" class="btn btn-primary">+ Send Notification</a>
+</div>
+
+<% if (notifications.length === 0) { %>
+<div class="card">
+    <div class="empty-state" style="padding:60px 20px; text-align:center;">
+        <div style="font-size:48px; margin-bottom:12px;">🔕</div>
+        <h3 style="color:var(--text);">No notifications sent yet</h3>
+        <p style="color:var(--text-muted,#94a3b8); margin-bottom:20px;">Start communicating with your audience.</p>
+        <a href="<%= createUrl %>" class="btn btn-primary">Send First Notification</a>
+    </div>
+</div>
+<% } else { %>
+
+<!-- Summary strip -->
+<div style="display:grid; grid-template-columns:repeat(3,1fr); gap:14px; margin-bottom:20px;">
+    <div class="card" style="padding:16px; text-align:center;">
+        <div style="font-size:26px; font-weight:700; color:#3b82f6;"><%= notifications.length %></div>
+        <div style="font-size:12px; color:var(--text-muted,#94a3b8);">Total Sent</div>
+    </div>
+    <div class="card" style="padding:16px; text-align:center;">
+        <div style="font-size:26px; font-weight:700; color:#10b981;"><%= notifications.filter(n=>n.channels.inApp).length %></div>
+        <div style="font-size:12px; color:var(--text-muted,#94a3b8);">In-App</div>
+    </div>
+    <div class="card" style="padding:16px; text-align:center;">
+        <div style="font-size:26px; font-weight:700; color:#6366f1;"><%= notifications.filter(n=>n.channels.email).length %></div>
+        <div style="font-size:12px; color:var(--text-muted,#94a3b8);">Email</div>
+    </div>
+</div>
+
+<div class="card">
+    <div class="table-wrapper">
+        <table>
+            <thead>
+                <tr>
+                    <th>Title</th>
+                    <th>Target</th>
+                    <th>Channels</th>
+                    <th>Recipients</th>
+                    <% if (role !== 'teacher') { %><th>Sent By</th><% } %>
+                    <th>Date</th>
+                </tr>
+            </thead>
+            <tbody>
+                <% notifications.forEach(n => { %>
+                <tr>
+                    <td>
+                        <div class="fw-semibold" style="max-width:220px;">
+                            <%= n.title %>
+                        </div>
+                        <div class="text-muted" style="font-size:11px; margin-top:2px; max-width:220px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">
+                            <%= n.body %>
+                        </div>
+                    </td>
+                    <td>
+                        <div style="font-size:12px; color:var(--text-muted,#94a3b8);">
+                            <%= targetLabel[n.target.type] || n.target.type %>
+                        </div>
+                        <% if (n.target.class) { %>
+                            <div style="font-size:11px; color:var(--text-muted,#94a3b8); margin-top:2px;">
+                                Class <%= n.target.class.classNumber %> — <%= n.target.class.className %>
+                            </div>
+                        <% } %>
+                        <% if (n.target.section) { %>
+                            <div style="font-size:11px; color:var(--text-muted,#94a3b8); margin-top:2px;">
+                                Sec <%= n.target.section.sectionName %>
+                            </div>
+                        <% } %>
+                    </td>
+                    <td>
+                        <div style="display:flex; gap:6px; flex-wrap:wrap;">
+                            <% if (n.channels.inApp) { %>
+                                <span class="badge badge-cyan" style="font-size:10px;">🔔 In-App</span>
+                            <% } %>
+                            <% if (n.channels.email) { %>
+                                <span class="badge badge-purple" style="font-size:10px;">📧 Email</span>
+                            <% } %>
+                        </div>
+                    </td>
+                    <td>
+                        <span style="font-weight:600; color:#3b82f6;"><%= n.recipientCount %></span>
+                        <span style="font-size:11px; color:var(--text-muted,#94a3b8);"> users</span>
+                    </td>
+                    <% if (role !== 'teacher') { %>
+                    <td>
+                        <div style="font-size:13px;">
+                            <%= n.sender?.name || '—' %>
+                        </div>
+                        <div class="text-muted" style="font-size:11px;">
+                            <%= n.senderRole?.replace('_', ' ') %>
+                        </div>
+                    </td>
+                    <% } %>
+                    <td class="text-muted" style="font-size:12px; white-space:nowrap;">
+                        <%= new Date(n.createdAt).toLocaleDateString('en-IN', { day:'numeric', month:'short', year:'numeric' }) %>
+                        <div style="font-size:10px; margin-top:2px;">
+                            <%= new Date(n.createdAt).toLocaleTimeString('en-IN', { hour:'2-digit', minute:'2-digit' }) %>
+                        </div>
+                    </td>
+                </tr>
+                <% }) %>
+            </tbody>
+        </table>
+    </div>
+</div>
+<% } %>

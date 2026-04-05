@@ -43,5 +43,11 @@ router.post('/correction-requests/review', attendanceGuard, attendanceCtrl.postR
 // ── Timetable ─────────────────────────────────────────────────
 router.get('/timetable', guard, sectionCtrl.getTeacherTimetable);
 
+// ── Notifications ─────────────────────────────────────────────
+const notifCtrl = require('../controllers/notificationController');
+router.get('/notifications',        guard, notifCtrl.getNotificationList);
+router.get('/notifications/create', guard, notifCtrl.getCreateNotification);
+router.post('/notifications/send',  guard, notifCtrl.postSendNotification);
+
 module.exports = router;
 

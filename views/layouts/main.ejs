@@ -68,6 +68,15 @@
                         <span class="nav-icon">🔐</span> Module Permissions
                     </a>
 
+                    <div class="nav-section-label">Communications</div>
+                    <a href="/super-admin/notifications"
+                        class="nav-item <%= _path.includes('Notification') ? 'active' : '' %>">
+                        <span class="nav-icon">🔔</span> Notifications
+                    </a>
+                    <a href="/super-admin/notifications/create" class="nav-item">
+                        <span class="nav-icon">📢</span> Send Notification
+                    </a>
+
                 <% } else if (session && session.userRole === 'school_admin') { %>
                     <div class="nav-section-label">Overview</div>
                     <a href="/admin/dashboard"
@@ -108,6 +117,15 @@
                     </a>
                     <% } %>
 
+                    <div class="nav-section-label">Communications</div>
+                    <a href="/admin/notifications"
+                        class="nav-item <%= _path.includes('Notification') ? 'active' : '' %>">
+                        <span class="nav-icon">🔔</span> Notifications
+                    </a>
+                    <a href="/admin/notifications/create" class="nav-item">
+                        <span class="nav-icon">📢</span> Send Notification
+                    </a>
+
                 <% } else if (session && session.userRole === 'teacher') { %>
                     <div class="nav-section-label">Classroom</div>
                     <a href="/teacher/dashboard"
@@ -121,6 +139,15 @@
                     <a href="/teacher/timetable"
                         class="nav-item <%= _path.includes('Timetable') ? 'active' : '' %>">
                         <span class="nav-icon">📅</span> Timetable
+                    </a>
+
+                    <div class="nav-section-label">Communications</div>
+                    <a href="/teacher/notifications"
+                        class="nav-item <%= _path.includes('Notification') ? 'active' : '' %>">
+                        <span class="nav-icon">🔔</span> Notifications
+                    </a>
+                    <a href="/teacher/notifications/create" class="nav-item">
+                        <span class="nav-icon">📢</span> Send Notification
                     </a>
 
                     <% if (_hasAttendance) { %>
@@ -232,10 +259,63 @@
                 </div>
                 <div class="topbar-actions">
                     <% if (session && session.schoolName) { %>
-                        <div class="topbar-btn">🏫 <%= session.schoolName %>
+                        <div class="topbar-btn">🏫 <%= session.schoolName %></div>
+                    <% } %>
+
+                    <!-- ── Bell Icon ──────────────────────────────── -->
+                    <% if (session && session.userId) { %>
+                    <div style="position:relative;" id="bellWrapper">
+                        <button id="bellBtn" onclick="toggleBell(event)"
+                            style="position:relative; background:var(--card-bg,#1a1d2e); border:1px solid var(--border,#2a2d3e);
+                                   border-radius:10px; padding:8px 12px; cursor:pointer; color:var(--text,#e2e8f0);
+                                   font-size:18px; display:flex; align-items:center; gap:6px; transition:background .2s;">
+                            🔔
+                            <span id="bellBadge"
+                                  style="display:<%= unreadNotificationCount > 0 ? 'flex' : 'none' %>;
+                                         position:absolute; top:-6px; right:-6px; background:#ef4444; color:#fff;
+                                         border-radius:50%; width:18px; height:18px; font-size:10px; font-weight:700;
+                                         align-items:center; justify-content:center; line-height:1;">
+                                <%= unreadNotificationCount > 9 ? '9+' : unreadNotificationCount %>
+                            </span>
+                        </button>
+
+                        <!-- Dropdown panel -->
+                        <div id="bellDropdown"
+                             style="display:none; position:absolute; right:0; top:calc(100% + 8px); width:340px;
+                                    background:var(--card-bg,#1a1d2e); border:1px solid var(--border,#2a2d3e);
+                                    border-radius:14px; box-shadow:0 20px 60px rgba(0,0,0,.5); z-index:9999; overflow:hidden;">
+
+                            <!-- Header -->
+                            <div style="display:flex; align-items:center; justify-content:space-between;
+                                        padding:14px 18px; border-bottom:1px solid var(--border,#2a2d3e);">
+                                <span style="font-weight:700; font-size:14px; color:var(--text,#e2e8f0);">
+                                    🔔 Notifications
+                                    <span id="dropUnreadCount" style="font-size:11px; color:#3b82f6; margin-left:4px;"></span>
+                                </span>
+                                <div style="display:flex; gap:8px;">
+                                    <button onclick="markAllRead()"
+                                        style="font-size:11px; color:#3b82f6; background:none; border:none; cursor:pointer; padding:2px 6px;">
+                                        ✓ Mark all read
+                                    </button>
+                                    <button onclick="clearAll()"
+                                        style="font-size:11px; color:#94a3b8; background:none; border:none; cursor:pointer; padding:2px 6px;">
+                                        🗑 Clear all
+                                    </button>
+                                </div>
+                            </div>
+
+                            <!-- Notification list -->
+                            <div id="bellList" style="max-height:360px; overflow-y:auto;"></div>
+
+                            <!-- Footer -->
+                            <div style="padding:10px 18px; border-top:1px solid var(--border,#2a2d3e); text-align:center;">
+                                <span style="font-size:11px; color:var(--text-muted,#94a3b8);">Only you can see and clear your notifications</span>
+                            </div>
                         </div>
-                        <% } %>
-                            <a href="/auth/logout" class="topbar-btn">🚪 Logout</a>
+                    </div>
+                    <% } %>
+
+                    <a href="/auth/logout" class="topbar-btn">🚪 Logout</a>
                 </div>
             </header>
 
@@ -262,6 +342,141 @@
         </div>
     </div>
     <script src="/js/main.js"></script>
+
+    <% if (session && session.userId) { %>
+    <script>
+    /* ── Bell Icon Logic ──────────────────────────────────────── */
+    let bellOpen = false;
+    let bellLoaded = false;
+
+    function toggleBell(e) {
+        e.stopPropagation();
+        bellOpen = !bellOpen;
+        document.getElementById('bellDropdown').style.display = bellOpen ? 'block' : 'none';
+        if (bellOpen && !bellLoaded) loadBell();
+    }
+
+    document.addEventListener('click', function (e) {
+        if (!document.getElementById('bellWrapper').contains(e.target)) {
+            bellOpen = false;
+            document.getElementById('bellDropdown').style.display = 'none';
+        }
+    });
+
+    function roleIcon(role) {
+        return { super_admin:'👑', school_admin:'🛡️', teacher:'👨‍🏫' }[role] || '🔔';
+    }
+
+    function timeAgo(dateStr) {
+        const diff = Date.now() - new Date(dateStr);
+        const mins  = Math.floor(diff / 60000);
+        const hours = Math.floor(diff / 3600000);
+        const days  = Math.floor(diff / 86400000);
+        if (mins  < 1)   return 'Just now';
+        if (mins  < 60)  return mins  + 'm ago';
+        if (hours < 24)  return hours + 'h ago';
+        return days + 'd ago';
+    }
+
+    function renderBell(data) {
+        const list = document.getElementById('bellList');
+        const badge = document.getElementById('bellBadge');
+        const countEl = document.getElementById('dropUnreadCount');
+
+        // Update badge
+        if (data.unreadCount > 0) {
+            badge.style.display = 'flex';
+            badge.textContent = data.unreadCount > 9 ? '9+' : data.unreadCount;
+        } else {
+            badge.style.display = 'none';
+        }
+        countEl.textContent = data.unreadCount > 0 ? '(' + data.unreadCount + ' unread)' : '';
+
+        if (!data.notifications || data.notifications.length === 0) {
+            list.innerHTML = '<div style="padding:40px 20px; text-align:center; color:var(--text-muted,#94a3b8); font-size:13px;">🔕 No notifications</div>';
+            return;
+        }
+
+        list.innerHTML = data.notifications.map(n => `
+            <div id="receipt-${n.receiptId}"
+                 style="padding:14px 18px; border-bottom:1px solid var(--border,#2a2d3e);
+                        background:${n.isRead ? 'transparent' : 'rgba(59,130,246,.06)'};
+                        transition:background .2s;">
+                <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:8px;">
+                    <div style="flex:1; min-width:0;">
+                        <div style="display:flex; align-items:center; gap:6px; margin-bottom:4px;">
+                            ${!n.isRead ? '<span style="width:7px;height:7px;border-radius:50%;background:#3b82f6;flex-shrink:0;display:inline-block;"></span>' : ''}
+                            <span style="font-weight:${n.isRead ? '500' : '700'}; font-size:13px; color:var(--text,#e2e8f0);">
+                                ${escHtml(n.title || '—')}
+                            </span>
+                        </div>
+                        <div style="font-size:12px; color:var(--text-muted,#94a3b8); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; max-width:220px;">
+                            ${escHtml(n.body || '')}
+                        </div>
+                        <div style="font-size:10px; color:var(--text-muted,#94a3b8); margin-top:4px;">
+                            ${roleIcon(n.senderRole)} ${(n.senderRole||'').replace('_',' ')} &bull; ${timeAgo(n.createdAt)}
+                        </div>
+                    </div>
+                    <button onclick="clearOne('${n.receiptId}')" title="Dismiss"
+                        style="background:none; border:none; cursor:pointer; color:var(--text-muted,#94a3b8);
+                               font-size:16px; padding:0 0 0 8px; flex-shrink:0; opacity:.6;"
+                        onmouseover="this.style.opacity=1" onmouseout="this.style.opacity=.6">×</button>
+                </div>
+            </div>`
+        ).join('');
+    }
+
+    function escHtml(str) {
+        return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    }
+
+    function loadBell() {
+        bellLoaded = true;
+        fetch('/notifications/api/inbox')
+            .then(r => r.json())
+            .then(renderBell)
+            .catch(() => {});
+    }
+
+    function markAllRead() {
+        fetch('/notifications/api/mark-all-read', { method:'POST' })
+            .then(() => loadBell());
+    }
+
+    function clearAll() {
+        fetch('/notifications/api/clear-all', { method:'POST' })
+            .then(() => {
+                renderBell({ unreadCount: 0, notifications: [] });
+                bellLoaded = false;
+            });
+    }
+
+    function clearOne(receiptId) {
+        fetch('/notifications/api/' + receiptId + '/clear', { method:'POST' })
+            .then(() => {
+                const el = document.getElementById('receipt-' + receiptId);
+                if (el) { el.style.opacity = '0'; el.style.transition = 'opacity .3s'; setTimeout(() => el.remove(), 300); }
+                loadBell();
+            });
+    }
+
+    // Silently refresh badge count every 60 s
+    setInterval(() => {
+        fetch('/notifications/api/inbox')
+            .then(r => r.json())
+            .then(data => {
+                const badge = document.getElementById('bellBadge');
+                if (data.unreadCount > 0) {
+                    badge.style.display = 'flex';
+                    badge.textContent = data.unreadCount > 9 ? '9+' : data.unreadCount;
+                } else {
+                    badge.style.display = 'none';
+                }
+                if (bellOpen) renderBell(data);
+            }).catch(() => {});
+    }, 60000);
+    </script>
+    <% } %>
 </body>
 
 </html>
