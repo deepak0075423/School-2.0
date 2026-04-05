@@ -268,8 +268,8 @@
                         <div class="topbar-btn">🏫 <%= session.schoolName %></div>
                     <% } %>
 
-                    <!-- ── Bell Icon (visible when notification module is enabled, or for super_admin) -->
-                    <% if (session && session.userId && (session.userRole === 'super_admin' || _hasNotification)) { %>
+                    <!-- ── Bell Icon (visible to all authenticated users — module gate only blocks sending, not receiving) -->
+                    <% if (session && session.userId) { %>
                     <div style="position:relative;" id="bellWrapper">
                         <button id="bellBtn" onclick="toggleBell(event)"
                             style="position:relative; background:var(--card-bg,#1a1d2e); border:1px solid var(--border,#2a2d3e);
@@ -349,7 +349,29 @@
     </div>
     <script src="/js/main.js"></script>
 
-    <% if (session && session.userId && (session.userRole === 'super_admin' || _hasNotification)) { %>
+    <% if (session && session.userId) { %>
+
+    <!-- Notification Detail Modal -->
+    <div id="notifDetailModal" onclick="if(event.target===this)this.style.display='none'"
+         style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:100000;
+                align-items:center;justify-content:center;">
+        <div style="background:var(--card-bg,#1a1d2e);border:1px solid var(--border,#2a2d3e);
+                    border-radius:16px;width:min(520px,92vw);max-height:82vh;overflow-y:auto;
+                    padding:28px;position:relative;box-shadow:0 24px 64px rgba(0,0,0,.6);">
+            <button onclick="document.getElementById('notifDetailModal').style.display='none'"
+                style="position:absolute;top:14px;right:14px;background:none;border:none;
+                       cursor:pointer;color:var(--text-muted,#94a3b8);font-size:22px;line-height:1;
+                       opacity:.7;" onmouseover="this.style.opacity=1" onmouseout="this.style.opacity=.7">×</button>
+            <div style="font-size:11px;color:#3b82f6;font-weight:600;text-transform:uppercase;
+                        letter-spacing:.06em;margin-bottom:10px;">🔔 Notification</div>
+            <div id="ndTitle" style="font-weight:700;font-size:18px;color:var(--text,#e2e8f0);
+                                     margin-bottom:8px;padding-right:28px;line-height:1.4;"></div>
+            <div id="ndMeta"  style="font-size:12px;color:var(--text-muted,#94a3b8);margin-bottom:20px;"></div>
+            <div id="ndBody"  style="font-size:14px;color:var(--text,#e2e8f0);line-height:1.8;
+                                     border-top:1px solid var(--border,#2a2d3e);padding-top:18px;
+                                     white-space:pre-wrap;word-break:break-word;"></div>
+        </div>
+    </div>
 
     <!-- Toast container -->
     <div id="toastContainer" style="position:fixed;bottom:24px;right:24px;z-index:99999;display:flex;flex-direction:column;gap:10px;pointer-events:none;"></div>
@@ -371,6 +393,7 @@
 
     /* ── Bell state ──────────────────────────────────────────── */
     let bellOpen=false, bellLoaded=false, _unreadLocal=<%= _unreadCount %>;
+    const _notifMap = {};  // receiptId → notification object for detail modal
 
     function setBadge(n){
         const b=document.getElementById('bellBadge');
@@ -401,12 +424,15 @@
             list.innerHTML='<div style="padding:40px 20px;text-align:center;color:var(--text-muted,#94a3b8);font-size:13px;">🔕 No notifications</div>';
             return;
         }
+        // Store for detail modal
+        (data.notifications||[]).forEach(n=>{ _notifMap[n.receiptId]=n; });
         list.innerHTML=data.notifications.map(n=>`
             <div id="receipt-${n.receiptId}"
                  style="padding:14px 18px;border-bottom:1px solid var(--border,#2a2d3e);
                         background:${n.isRead?'transparent':'rgba(59,130,246,.06)'};transition:background .2s;">
               <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;">
-                <div style="flex:1;min-width:0;">
+                <div onclick="showNotifDetail('${n.receiptId}')"
+                     style="flex:1;min-width:0;cursor:pointer;">
                   <div style="display:flex;align-items:center;gap:6px;margin-bottom:4px;">
                     ${!n.isRead?'<span style="width:7px;height:7px;border-radius:50%;background:#3b82f6;flex-shrink:0;display:inline-block;"></span>':''}
                     <span style="font-weight:${n.isRead?'500':'700'};font-size:13px;color:var(--text,#e2e8f0);">${escHtml(n.title||'—')}</span>
@@ -420,6 +446,37 @@
               </div>
             </div>`).join('');
     }
+
+    /* ── Notification Detail Modal ───────────────────────────── */
+    function showNotifDetail(receiptId){
+        const n=_notifMap[receiptId];
+        if(!n) return;
+        document.getElementById('ndTitle').textContent = n.title||'—';
+        document.getElementById('ndMeta').textContent  =
+            roleIcon(n.senderRole)+' '+(n.senderRole||'').replace(/_/g,' ')+'  ·  '+
+            new Date(n.createdAt).toLocaleString('en-IN',{day:'numeric',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'});
+        document.getElementById('ndBody').textContent  = n.body||'';
+        document.getElementById('notifDetailModal').style.display='flex';
+        // Mark as read on open
+        if(!n.isRead){
+            n.isRead=true;
+            setBadge(Math.max(0,_unreadLocal-1));
+            const el=document.getElementById('receipt-'+receiptId);
+            if(el){
+                el.style.background='transparent';
+                // Remove blue unread dot
+                const dot=el.querySelector('span[style*="border-radius:50%"]');
+                if(dot) dot.remove();
+                // Change title to normal weight
+                const titleSpan=el.querySelector('span[style*="font-weight"]');
+                if(titleSpan) titleSpan.style.fontWeight='500';
+            }
+            fetch('/notifications/api/'+receiptId+'/mark-read',{method:'POST'}).catch(()=>{});
+        }
+    }
+
+    // Close modal on Escape key
+    document.addEventListener('keydown',function(e){ if(e.key==='Escape') document.getElementById('notifDetailModal').style.display='none'; });
 
     function loadBell(){ bellLoaded=true; fetch('/notifications/api/inbox').then(r=>r.json()).then(renderBell).catch(()=>{}); }
     function markAllRead(){ fetch('/notifications/api/mark-all-read',{method:'POST'}).then(()=>loadBell()); }
