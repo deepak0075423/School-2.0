@@ -1,4 +1,11 @@
 require('dotenv').config();
+
+// Suppress DEP0044 (util.isArray) emitted by the xlsx package — harmless, unfixable upstream
+process.on('warning', (w) => {
+    if (w.code === 'DEP0044') return;
+    process.stderr.write(`${w.name}: ${w.message}\n`);
+});
+
 const app = require('./app');
 const connectDB = require('./config/db');
 
