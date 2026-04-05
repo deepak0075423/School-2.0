@@ -17,11 +17,13 @@ async function resolveRecipients(targetType, targetData, schoolId) {
     switch (targetType) {
 
         case 'all_schools':
-            ids = await User.find({ role: { $ne: 'super_admin' }, isActive: true }).distinct('_id');
+            // Super admin communicates with school admins only (they cascade to their school)
+            ids = await User.find({ role: 'school_admin', isActive: true }).distinct('_id');
             break;
 
         case 'specific_school':
-            ids = await User.find({ school: targetData.schoolId, isActive: true }).distinct('_id');
+            // Super admin targets only the school admin(s) of that school
+            ids = await User.find({ school: targetData.schoolId, role: 'school_admin', isActive: true }).distinct('_id');
             break;
 
         case 'all':

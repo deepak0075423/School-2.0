@@ -51,8 +51,8 @@
                         <option value="" disabled selected>— Select recipients —</option>
 
                         <% if (role === 'super_admin') { %>
-                            <option value="all_schools">🌐 All Schools (everyone)</option>
-                            <option value="specific_school">🏫 Specific School</option>
+                            <option value="all_schools">🌐 All Schools — School Admins</option>
+                            <option value="specific_school">🏫 Specific School — School Admins</option>
 
                         <% } else if (role === 'school_admin') { %>
                             <option value="all">👥 Everyone in School</option>
