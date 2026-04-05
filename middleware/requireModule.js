@@ -14,8 +14,8 @@
  */
 
 const MODULE_LABELS = {
-    attendance: 'Attendance Management',
-    // add future module labels here
+    attendance:   'Attendance Management',
+    notification: 'Notification Module',
 };
 
 const requireModule = (moduleName) => (req, res, next) => {

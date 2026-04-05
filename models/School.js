@@ -37,6 +37,10 @@ const SchoolSchema = new mongoose.Schema({
             type: Boolean,
             default: false,
         },
+        notification: {
+            type: Boolean,
+            default: false,
+        },
         // Future modules can be added here (e.g. grades, assignments, fees)
     },
     createdAt: {

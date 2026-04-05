@@ -493,8 +493,8 @@ const downloadStudentTemplate = (req, res) => {
 
 // All known modules with their display metadata
 const ALL_MODULES = [
-    { key: 'attendance', label: 'Attendance Management', icon: '📋', description: 'Student & teacher attendance tracking, calendars, correction requests, regularisation, parent notifications.' },
-    // Add future modules here — e.g. { key: 'grades', label: 'Grades & Report Cards', ... }
+    { key: 'attendance',   label: 'Attendance Management', icon: '📋', description: 'Student & teacher attendance tracking, calendars, correction requests, regularisation, parent notifications.' },
+    { key: 'notification', label: 'Notification Module',   icon: '🔔', description: 'In-app and email notifications from super admin, school admin, and teachers to students, parents and staff.' },
 ];
 
 const getPermissions = async (req, res) => {
