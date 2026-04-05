@@ -37,6 +37,7 @@
                     const _schoolModules = (currentUser && currentUser.school && currentUser.school.modules) || {};
                     const _hasAttendance = !!_schoolModules.attendance;
                     const _path = (typeof locals !== 'undefined' && locals.title) ? title : '';
+                    const _unreadCount = (typeof unreadNotificationCount !== 'undefined') ? unreadNotificationCount : 0;
                 %>
 
                 <% if (session && session.userRole === 'super_admin') { %>
@@ -271,11 +272,11 @@
                                    font-size:18px; display:flex; align-items:center; gap:6px; transition:background .2s;">
                             🔔
                             <span id="bellBadge"
-                                  style="display:<%= unreadNotificationCount > 0 ? 'flex' : 'none' %>;
+                                  style="display:<%= _unreadCount > 0 ? 'flex' : 'none' %>;
                                          position:absolute; top:-6px; right:-6px; background:#ef4444; color:#fff;
                                          border-radius:50%; width:18px; height:18px; font-size:10px; font-weight:700;
                                          align-items:center; justify-content:center; line-height:1;">
-                                <%= unreadNotificationCount > 9 ? '9+' : unreadNotificationCount %>
+                                <%= _unreadCount > 9 ? '9+' : _unreadCount %>
                             </span>
                         </button>
 
