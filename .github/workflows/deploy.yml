@@ -23,10 +23,10 @@ jobs:
             npm install --production
             mkdir -p logs
 
-            # ── nginx: ensure SSE proxying works ──────────────────────
+            # ── nginx: ensure SSE proxying works (port 3010) ─────────
             NGINX_CONF="/etc/nginx/sites-available/default"
             if [ -f "$NGINX_CONF" ] && ! grep -q "proxy_buffering off" "$NGINX_CONF"; then
-              sudo sed -i 's|proxy_pass http://localhost:3000;|proxy_pass http://localhost:3000;\n        proxy_buffering off;\n        proxy_read_timeout 86400;\n        proxy_http_version 1.1;\n        proxy_set_header Connection "";|' "$NGINX_CONF"
+              sudo sed -i 's|proxy_pass http://localhost:3010;|proxy_pass http://localhost:3010;\n        proxy_buffering off;\n        proxy_read_timeout 86400;\n        proxy_http_version 1.1;\n        proxy_set_header Connection "";|' "$NGINX_CONF"
               echo "✅ nginx SSE config applied"
             fi
             sudo nginx -t && sudo systemctl reload nginx
