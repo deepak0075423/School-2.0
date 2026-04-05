@@ -315,6 +315,7 @@
 
                             <!-- Footer -->
                             <div style="padding:10px 18px; border-top:1px solid var(--border,#2a2d3e); text-align:center;">
+                                <div id="notifPermBanner" style="display:none; margin-bottom:8px;"></div>
                                 <span style="font-size:11px; color:var(--text-muted,#94a3b8);">Only you can see and clear your notifications</span>
                             </div>
                         </div>
@@ -400,6 +401,9 @@
         _unreadLocal=n;
         if(n>0){ b.style.display='flex'; b.textContent=n>9?'9+':n; }
         else    { b.style.display='none'; }
+        // Also update the "(X unread)" text inside the open dropdown
+        const countEl=document.getElementById('dropUnreadCount');
+        if(countEl) countEl.textContent=n>0?'('+n+' unread)':'';
     }
     function incrementBadge(){ setBadge(_unreadLocal+1); }
 
@@ -408,6 +412,32 @@
         bellOpen=!bellOpen;
         document.getElementById('bellDropdown').style.display=bellOpen?'block':'none';
         if(bellOpen && !bellLoaded) loadBell();
+        if(bellOpen) _checkNotifPermission();
+    }
+
+    function _checkNotifPermission(){
+        const banner=document.getElementById('notifPermBanner');
+        if(!banner || !('Notification' in window)) return;
+        const perm=Notification.permission;
+        if(perm==='granted'){
+            banner.style.display='none';
+        } else if(perm==='denied'){
+            banner.style.display='block';
+            banner.innerHTML='<span style="font-size:11px;color:#f59e0b;">⚠️ Browser alerts blocked — enable in browser site settings</span>';
+        } else {
+            // 'default' — not asked yet, show a button
+            banner.style.display='block';
+            banner.innerHTML='<button onclick="_requestNotifPerm()" '+
+                'style="font-size:11px;background:rgba(59,130,246,.15);border:1px solid rgba(59,130,246,.4);'+
+                'color:#3b82f6;border-radius:6px;padding:4px 10px;cursor:pointer;">'+
+                '🔔 Enable browser alerts</button>';
+        }
+    }
+
+    function _requestNotifPerm(){
+        Notification.requestPermission().then(function(result){
+            _checkNotifPermission();
+        });
     }
     document.addEventListener('click',function(e){
         const w=document.getElementById('bellWrapper');
@@ -512,22 +542,48 @@
     }
 
     /* ── Browser Notification (background tabs/windows) ─────── */
-    (function askPermission(){
-        if('Notification' in window && Notification.permission==='default'){
-            // Delay ask so it doesn't pop on first load — wait for user interaction
-            document.addEventListener('click', function ask(){
-                Notification.requestPermission();
-                document.removeEventListener('click', ask);
-            }, {once:true});
-        }
-    })();
-
     function showBrowserNotification(title, body){
-        if(!('Notification' in window) || Notification.permission!=='granted') return;
+        if(!('Notification' in window) || Notification.permission !== 'granted') return;
         try {
-            const n=new Notification(title,{body, icon:'/favicon.ico', tag:'school-notif'});
-            n.onclick=()=>{ window.focus(); n.close(); };
-        } catch { /* Safari may throw */ }
+            var n = new Notification(title, { body, icon: '/favicon.ico' });
+            n.onerror = function(e){ console.error('[Notif] show error:', e); };
+            n.onclick = function(){ window.focus(); n.close(); };
+        } catch(e) { console.error('[Notif] create error:', e); }
+    }
+
+
+    /* ── Notification chime (Web Audio API — no audio file needed) ── */
+    let _audioCtx=null;
+    function _getAudioCtx(){
+        if(!_audioCtx){
+            try{ _audioCtx=new(window.AudioContext||window.webkitAudioContext)(); }catch{ return null; }
+        }
+        if(_audioCtx.state==='suspended') _audioCtx.resume().catch(()=>{});
+        return _audioCtx;
+    }
+    // Warm up AudioContext on first user interaction (browser autoplay policy)
+    document.addEventListener('click',function(){ _getAudioCtx(); },{once:true});
+
+    function playNotifSound(){
+        const ctx=_getAudioCtx();
+        if(!ctx) return;
+        try{
+            // Two-tone chime: A5 then C#6
+            [[880,0,0.28],[1108,0.16,0.32]].forEach(([freq,delay,dur])=>{
+                const osc=ctx.createOscillator();
+                const gain=ctx.createGain();
+                osc.connect(gain);
+                gain.connect(ctx.destination);
+                osc.type='sine';
+                osc.frequency.value=freq;
+                const t=ctx.currentTime+delay;
+                gain.gain.setValueAtTime(0,t);
+                gain.gain.linearRampToValueAtTime(0.22,t+0.015);
+                gain.gain.exponentialRampToValueAtTime(0.001,t+dur);
+                osc.start(t);
+                osc.stop(t+dur+0.05);
+            });
+        }catch{ /* ignore */ }
     }
 
     /* ── BroadcastChannel (cross-tab sync) ──────────────────── */
@@ -538,7 +594,10 @@
         incrementBadge();
         showToast(data.title, data.body, data.senderRole);
         if(bellOpen){ bellLoaded=false; loadBell(); }   // refresh open dropdown
-        if(document.hidden) showBrowserNotification(data.title, data.body);
+        if(document.hidden){
+            showBrowserNotification(data.title, data.body);
+            playNotifSound();
+        }
     }
 
     if(bc){
