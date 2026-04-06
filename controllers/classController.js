@@ -5,6 +5,7 @@ const StudentSectionHistory = require('../models/StudentSectionHistory');
 const ActivityLog = require('../models/ActivityLog');
 const User = require('../models/User');
 const StudentProfile = require('../models/StudentProfile');
+const mongoose = require('mongoose');
 
 /* ─────────────────────────────────────────────
    ACADEMIC YEARS
@@ -80,7 +81,7 @@ const getClasses = async (req, res) => {
         // For each class, get section count
         const ClassSection = require('../models/ClassSection');
         const classSections = await ClassSection.aggregate([
-            { $match: { school: req.session.schoolId } },
+            { $match: { school: new mongoose.Types.ObjectId(req.session.schoolId) } },
             { $group: { _id: '$class', count: { $sum: 1 }, students: { $sum: '$currentCount' } } },
         ]);
         const sectionMap = {};
@@ -141,11 +142,23 @@ const getClassDetail = async (req, res) => {
             .populate('classTeacher', 'name email')
             .populate('substituteTeacher', 'name email')
             .sort({ sectionName: 1 });
+            
+        // Get occupied teachers
+        const occupiedSections = await ClassSection.find({ school: req.session.schoolId });
+        const occupiedTeacherIds = [];
+        occupiedSections.forEach(sec => {
+            if (sec.classTeacher) occupiedTeacherIds.push(sec.classTeacher.toString());
+            if (sec.substituteTeacher) occupiedTeacherIds.push(sec.substituteTeacher.toString());
+        });
+
+        // Filter unassigned active teachers
         const teachers = await User.find({ role: 'teacher', school: req.session.schoolId, isActive: true })
             .select('name email');
+        const availableTeachers = teachers.filter(t => !occupiedTeacherIds.includes(t._id.toString()));
+
         res.render('admin/classes/show', {
             title: `Class ${cls.className}`, layout: 'layouts/main',
-            cls, sections, teachers,
+            cls, sections, teachers: availableTeachers,
         });
     } catch (err) {
         req.flash('error', 'Failed to load class.'); res.redirect('/admin/classes');
@@ -172,12 +185,41 @@ const postCreateSection = async (req, res) => {
         const cls = await Class.findOne({ _id: classId, school: req.session.schoolId });
         if (!cls) { req.flash('error', 'Class not found.'); return res.redirect('/admin/classes'); }
 
-        const { sectionName, sectionCode, classTeacher, substituteTeacher, maxStudents, status } = req.body;
+        const { sectionName, classTeacher, substituteTeacher, maxStudents, status } = req.body;
+
+        // Verify section name uniqueness for this class specifically
+        const existingSectionName = await ClassSection.findOne({ class: classId, sectionName: sectionName.trim().toUpperCase() });
+        if (existingSectionName) {
+            req.flash('error', `Section "${sectionName}" already exists in this class.`);
+            return res.redirect(`/admin/classes/${classId}`);
+        }
 
         // Validate teacher conflict
-        if (classTeacher && substituteTeacher && classTeacher === substituteTeacher) {
+        const ct = classTeacher ? classTeacher.toString().trim() : '';
+        const st = substituteTeacher ? substituteTeacher.toString().trim() : '';
+        
+        if (ct && st && ct === st) {
             req.flash('error', 'Class teacher and substitute teacher cannot be the same person.');
             return res.redirect(`/admin/classes/${classId}`);
+        }
+        
+        // Verify teacher globabl availability
+        if (ct || st) {
+            const checkIds = [];
+            if (ct) checkIds.push(ct);
+            if (st) checkIds.push(st);
+            
+            const occupied = await ClassSection.findOne({
+                school: req.session.schoolId,
+                $or: [
+                    { classTeacher: { $in: checkIds } },
+                    { substituteTeacher: { $in: checkIds } }
+                ]
+            });
+            if (occupied) {
+                req.flash('error', 'One or both of the selected teachers are already assigned to a section.');
+                return res.redirect(`/admin/classes/${classId}`);
+            }
         }
 
         const section = await ClassSection.create({
@@ -185,7 +227,6 @@ const postCreateSection = async (req, res) => {
             class: classId,
             academicYear: cls.academicYear,
             sectionName: sectionName.trim().toUpperCase(),
-            sectionCode: sectionCode.trim().toUpperCase(),
             classTeacher: classTeacher || null,
             substituteTeacher: substituteTeacher || null,
             maxStudents: parseInt(maxStudents) || 40,
@@ -194,7 +235,7 @@ const postCreateSection = async (req, res) => {
         await ActivityLog.create({
             user: req.session.userId, school: req.session.schoolId,
             actionType: 'CREATE_SECTION', entityType: 'ClassSection', entityId: section._id,
-            newValue: { sectionName, sectionCode },
+            newValue: { sectionName },
         });
         req.flash('success', `Section "${sectionName}" created.`);
         res.redirect(`/admin/classes/${classId}`);
@@ -226,12 +267,21 @@ const getSectionDetail = async (req, res) => {
             $or: [{ currentSection: null }, { currentSection: { $exists: false } }],
         }).populate('user', 'name email');
 
+        // Filter unassigned active teachers
+        const occupiedSections = await ClassSection.find({ school: req.session.schoolId, _id: { $ne: section._id } });
+        const occupiedTeacherIds = [];
+        occupiedSections.forEach(sec => {
+            if (sec.classTeacher) occupiedTeacherIds.push(sec.classTeacher.toString());
+            if (sec.substituteTeacher) occupiedTeacherIds.push(sec.substituteTeacher.toString());
+        });
+
         const teachers = await User.find({ role: 'teacher', school: req.session.schoolId, isActive: true })
             .select('name email');
+        const availableTeachers = teachers.filter(t => !occupiedTeacherIds.includes(t._id.toString()));
 
         res.render('admin/sections/show', {
             title: `Section ${section.sectionName}`, layout: 'layouts/main',
-            section, studentProfiles, unassignedProfiles, teachers,
+            section, studentProfiles, unassignedProfiles, teachers: availableTeachers,
         });
     } catch (err) {
         req.flash('error', 'Failed to load section.'); res.redirect('/admin/classes');
@@ -313,10 +363,34 @@ const postUpdateSectionTeacher = async (req, res) => {
     const { sectionId } = req.params;
     try {
         const { classTeacher, substituteTeacher } = req.body;
-        if (classTeacher && substituteTeacher && classTeacher === substituteTeacher) {
+        const ct = classTeacher ? classTeacher.toString().trim() : '';
+        const st = substituteTeacher ? substituteTeacher.toString().trim() : '';
+
+        if (ct && st && ct === st) {
             req.flash('error', 'Class teacher and substitute teacher cannot be the same person.');
             return res.redirect(`/admin/sections/${sectionId}`);
         }
+        
+        // Block already assigned teachers
+        if (ct || st) {
+            const checkIds = [];
+            if (ct) checkIds.push(ct);
+            if (st) checkIds.push(st);
+            
+            const occupied = await ClassSection.findOne({
+                school: req.session.schoolId,
+                _id: { $ne: sectionId },
+                $or: [
+                    { classTeacher: { $in: checkIds } },
+                    { substituteTeacher: { $in: checkIds } }
+                ]
+            });
+            if (occupied) {
+                req.flash('error', 'One or both of the selected teachers are already assigned to another section.');
+                return res.redirect(`/admin/sections/${sectionId}`);
+            }
+        }
+
         await ClassSection.findOneAndUpdate(
             { _id: sectionId, school: req.session.schoolId },
             { classTeacher: classTeacher || null, substituteTeacher: substituteTeacher || null }

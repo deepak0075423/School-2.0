@@ -2,7 +2,7 @@
     <div>
         <h1>📂 Section <%= section.sectionName %> — <%= section.class?.className %>
         </h1>
-        <p>Code: <code><%= section.sectionCode %></code> &middot; <%= section.academicYear?.yearName %>
+        <p><%= section.academicYear?.yearName %>
         </p>
     </div>
     <div style="display:flex; gap:8px;">
@@ -186,3 +186,37 @@
                         <% } %>
             </div>
         </div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const classTeacherSelect = document.querySelector('select[name="classTeacher"]');
+    const substituteTeacherSelect = document.querySelector('select[name="substituteTeacher"]');
+
+    function updateTeacherDropdowns() {
+        const ctVal = classTeacherSelect.value;
+        const stVal = substituteTeacherSelect.value;
+
+        Array.from(classTeacherSelect.options).forEach(opt => {
+            if (opt.value) opt.disabled = false;
+        });
+        Array.from(substituteTeacherSelect.options).forEach(opt => {
+            if (opt.value) opt.disabled = false;
+        });
+
+        if (ctVal) {
+            const stOpt = substituteTeacherSelect.querySelector(`option[value="${ctVal}"]`);
+            if (stOpt) stOpt.disabled = true;
+        }
+        if (stVal) {
+            const ctOpt = classTeacherSelect.querySelector(`option[value="${stVal}"]`);
+            if (ctOpt) ctOpt.disabled = true;
+        }
+    }
+
+    if (classTeacherSelect && substituteTeacherSelect) {
+        classTeacherSelect.addEventListener('change', updateTeacherDropdowns);
+        substituteTeacherSelect.addEventListener('change', updateTeacherDropdowns);
+        updateTeacherDropdowns(); // Init on load
+    }
+});
+</script>

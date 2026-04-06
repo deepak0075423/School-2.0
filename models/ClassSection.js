@@ -22,13 +22,6 @@ const ClassSectionSchema = new mongoose.Schema({
         trim: true,
         uppercase: true,
     },
-    sectionCode: {
-        type: String,
-        required: true,
-        trim: true,
-        uppercase: true,
-        unique: true,
-    },
     classTeacher: {
         type: mongoose.Schema.Types.ObjectId,
         ref: 'User',
