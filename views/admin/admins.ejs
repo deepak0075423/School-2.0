@@ -7,6 +7,17 @@
     <a href="/admin/admins/create" class="btn btn-primary">➕ Add Co-Admin</a>
 </div>
 
+<div class="card" style="margin-bottom: 20px; padding: 16px 20px;">
+    <form action="/admin/admins" method="GET" style="display:flex; gap:12px; align-items:flex-end;">
+        <div class="form-group" style="margin:0; flex:1;">
+            <label class="form-label">Search Co-Admins</label>
+            <input type="text" name="search" class="form-control" placeholder="Search by name or email" value="<%= query && query.search ? query.search : '' %>">
+        </div>
+        <button type="submit" class="btn btn-primary">Search</button>
+        <a href="/admin/admins" class="btn btn-secondary">Reset</a>
+    </form>
+</div>
+
 <div class="card">
     <div class="card-header">
         <div class="card-title">🛡️ School Admin Accounts</div>
@@ -20,9 +31,15 @@
                 <a href="/admin/admins/create" class="btn btn-primary">➕ Add First Co-Admin</a>
             </div>
             <% } else { %>
+                <form action="/admin/users/bulk-delete" method="POST" id="bulkDeleteForm" onsubmit="return confirm('Delete selected admins? This action cannot be undone.')">
+                <input type="hidden" name="returnUrl" value="/admin/admins">
+                <div style="margin-bottom: 15px;">
+                    <button type="submit" class="btn btn-danger btn-sm" id="bulkDeleteBtn" disabled>🗑️ Delete Selected (<span id="selectedCount">0</span>)</button>
+                </div>
                 <table>
                     <thead>
                         <tr>
+                            <th><input type="checkbox" id="selectAll"></th>
                             <th>Name</th>
                             <th>Email</th>
                             <th>Phone</th>
@@ -35,6 +52,9 @@
                     <tbody>
                         <% admins.forEach(admin=> { %>
                             <tr>
+                                <td>
+                                    <input type="checkbox" name="userIds" value="<%= admin._id %>" class="userCheckbox">
+                                </td>
                                 <td>
                                     <div style="display:flex; align-items:center; gap:10px;">
                                         <div
@@ -66,15 +86,53 @@
                                     <%= new Date(admin.createdAt).toLocaleDateString('en-IN') %>
                                 </td>
                                 <td>
-                                    <form action="/admin/admins/<%= admin._id %>/delete" method="POST"
-                                        onsubmit="return confirm('Delete this admin? This cannot be undone.')">
-                                        <button type="submit" class="btn btn-danger btn-sm">🗑️ Delete</button>
-                                    </form>
+                                    <% if (admin.role !== 'super_admin') { %>
+                                        <a href="/admin/users/<%= admin._id %>/edit" class="btn btn-primary btn-sm">✎ Edit</a>
+                                    <% } %>
+                                    <button type="submit" formaction="/admin/admins/<%= admin._id %>/delete" class="btn btn-danger btn-sm" onclick="return confirm('Delete this admin? This cannot be undone.')">🗑️ Delete</button>
                                 </td>
                             </tr>
                             <% }) %>
                     </tbody>
                 </table>
+                </form>
                 <% } %>
     </div>
 </div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', () => {
+        const selectAll = document.getElementById('selectAll');
+        const checkboxes = document.querySelectorAll('.userCheckbox');
+        const bulkDeleteBtn = document.getElementById('bulkDeleteBtn');
+        const selectedCountSpan = document.getElementById('selectedCount');
+
+        if(selectAll) {
+            selectAll.addEventListener('change', (e) => {
+                checkboxes.forEach(cb => cb.checked = e.target.checked);
+                toggleBtn();
+            });
+
+            checkboxes.forEach(cb => {
+                cb.addEventListener('change', toggleBtn);
+            });
+
+            function toggleBtn() {
+                const checkedBoxes = Array.from(checkboxes).filter(cb => cb.checked);
+                bulkDeleteBtn.disabled = checkedBoxes.length === 0;
+                selectedCountSpan.textContent = checkedBoxes.length;
+                
+                if (checkedBoxes.length > 0 && checkedBoxes.length === checkboxes.length) {
+                    selectAll.checked = true;
+                    selectAll.indeterminate = false;
+                } else if (checkedBoxes.length > 0) {
+                    selectAll.checked = false;
+                    selectAll.indeterminate = true;
+                } else {
+                    selectAll.checked = false;
+                    selectAll.indeterminate = false;
+                }
+            }
+        }
+    });
+</script>

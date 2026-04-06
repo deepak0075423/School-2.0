@@ -21,7 +21,10 @@ router.post('/users/bulk-teachers', guard, upload.single('excelFile'), ctrl.post
 router.post('/users/bulk-students', guard, upload.single('excelFile'), ctrl.postBulkStudents);
 router.get('/users/template/teachers', guard, ctrl.downloadTeacherTemplate);
 router.get('/users/template/students', guard, ctrl.downloadStudentTemplate);
+router.get('/users/:id/edit', guard, ctrl.getEditUser);
+router.post('/users/:id/edit', guard, ctrl.postEditUser);
 router.post('/users/:id/toggle', guard, ctrl.toggleUserStatus);
+router.post('/users/bulk-delete', guard, ctrl.postBulkDeleteUsers);
 router.post('/users/:id/delete', guard, ctrl.deleteUser);
 router.post('/users/:id/login-link', guard, ctrl.postGenerateLoginLink);
 

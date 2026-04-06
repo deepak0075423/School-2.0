@@ -1,0 +1,36 @@
+<div class="page-header">
+    <div>
+        <h1>Edit User</h1>
+        <p>Update account details for <%= user.name %></p>
+    </div>
+    <a href="/super-admin/users" class="btn btn-secondary">Back to Users</a>
+</div>
+
+<div class="card" style="max-width: 600px; margin: 0 auto; padding: 24px;">
+    <form action="/super-admin/users/<%= user._id %>/edit" method="POST">
+        <div class="form-group">
+            <label class="form-label">Name</label>
+            <input type="text" name="name" class="form-control" value="<%= user.name %>" required>
+        </div>
+        <div class="form-group">
+            <label class="form-label">Email</label>
+            <input type="email" name="email" class="form-control" value="<%= user.email %>" required>
+        </div>
+        <div class="form-group">
+            <label class="form-label">Phone</label>
+            <input type="text" name="phone" class="form-control" value="<%= user.phone %>">
+        </div>
+        <div class="form-group">
+            <label class="form-label">School</label>
+            <select name="school" class="form-control">
+                <option value="">No School</option>
+                <% schools.forEach(s => { %>
+                    <option value="<%= s._id %>" <%= user.school && user.school._id.toString() === s._id.toString() ? 'selected' : '' %>><%= s.name %></option>
+                <% }) %>
+            </select>
+        </div>
+        <div style="margin-top: 24px;">
+            <button type="submit" class="btn btn-primary" style="width: 100%;">Save Changes</button>
+        </div>
+    </form>
+</div>

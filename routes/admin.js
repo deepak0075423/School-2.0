@@ -15,6 +15,10 @@ const attendanceGuard = [...guard, requireModule('attendance')];
 router.get('/dashboard', guard, ctrl.getDashboard);
 
 // ── User Management ──────────────────────────────────────────
+router.post('/users/bulk-delete', guard, ctrl.postBulkDeleteUsers);
+router.get('/users/:id/edit', guard, ctrl.getEditUser);
+router.post('/users/:id/edit', guard, ctrl.postEditUser);
+
 router.get('/teachers', guard, ctrl.getTeachers);
 router.get('/teachers/create', guard, ctrl.getCreateTeacher);
 router.post('/teachers/create', guard, ctrl.postCreateTeacher);

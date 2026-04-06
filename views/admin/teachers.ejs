@@ -7,6 +7,17 @@
     <a href="/admin/teachers/create" class="btn btn-primary">+ Add Teacher</a>
 </div>
 
+<div class="card" style="margin-bottom: 20px; padding: 16px 20px;">
+    <form action="/admin/teachers" method="GET" style="display:flex; gap:12px; align-items:flex-end;">
+        <div class="form-group" style="margin:0; flex:1;">
+            <label class="form-label">Search Teachers</label>
+            <input type="text" name="search" class="form-control" placeholder="Search by name or email" value="<%= query && query.search ? query.search : '' %>">
+        </div>
+        <button type="submit" class="btn btn-primary">Search</button>
+        <a href="/admin/teachers" class="btn btn-secondary">Reset</a>
+    </form>
+</div>
+
 <div class="card">
     <div class="table-wrapper">
         <% if (teachers.length===0) { %>
@@ -17,9 +28,15 @@
                 <a href="/admin/teachers/create" class="btn btn-primary">Add Teacher</a>
             </div>
             <% } else { %>
+                <form action="/admin/users/bulk-delete" method="POST" id="bulkDeleteForm" onsubmit="return confirm('Delete selected teachers? This action cannot be undone.')">
+                <input type="hidden" name="returnUrl" value="/admin/teachers">
+                <div style="margin-bottom: 15px;">
+                    <button type="submit" class="btn btn-danger btn-sm" id="bulkDeleteBtn" disabled>🗑️ Delete Selected (<span id="selectedCount">0</span>)</button>
+                </div>
                 <table>
                     <thead>
                         <tr>
+                            <th><input type="checkbox" id="selectAll"></th>
                             <th>#</th>
                             <th>Name</th>
                             <th>Email</th>
@@ -31,6 +48,9 @@
                     <tbody>
                         <% teachers.forEach((t, i)=> { %>
                             <tr>
+                                <td>
+                                    <input type="checkbox" name="userIds" value="<%= t._id %>" class="userCheckbox">
+                                </td>
                                 <td class="text-muted">
                                     <%= i + 1 %>
                                 </td>
@@ -48,16 +68,51 @@
                                     </span>
                                 </td>
                                 <td>
-                                    <form action="/admin/teachers/<%= t._id %>/delete" method="POST"
-                                        style="display:inline;"
-                                        onsubmit="return confirm('Delete teacher: <%= t.name %>?')">
-                                        <button type="submit" class="btn btn-danger btn-sm">🗑️ Remove</button>
-                                    </form>
+                                    <a href="/admin/users/<%= t._id %>/edit" class="btn btn-primary btn-sm">✎ Edit</a>
+                                    <button type="submit" formaction="/admin/teachers/<%= t._id %>/delete" class="btn btn-danger btn-sm" onclick="return confirm('Delete teacher: <%= t.name %>?')">🗑️ Remove</button>
                                 </td>
                             </tr>
                             <% }) %>
                     </tbody>
                 </table>
+                </form>
                 <% } %>
     </div>
 </div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', () => {
+        const selectAll = document.getElementById('selectAll');
+        const checkboxes = document.querySelectorAll('.userCheckbox');
+        const bulkDeleteBtn = document.getElementById('bulkDeleteBtn');
+        const selectedCountSpan = document.getElementById('selectedCount');
+
+        if(selectAll) {
+            selectAll.addEventListener('change', (e) => {
+                checkboxes.forEach(cb => cb.checked = e.target.checked);
+                toggleBtn();
+            });
+
+            checkboxes.forEach(cb => {
+                cb.addEventListener('change', toggleBtn);
+            });
+
+            function toggleBtn() {
+                const checkedBoxes = Array.from(checkboxes).filter(cb => cb.checked);
+                bulkDeleteBtn.disabled = checkedBoxes.length === 0;
+                selectedCountSpan.textContent = checkedBoxes.length;
+                
+                if (checkedBoxes.length > 0 && checkedBoxes.length === checkboxes.length) {
+                    selectAll.checked = true;
+                    selectAll.indeterminate = false;
+                } else if (checkedBoxes.length > 0) {
+                    selectAll.checked = false;
+                    selectAll.indeterminate = true;
+                } else {
+                    selectAll.checked = false;
+                    selectAll.indeterminate = false;
+                }
+            }
+        }
+    });
+</script>
