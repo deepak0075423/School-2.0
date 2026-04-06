@@ -71,6 +71,10 @@
                             <% }) %>
                     </select>
                 </div>
+                <div class="form-group" style="margin:0; min-width:200px; flex:1;">
+                    <label class="form-label">Search Users</label>
+                    <input type="text" name="search" class="form-control" placeholder="Search by name or email" value="<%= query.search || '' %>">
+                </div>
                 <button type="submit" class="btn btn-primary">Filter</button>
                 <a href="/super-admin/users" class="btn btn-secondary">Reset</a>
             </form>
@@ -85,9 +89,15 @@
                         <p>Adjust filters or add a new user.</p>
                     </div>
                     <% } else { %>
+                        <form action="/super-admin/users/bulk-delete" method="POST" id="bulkDeleteForm" onsubmit="return confirm('Delete selected users? This action cannot be undone.')">
+                        <input type="hidden" name="returnUrl" value="/super-admin/users">
+                        <div style="margin-bottom: 15px;">
+                            <button type="submit" class="btn btn-danger btn-sm" id="bulkDeleteBtn" disabled>🗑️ Delete Selected (<span id="selectedCount">0</span>)</button>
+                        </div>
                         <table>
                             <thead>
                                 <tr>
+                                    <th><input type="checkbox" id="selectAll"></th>
                                     <th>#</th>
                                     <th>Name</th>
                                     <th>Email</th>
@@ -100,6 +110,9 @@
                             <tbody>
                                 <% users.forEach((u, i)=> { %>
                                     <tr>
+                                        <td>
+                                            <input type="checkbox" name="userIds" value="<%= u._id %>" class="userCheckbox">
+                                        </td>
                                         <td class="text-muted">
                                             <%= i + 1 %>
                                         </td>
@@ -128,30 +141,57 @@
                                             </span>
                                         </td>
                                         <td style="display:flex; gap:6px; flex-wrap:wrap;">
-                                            <form action="/super-admin/users/<%= u._id %>/toggle" method="POST"
-                                                style="display:inline;">
-                                                <button type="submit" class="btn btn-warning btn-sm">
-                                                    <%= u.isActive ? '🔒 Deactivate' : '🔓 Activate' %>
-                                                </button>
-                                            </form>
-                                            <form action="/super-admin/users/<%= u._id %>/login-link" method="POST"
-                                                style="display:inline;"
-                                                onsubmit="return confirm('Generate a one-time login link for <%= u.name %>?')">
-                                                <button type="submit" class="btn btn-secondary btn-sm"
-                                                    title="One-time login link">
-                                                    🔗 Login Link
-                                                </button>
-                                            </form>
-                                            <form action="/super-admin/users/<%= u._id %>/delete" method="POST"
-                                                style="display:inline;"
-                                                onsubmit="return confirm('Delete user: <%= u.name %>?')">
-                                                <button type="submit" class="btn btn-danger btn-sm">🗑️</button>
-                                            </form>
+                                            <button type="submit" formaction="/super-admin/users/<%= u._id %>/toggle" class="btn btn-warning btn-sm">
+                                                <%= u.isActive ? '🔒 Deactivate' : '🔓 Activate' %>
+                                            </button>
+                                            <button type="submit" formaction="/super-admin/users/<%= u._id %>/login-link" class="btn btn-secondary btn-sm" title="One-time login link" onclick="return confirm('Generate a one-time login link for <%= u.name %>?')">
+                                                🔗 Login Link
+                                            </button>
+                                            <a href="/super-admin/users/<%= u._id %>/edit" class="btn btn-primary btn-sm">✎ Edit</a>
+                                            <button type="submit" formaction="/super-admin/users/<%= u._id %>/delete" class="btn btn-danger btn-sm" onclick="return confirm('Delete user: <%= u.name %>?')">🗑️</button>
                                         </td>
                                     </tr>
                                     <% }) %>
                             </tbody>
                         </table>
+                        </form>
                         <% } %>
             </div>
         </div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', () => {
+        const selectAll = document.getElementById('selectAll');
+        const checkboxes = document.querySelectorAll('.userCheckbox');
+        const bulkDeleteBtn = document.getElementById('bulkDeleteBtn');
+        const selectedCountSpan = document.getElementById('selectedCount');
+
+        if(selectAll) {
+            selectAll.addEventListener('change', (e) => {
+                checkboxes.forEach(cb => cb.checked = e.target.checked);
+                toggleBtn();
+            });
+
+            checkboxes.forEach(cb => {
+                cb.addEventListener('change', toggleBtn);
+            });
+
+            function toggleBtn() {
+                const checkedBoxes = Array.from(checkboxes).filter(cb => cb.checked);
+                bulkDeleteBtn.disabled = checkedBoxes.length === 0;
+                selectedCountSpan.textContent = checkedBoxes.length;
+                
+                if (checkedBoxes.length > 0 && checkedBoxes.length === checkboxes.length) {
+                    selectAll.checked = true;
+                    selectAll.indeterminate = false;
+                } else if (checkedBoxes.length > 0) {
+                    selectAll.checked = false;
+                    selectAll.indeterminate = true;
+                } else {
+                    selectAll.checked = false;
+                    selectAll.indeterminate = false;
+                }
+            }
+        }
+    });
+</script>

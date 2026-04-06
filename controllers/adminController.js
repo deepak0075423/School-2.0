@@ -42,8 +42,20 @@ const getDashboard = async (req, res) => {
 
 // --- TEACHERS ---
 const getTeachers = async (req, res) => {
-    const teachers = await User.find({ role: 'teacher', school: req.session.schoolId }).sort({ createdAt: -1 });
-    res.render('admin/teachers', { title: 'Teachers', layout: 'layouts/main', teachers });
+    try {
+        let query = { role: 'teacher', school: req.session.schoolId };
+        if (req.query.search) {
+            query.$or = [
+                { name: { $regex: req.query.search, $options: 'i' } },
+                { email: { $regex: req.query.search, $options: 'i' } }
+            ];
+        }
+        const teachers = await User.find(query).sort('-createdAt');
+        res.render('admin/teachers', { title: 'Manage Teachers', layout: 'layouts/main', teachers, query: req.query });
+    } catch (err) {
+        req.flash('error', 'Failed to load teachers.');
+        res.redirect('/admin/dashboard');
+    }
 };
 
 const getCreateTeacher = (req, res) => {
@@ -204,9 +216,27 @@ const postBulkTeachers = async (req, res) => {
 
 // --- STUDENTS & PARENTS ---
 const getStudents = async (req, res) => {
-    const students = await StudentProfile.find({ school: req.session.schoolId })
-        .populate('user').populate('parent').sort({ createdAt: -1 });
-    res.render('admin/students', { title: 'Students', layout: 'layouts/main', students });
+    try {
+        let query = { role: 'student', school: req.session.schoolId };
+        if (req.query.search) {
+            query.$or = [
+                { name: { $regex: req.query.search, $options: 'i' } },
+                { email: { $regex: req.query.search, $options: 'i' } }
+            ];
+        }
+        const studentProfiles = await StudentProfile.find({ school: req.session.schoolId })
+            .populate({
+                path: 'user',
+                match: query
+            })
+            .populate('parent');
+
+        const students = studentProfiles.filter(p => p.user);
+        res.render('admin/students', { title: 'Manage Students', layout: 'layouts/main', students, query: req.query });
+    } catch (err) {
+        req.flash('error', 'Failed to load students.');
+        res.redirect('/admin/dashboard');
+    }
 };
 
 const getCreateStudent = (req, res) => {
@@ -473,14 +503,18 @@ const postBulkStudents = async (req, res) => {
 const deleteUser = async (req, res) => {
     try {
         const user = await User.findById(req.params.id);
-        if (user) {
-            if (user.role === 'student') {
-                await StudentProfile.findOneAndDelete({ user: user._id });
-            } else if (user.role === 'teacher') {
-                await TeacherProfile.findOneAndDelete({ user: user._id });
-            } else if (user.role === 'parent') {
-                await ParentProfile.findOneAndDelete({ user: user._id });
+        if (user && user.school.toString() === req.session.schoolId.toString()) {
+            if (user.role === 'super_admin') {
+                req.flash('error', 'Unauthorized deletion attempt.');
+                const returnUrl = req.body.returnUrl || 'back';
+                return res.redirect(returnUrl);
             }
+            
+            // Cascade delete based on role
+            if (user.role === 'student') await StudentProfile.findOneAndDelete({ user: user._id });
+            if (user.role === 'teacher') await TeacherProfile.findOneAndDelete({ user: user._id });
+            if (user.role === 'parent') await ParentProfile.findOneAndDelete({ user: user._id });
+            
             await User.findByIdAndDelete(req.params.id);
             req.flash('success', 'User deleted successfully.');
         } else {
@@ -490,14 +524,69 @@ const deleteUser = async (req, res) => {
         console.error('Error deleting user:', err);
         req.flash('error', 'Failed to delete user.');
     }
-    res.redirect('back');
+    const returnUrl = req.body.returnUrl || 'back';
+    res.redirect(returnUrl);
+};
+
+const postBulkDeleteUsers = async (req, res) => {
+    try {
+        let userIds = req.body.userIds;
+        if (!userIds || userIds.length === 0) {
+            req.flash('error', 'No users selected for deletion.');
+            return res.redirect('back');
+        }
+
+        if (!Array.isArray(userIds)) {
+            userIds = [userIds];
+        }
+
+        let deleteCount = 0;
+        let rejectCount = 0;
+
+        for (const id of userIds) {
+            const user = await User.findById(id);
+            if (user && user.school.toString() === req.session.schoolId.toString()) {
+                if (user.role === 'super_admin') {
+                    rejectCount++;
+                    continue;
+                }
+                
+                if (user.role === 'student') await StudentProfile.findOneAndDelete({ user: user._id });
+                if (user.role === 'teacher') await TeacherProfile.findOneAndDelete({ user: user._id });
+                if (user.role === 'parent') await ParentProfile.findOneAndDelete({ user: user._id });
+                
+                await User.findByIdAndDelete(id);
+                deleteCount++;
+            } else {
+                rejectCount++;
+            }
+        }
+
+        if (rejectCount > 0) {
+            req.flash('success', `Deleted ${deleteCount} user(s). Rejected ${rejectCount} unauthorized/invalid ID(s).`);
+        } else {
+            req.flash('success', `Successfully deleted ${deleteCount} user(s).`);
+        }
+    } catch (err) {
+        console.error('Error in bulk delete:', err);
+        req.flash('error', 'Failed to bulk delete users.');
+    }
+    const returnUrl = req.body.returnUrl || 'back';
+    res.redirect(returnUrl);
 };
 
 // --- CO-ADMINS ---
 const getAdmins = async (req, res) => {
     try {
-        const admins = await User.find({ role: 'school_admin', school: req.session.schoolId }).sort({ createdAt: -1 });
-        res.render('admin/admins', { title: 'Co-Admins', layout: 'layouts/main', admins });
+        let query = { role: 'school_admin', school: req.session.schoolId };
+        if (req.query.search) {
+            query.$or = [
+                { name: { $regex: req.query.search, $options: 'i' } },
+                { email: { $regex: req.query.search, $options: 'i' } }
+            ];
+        }
+        const admins = await User.find(query).sort('-createdAt');
+        res.render('admin/admins', { title: 'Manage Co-Admins', layout: 'layouts/main', admins, query: req.query });
     } catch (err) {
         req.flash('error', 'Failed to load admins.');
         res.redirect('/admin/dashboard');
@@ -541,6 +630,76 @@ const postCreateAdmin = async (req, res) => {
     }
 };
 
+const getEditUser = async (req, res) => {
+    try {
+        const user = await User.findById(req.params.id);
+        if (!user || user.school.toString() !== req.session.schoolId.toString()) {
+            req.flash('error', 'User not found.');
+            return res.redirect('back');
+        }
+        let profile = null;
+        let parentUser = null;
+        let parentProfile = null;
+        if (user.role === 'teacher') profile = await TeacherProfile.findOne({ user: user._id });
+        if (user.role === 'student') {
+            profile = await StudentProfile.findOne({ user: user._id });
+            if (profile && profile.parent) {
+                parentUser = await User.findById(profile.parent);
+                parentProfile = await ParentProfile.findOne({ user: profile.parent });
+            }
+        }
+        res.render('admin/editUser', { title: 'Edit User', layout: 'layouts/main', user, profile, parentUser, parentProfile });
+    } catch (err) {
+        req.flash('error', 'Error loading edit page.');
+        res.redirect('back');
+    }
+};
+
+const postEditUser = async (req, res) => {
+    try {
+        const { name, email, phone, ...profileData } = req.body;
+        const user = await User.findById(req.params.id);
+        if (!user || user.school.toString() !== req.session.schoolId.toString()) {
+            req.flash('error', 'Unauthorized.');
+            return res.redirect('back');
+        }
+        await User.findByIdAndUpdate(req.params.id, { name, email, phone });
+        
+        if (user.role === 'teacher') await TeacherProfile.findOneAndUpdate({ user: user._id }, profileData);
+        if (user.role === 'student') {
+            const { parentName, parentEmail, parentPhone, parentRelationship, fatherOccupation, motherOccupation, guardianOccupation, annualIncome, emergencyContact, studentClass, studentSection, ...studentUpdates } = profileData;
+            studentUpdates.class = studentClass;
+            studentUpdates.section = studentSection;
+            
+            const studProf = await StudentProfile.findOneAndUpdate({ user: user._id }, studentUpdates);
+            if (studProf && studProf.parent) {
+                if (parentName || parentEmail || parentPhone) {
+                    await User.findByIdAndUpdate(studProf.parent, {
+                        name: parentName,
+                        email: parentEmail,
+                        phone: parentPhone
+                    });
+                }
+                const pProfUpdate = {};
+                if (parentRelationship) pProfUpdate.relationship = parentRelationship;
+                if (fatherOccupation) pProfUpdate.fatherOccupation = fatherOccupation;
+                if (motherOccupation) pProfUpdate.motherOccupation = motherOccupation;
+                if (guardianOccupation) pProfUpdate.guardianOccupation = guardianOccupation;
+                if (annualIncome) pProfUpdate.annualIncome = annualIncome;
+                if (emergencyContact) pProfUpdate.emergencyContact = emergencyContact;
+                
+                await ParentProfile.findOneAndUpdate({ user: studProf.parent }, pProfUpdate);
+            }
+        }
+        
+        req.flash('success', 'User updated successfully.');
+        res.redirect('/admin/teachers');
+    } catch (err) {
+        req.flash('error', 'Update failed.');
+        res.redirect('back');
+    }
+};
+
 const downloadTeacherTemplate = (req, res) => {
     const headers = [['Name', 'Email', 'Phone', 'Employee ID', 'Gender', 'DOB', 'Joining Date', 'Designation', 'Department', 'Subjects', 'Classes', 'Qualification', 'Experience']];
     const wb = xlsx.utils.book_new();
@@ -564,7 +723,26 @@ const downloadStudentTemplate = (req, res) => {
 };
 
 module.exports = {
-    getDashboard, getTeachers, getCreateTeacher, postCreateTeacher, postBulkTeachers,
-    getStudents, getCreateStudent, postCreateStudent, postBulkStudents, deleteUser,
-    getAdmins, getCreateAdmin, postCreateAdmin, downloadTeacherTemplate, downloadStudentTemplate,
+    getDashboard,    getTeachers,
+    getCreateTeacher,
+    postCreateTeacher,
+
+    getStudents,
+    getCreateStudent,
+    postCreateStudent,
+
+    getAdmins,
+    getCreateAdmin,
+    postCreateAdmin,
+
+    deleteUser,
+    postBulkDeleteUsers,
+    
+    getEditUser,
+    postEditUser,
+
+    postBulkTeachers,
+    postBulkStudents,
+    downloadTeacherTemplate,
+    downloadStudentTemplate
 };

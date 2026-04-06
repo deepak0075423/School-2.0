@@ -67,14 +67,6 @@ const deleteSchool = async (req, res) => {
 };
 
 // --- USERS ---
-const getUsers = async (req, res) => {
-    const filter = {};
-    if (req.query.role) filter.role = req.query.role;
-    if (req.query.school) filter.school = req.query.school;
-    const users = await User.find(filter).populate('school').sort({ createdAt: -1 });
-    const schools = await School.find();
-    res.render('superAdmin/users', { title: 'All Users', layout: 'layouts/main', users, schools, query: req.query });
-};
 
 const getCreateUser = async (req, res) => {
     const schools = await School.find();
@@ -422,13 +414,18 @@ const deleteUser = async (req, res) => {
     try {
         const user = await User.findById(req.params.id);
         if (user) {
-            if (user.role === 'student') {
-                await StudentProfile.findOneAndDelete({ user: user._id });
-            } else if (user.role === 'teacher') {
-                await TeacherProfile.findOneAndDelete({ user: user._id });
-            } else if (user.role === 'parent') {
-                await ParentProfile.findOneAndDelete({ user: user._id });
+            if (user.role === 'super_admin') {
+                req.flash('error', 'Super Admin accounts cannot be deleted.');
+                const returnUrl = req.body.returnUrl || 'back';
+                return res.redirect(returnUrl);
             }
+            
+            // Cascade delete specific profile based on role
+            if (user.role === 'student') await StudentProfile.findOneAndDelete({ user: user._id });
+            if (user.role === 'teacher') await TeacherProfile.findOneAndDelete({ user: user._id });
+            if (user.role === 'parent') await ParentProfile.findOneAndDelete({ user: user._id });
+            
+            // Delete user document
             await User.findByIdAndDelete(req.params.id);
             req.flash('success', 'User deleted successfully.');
         } else {
@@ -438,7 +435,55 @@ const deleteUser = async (req, res) => {
         console.error('Error deleting user:', err);
         req.flash('error', 'Failed to delete user.');
     }
-    res.redirect('/super-admin/users');
+    const returnUrl = req.body.returnUrl || 'back';
+    res.redirect(returnUrl);
+};
+
+// Bulk delete selected users
+const postBulkDeleteUsers = async (req, res) => {
+    try {
+        let userIds = req.body.userIds;
+        if (!userIds || userIds.length === 0) {
+            req.flash('error', 'No users selected for deletion.');
+            return res.redirect('back');
+        }
+
+        // Ensure userIds is an array
+        if (!Array.isArray(userIds)) {
+            userIds = [userIds];
+        }
+
+        let deleteCount = 0;
+        let skippedSuperAdmins = 0;
+
+        for (const id of userIds) {
+            const user = await User.findById(id);
+            if (user) {
+                if (user.role === 'super_admin') {
+                    skippedSuperAdmins++;
+                    continue;
+                }
+                
+                if (user.role === 'student') await StudentProfile.findOneAndDelete({ user: user._id });
+                if (user.role === 'teacher') await TeacherProfile.findOneAndDelete({ user: user._id });
+                if (user.role === 'parent') await ParentProfile.findOneAndDelete({ user: user._id });
+                
+                await User.findByIdAndDelete(id);
+                deleteCount++;
+            }
+        }
+
+        if (skippedSuperAdmins > 0) {
+            req.flash('success', `Deleted ${deleteCount} user(s). Skipped ${skippedSuperAdmins} Super Admin(s).`);
+        } else {
+            req.flash('success', `Successfully deleted ${deleteCount} user(s).`);
+        }
+    } catch (err) {
+        console.error('Error in bulk delete:', err);
+        req.flash('error', 'Failed to bulk delete users.');
+    }
+    const returnUrl = req.body.returnUrl || 'back';
+    res.redirect(returnUrl);
 };
 
 // Generate a one-time magic login link for a specific user
@@ -479,6 +524,61 @@ const postGenerateLoginLink = async (req, res) => {
         console.error(err);
         req.flash('error', 'Failed to generate login link.');
         res.redirect('/super-admin/users');
+    }
+};
+
+const getUsers = async (req, res) => {
+    try {
+        const { role, school, search } = req.query;
+        let query = {};
+        if (role) query.role = role;
+        if (school) query.school = school;
+        if (search) {
+            query.$or = [
+                { name: { $regex: search, $options: 'i' } },
+                { email: { $regex: search, $options: 'i' } }
+            ];
+        }
+
+        const users = await User.find(query).populate('school').sort('-createdAt');
+        const schools = await School.find();
+        res.render('superAdmin/users', { 
+            users, 
+            schools,
+            title: 'Manage Users',
+            query: req.query 
+        });
+    } catch (err) {
+        console.error(err);
+        req.flash('error', 'Failed to load users.');
+        res.redirect('/super-admin/dashboard');
+    }
+};
+
+const getEditUser = async (req, res) => {
+    try {
+        const user = await User.findById(req.params.id).populate('school');
+        if (!user) {
+            req.flash('error', 'User not found.');
+            return res.redirect('/super-admin/users');
+        }
+        const schools = await School.find();
+        res.render('superAdmin/editUser', { title: 'Edit User', user, schools });
+    } catch (err) {
+        req.flash('error', 'Error loading user.');
+        res.redirect('/super-admin/users');
+    }
+};
+
+const postEditUser = async (req, res) => {
+    try {
+        const { name, email, phone, school } = req.body;
+        await User.findByIdAndUpdate(req.params.id, { name, email, phone, school });
+        req.flash('success', 'User updated successfully.');
+        res.redirect('/super-admin/users');
+    } catch (err) {
+        req.flash('error', 'Failed to update user.');
+        res.redirect(`/super-admin/users/edit/${req.params.id}`);
     }
 };
 
@@ -580,7 +680,8 @@ const postBulkUpdatePermissions = async (req, res) => {
 
 module.exports = {
     getDashboard, getSchools, getCreateSchool, postCreateSchool, deleteSchool,
-    getUsers, getCreateUser, postCreateUser, toggleUserStatus, deleteUser,
+    getUsers, getCreateUser, postCreateUser, toggleUserStatus, deleteUser, postBulkDeleteUsers,
     postGenerateLoginLink, postBulkTeachers, postBulkStudents, downloadTeacherTemplate, downloadStudentTemplate,
     getPermissions, postUpdatePermissions, postBulkUpdatePermissions,
+    getEditUser, postEditUser
 };
