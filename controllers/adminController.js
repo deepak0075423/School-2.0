@@ -288,6 +288,33 @@ const postCreateStudent = async (req, res) => {
             isFirstLogin: true, createdBy: req.session.userId,
         });
 
+        // Try to automatically assign section
+        let matchedSectionId = null;
+        if (studentClass && studentSection) {
+            const AcademicYear = require('../models/AcademicYear');
+            const Class = require('../models/Class');
+            const ClassSection = require('../models/ClassSection');
+            
+            const activeYear = await AcademicYear.findOne({ school: req.session.schoolId, status: 'active' });
+            if (activeYear) {
+                const parsedNum = parseInt(studentClass);
+                const classQuery = { school: req.session.schoolId, academicYear: activeYear._id, $or: [{ className: new RegExp('^' + studentClass + '$', 'i') }] };
+                if (!isNaN(parsedNum)) classQuery.$or.push({ classNumber: parsedNum });
+                
+                const foundClass = await Class.findOne(classQuery);
+                if (foundClass) {
+                    const foundSec = await ClassSection.findOne({
+                        school: req.session.schoolId,
+                        class: foundClass._id,
+                        sectionName: new RegExp('^' + studentSection.trim() + '$', 'i')
+                    });
+                    if (foundSec && foundSec.currentCount < foundSec.maxStudents) {
+                        matchedSectionId = foundSec._id;
+                    }
+                }
+            }
+        }
+
         await StudentProfile.create({
             user: studentUser._id,
             school: req.session.schoolId,
@@ -299,10 +326,24 @@ const postCreateStudent = async (req, res) => {
             rollNumber: rollNumber || '',
             class: studentClass,
             section: studentSection,
+            currentSection: matchedSectionId,
             dob: studentDob || null,
             address: studentAddress,
             parent: parentUser._id,
         });
+
+        if (matchedSectionId) {
+            const ClassSection = require('../models/ClassSection');
+            const StudentSectionHistory = require('../models/StudentSectionHistory');
+            await ClassSection.findByIdAndUpdate(matchedSectionId, { $inc: { currentCount: 1 } });
+            await StudentSectionHistory.create({
+                student: studentUser._id,
+                oldSection: null,
+                newSection: matchedSectionId,
+                transferReason: 'Initial assignment upon creation',
+                transferredBy: req.session.userId,
+            });
+        }
 
         await ParentProfile.create({
             user: parentUser._id,
@@ -356,6 +397,20 @@ const postBulkStudents = async (req, res) => {
         let successCount = 0;
         let errorCount = 0;
         const failedRows = [];
+
+        // Pre-fetch academic year, classes, and sections to optimize bulk matching
+        const AcademicYear = require('../models/AcademicYear');
+        const Class = require('../models/Class');
+        const ClassSection = require('../models/ClassSection');
+        const StudentSectionHistory = require('../models/StudentSectionHistory');
+        
+        const activeYear = await AcademicYear.findOne({ school: req.session.schoolId, status: 'active' });
+        let availableSections = [];
+        let availableClasses = [];
+        if (activeYear) {
+            availableClasses = await Class.find({ school: req.session.schoolId, academicYear: activeYear._id });
+            availableSections = await ClassSection.find({ school: req.session.schoolId, academicYear: activeYear._id });
+        }
 
         for (const row of data) {
             try {
@@ -446,16 +501,53 @@ const postBulkStudents = async (req, res) => {
                     isFirstLogin: true, createdBy: req.session.userId,
                 });
 
+                // Section matching
+                let matchedSectionId = null;
+                if (studentClass && studentSection && activeYear) {
+                    const parsedNum = parseInt(studentClass);
+                    const isNum = !isNaN(parsedNum);
+                    const sClassStr = studentClass.toString().trim().toLowerCase();
+                    const sSectionStr = studentSection.toString().trim().toLowerCase();
+                    
+                    const foundClass = availableClasses.find(c => 
+                        c.className.toLowerCase() === sClassStr || 
+                        (isNum && c.classNumber === parsedNum)
+                    );
+                    
+                    if (foundClass) {
+                        const foundSec = availableSections.find(s => 
+                            s.class.toString() === foundClass._id.toString() &&
+                            s.sectionName.toLowerCase() === sSectionStr
+                        );
+                        if (foundSec && foundSec.currentCount < foundSec.maxStudents) {
+                            matchedSectionId = foundSec._id;
+                            foundSec.currentCount++; // Optimistically increment in-memory
+                        }
+                    }
+                }
+
                 await StudentProfile.create({
                     user: studentUser._id,
                     school: req.session.schoolId,
                     gender, bloodGroup, religion, category, admissionNumber, rollNumber,
                     class: studentClass ? studentClass.toString() : '',
                     section: studentSection ? studentSection.toString() : '',
+                    currentSection: matchedSectionId,
                     dob: studentDob,
                     address: studentAddress,
                     parent: parentUser._id,
                 });
+
+                if (matchedSectionId) {
+                    await ClassSection.findByIdAndUpdate(matchedSectionId, { $inc: { currentCount: 1 } });
+                    await StudentSectionHistory.create({
+                        student: studentUser._id,
+                        oldSection: null,
+                        newSection: matchedSectionId,
+                        transferReason: 'Bulk upload assignment',
+                        transferredBy: req.session.userId,
+                    });
+                }
 
                 await ParentProfile.updateOne(
                     { user: parentUser._id },
