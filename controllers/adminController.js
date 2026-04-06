@@ -471,8 +471,25 @@ const postBulkStudents = async (req, res) => {
 };
 
 const deleteUser = async (req, res) => {
-    await User.findByIdAndDelete(req.params.id);
-    req.flash('success', 'User deleted.');
+    try {
+        const user = await User.findById(req.params.id);
+        if (user) {
+            if (user.role === 'student') {
+                await StudentProfile.findOneAndDelete({ user: user._id });
+            } else if (user.role === 'teacher') {
+                await TeacherProfile.findOneAndDelete({ user: user._id });
+            } else if (user.role === 'parent') {
+                await ParentProfile.findOneAndDelete({ user: user._id });
+            }
+            await User.findByIdAndDelete(req.params.id);
+            req.flash('success', 'User deleted successfully.');
+        } else {
+            req.flash('error', 'User not found.');
+        }
+    } catch (err) {
+        console.error('Error deleting user:', err);
+        req.flash('error', 'Failed to delete user.');
+    }
     res.redirect('back');
 };
 
