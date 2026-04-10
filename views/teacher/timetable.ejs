@@ -1,72 +1,98 @@
-<div class="page-header">
+<style>
+.timetable-grid {
+    width: 100%;
+    border-collapse: collapse;
+    margin-bottom: 20px;
+}
+.timetable-grid th, .timetable-grid td {
+    border: 1px solid var(--border);
+    padding: 12px;
+    vertical-align: top;
+    text-align: center;
+}
+.timetable-grid th {
+    background-color: var(--sidebar-bg);
+}
+.subject-name {
+    font-weight: 600;
+    color: var(--primary);
+    margin-bottom: 4px;
+}
+.class-info {
+    font-size: 12px;
+    color: var(--text-muted);
+}
+</style>
+
+<div class="page-header" style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 20px;">
     <div>
-        <h1>🗓️ My Timetable</h1>
-        <% if (section) { %>
-            <p>
-                <%= section.class?.className %> – Section <%= section.sectionName %>
-            </p>
-            <% } %>
+        <h1>📅 Teacher Timetable</h1>
+        <p>Viewing schedule for: <strong><%= targetTeacher.name %></strong></p>
     </div>
-    <a href="/teacher/my-section" class="btn btn-secondary">← My Section</a>
+    
+    <div style="display: flex; gap: 10px; align-items: center;">
+        <form action="/teacher/timetable" method="GET" style="display: flex; gap: 8px;">
+            <select name="searchTeacherId" class="form-control" required style="min-width: 200px;">
+                <option value="">— Search Teacher —</option>
+                <% allTeachers.forEach(t => { %>
+                    <option value="<%= t._id %>" <%= searchTeacherId && searchTeacherId.toString() === t._id.toString() ? 'selected' : '' %>><%= t.name %></option>
+                <% }) %>
+            </select>
+            <button type="submit" class="btn btn-secondary">Search</button>
+        </form>
+        <% if (searchTeacherId) { %>
+            <a href="/teacher/timetable" class="btn btn-primary">My Timetable</a>
+        <% } %>
+    </div>
 </div>
 
-<% if (!section || !timetable) { %>
-    <div class="card">
-        <div class="empty-state">
-            <div class="empty-icon">🗓️</div>
-            <h3>No Timetable Available</h3>
-            <p>
-                <% if (!section) { %>You are not assigned to any section.<% } else { %>No timetable has been created for
-                        your section yet. Contact School Admin.<% } %>
-            </p>
-        </div>
-    </div>
-    <% } else { %>
-        <div class="card">
-            <div class="card-header">
-                <div class="card-title">🗓️ Weekly Schedule</div>
+<div class="card" style="overflow-x: auto;">
+    <div class="card-body">
+        <% if (!entries || entries.length === 0) { %>
+            <div class="empty-state">
+                No periods assigned to this teacher yet.
             </div>
-            <div class="table-wrapper" style="overflow-x:auto;">
-                <table>
-                    <thead>
+        <% } else { %>
+            <!-- Since a teacher can have classes from multiple timetables with DIFFERENT structures (though rarely), 
+                 we must build a generic grid from Day vs Period, up to max PeriodNumber. -->
+            <% 
+                let maxPeriod = 1;
+                entries.forEach(e => {
+                    if (e.periodNumber > maxPeriod) maxPeriod = e.periodNumber;
+                });
+            %>
+            <table class="timetable-grid">
+                <thead>
+                    <tr>
+                        <th>Day</th>
+                        <% for(let i=1; i<=maxPeriod; i++) { %>
+                            <th>Period <%= i %></th>
+                        <% } %>
+                    </tr>
+                </thead>
+                <tbody>
+                    <% days.forEach(day => { %>
                         <tr>
-                            <th>Day</th>
-                            <% const maxPeriods=Math.max(...days.map(d=> byDay[d]?.length || 0), 1); %>
-                                <% for (let p=1; p <=maxPeriods; p++) { %>
-                                    <th>Period <%= p %>
-                                    </th>
+                            <td style="font-weight: 600; vertical-align: middle;"><%= day %></td>
+                            <% for(let i=1; i<=maxPeriod; i++) { %>
+                                <% 
+                                    const entry = entries.find(e => e.dayOfWeek === day && e.periodNumber === i); 
+                                %>
+                                <td>
+                                    <% if (entry) { %>
+                                        <div class="subject-name"><%= entry.subject?.subjectName %></div>
+                                        <div class="class-info">
+                                            <%= entry.timetable?.section?.class?.classNumber %> - <%= entry.timetable?.section?.sectionName %>
+                                        </div>
+                                    <% } else { %>
+                                        <div style="color: var(--text-muted); font-size: 12px;">—</div>
                                     <% } %>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <% days.forEach(day=> { %>
-                            <tr>
-                                <td class="fw-semibold">
-                                    <%= day %>
                                 </td>
-                                <% for (let p=1; p <=maxPeriods; p++) { const entry=(byDay[day] || []).find(e=>
-                                    e.periodNumber === p);
-                                    %>
-                                    <td>
-                                        <% if (entry) { %>
-                                            <div style="font-weight:600; font-size:0.875rem;">
-                                                <%= entry.subject?.subjectName %>
-                                            </div>
-                                            <div style="font-size:0.75rem; color:var(--text-muted);">
-                                                <%= entry.startTime %> – <%= entry.endTime %>
-                                            </div>
-                                            <div style="font-size:0.75rem; color:var(--text-muted);">👨‍🏫 <%=
-                                                    entry.teacher?.name || '—' %>
-                                            </div>
-                                            <% } else { %>
-                                                <span class="text-muted">—</span>
-                                                <% } %>
-                                    </td>
-                                    <% } %>
-                            </tr>
-                            <% }) %>
-                    </tbody>
-                </table>
-            </div>
-        </div>
+                            <% } %>
+                        </tr>
+                    <% }) %>
+                </tbody>
+            </table>
         <% } %>
+    </div>
+</div>

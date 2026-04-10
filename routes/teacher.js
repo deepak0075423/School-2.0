@@ -3,6 +3,7 @@ const router = express.Router();
 const ctrl = require('../controllers/teacherController');
 const sectionCtrl = require('../controllers/sectionController');
 const attendanceCtrl = require('../controllers/attendanceController');
+const timetableCtrl = require('../controllers/timetableController');
 const { isAuthenticated, requireRole, requirePasswordReset } = require('../middleware/auth');
 const requireModule = require('../middleware/requireModule');
 
@@ -41,7 +42,7 @@ router.get('/correction-requests', attendanceGuard, attendanceCtrl.getCorrection
 router.post('/correction-requests/review', attendanceGuard, attendanceCtrl.postReviewCorrection);
 
 // ── Timetable ─────────────────────────────────────────────────
-router.get('/timetable', guard, sectionCtrl.getTeacherTimetable);
+router.get('/timetable', guard, timetableCtrl.teacherViewTimetable);
 
 // ── Notifications ─────────────────────────────────────────────
 const notifCtrl  = require('../controllers/notificationController');

@@ -5,6 +5,7 @@ const classCtrl = require('../controllers/classController');
 const subjectCtrl = require('../controllers/subjectController');
 const reportCtrl = require('../controllers/reportController');
 const attendanceCtrl = require('../controllers/attendanceController');
+const timetableCtrl = require('../controllers/timetableController');
 const { isAuthenticated, requireRole, requirePasswordReset } = require('../middleware/auth');
 const requireModule = require('../middleware/requireModule');
 const upload = require('../middleware/upload');
@@ -65,6 +66,13 @@ router.post('/sections/:sectionId/update-capacity', guard, classCtrl.postUpdateS
 router.post('/sections/:sectionId/delete', guard, classCtrl.postDeleteSection);
 router.get('/sections/:sectionId/subjects', guard, subjectCtrl.getSectionSubjectTeachers);
 router.post('/sections/:sectionId/subjects/assign', guard, subjectCtrl.postAssignSubjectTeacher);
+
+// Timetable
+router.get('/sections/:sectionId/timetable', guard, timetableCtrl.adminManageTimetable);
+router.post('/sections/:sectionId/timetable/structure', guard, timetableCtrl.adminSaveTimetableStructure);
+router.get('/sections/:sectionId/timetable/entries', guard, timetableCtrl.adminAssignPeriods);
+router.post('/sections/:sectionId/timetable/entries', guard, timetableCtrl.adminSaveEntries);
+router.get('/api/timetable/teachers', guard, timetableCtrl.apiGetTeachersBySubject);
 
 // ── Subjects ──────────────────────────────────────────────────
 router.get('/subjects', guard, subjectCtrl.getSubjects);

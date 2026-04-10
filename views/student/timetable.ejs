@@ -1,0 +1,96 @@
+<style>
+.timetable-grid {
+    width: 100%;
+    border-collapse: collapse;
+    margin-bottom: 20px;
+}
+.timetable-grid th, .timetable-grid td {
+    border: 1px solid var(--border);
+    padding: 12px;
+    vertical-align: top;
+    text-align: center;
+}
+.timetable-grid th {
+    background-color: var(--sidebar-bg);
+}
+.recess-cell {
+    background-color: var(--sidebar-bg);
+    color: var(--text-muted);
+    font-size: 14px;
+    font-weight: 500;
+    vertical-align: middle !important;
+}
+.subject-name {
+    font-weight: 600;
+    color: var(--primary);
+    margin-bottom: 4px;
+}
+.teacher-name {
+    font-size: 12px;
+    color: var(--text-muted);
+}
+</style>
+
+<div class="page-header">
+    <div>
+        <h1>📅 My Timetable</h1>
+        <p>Class & Section: <strong><%= timetable?.section?.class?.className %> - <%= timetable?.section?.sectionName %></strong></p>
+    </div>
+</div>
+
+<div class="card" style="overflow-x: auto;">
+    <div class="card-body">
+        <% if (!timetable || !timetable.periodsStructure || timetable.periodsStructure.length === 0) { %>
+            <div class="empty-state">
+                Timetable has not been configured for your section yet.
+            </div>
+        <% } else { %>
+            <div style="margin-bottom: 20px; color: var(--text-muted);">
+                <strong>School Timings:</strong> <%= timetable.schoolStartTime %> — <%= timetable.schoolEndTime %>
+            </div>
+            <table class="timetable-grid">
+                <thead>
+                    <tr>
+                        <th>Day / Time</th>
+                        <% timetable.periodsStructure.forEach(p => { %>
+                            <th>
+                                <% if (p.isRecess) { %>
+                                    <div style="color: #ef4444; font-weight: normal; font-size: 12px;">BREAK</div>
+                                <% } else { %>
+                                    Period <%= p.periodNumber %>
+                                <% } %>
+                                <div style="font-size: 11px; font-weight: normal; color: var(--text-muted);">
+                                    <%= p.startTime %> - <%= p.endTime %>
+                                </div>
+                            </th>
+                        <% }) %>
+                    </tr>
+                </thead>
+                <tbody>
+                    <% days.forEach(day => { %>
+                        <tr>
+                            <td style="font-weight: 600; vertical-align: middle;"><%= day %></td>
+                            <% timetable.periodsStructure.forEach(p => { %>
+                                <% if (p.isRecess) { %>
+                                    <td class="recess-cell"><%= p.recessName || 'Recess' %></td>
+                                <% } else { %>
+                                    <% 
+                                        const entry = entries.find(e => e.dayOfWeek === day && e.periodNumber === p.periodNumber); 
+                                    %>
+                                    <td>
+                                        <% if (entry) { %>
+                                            <div class="subject-name"><%= entry.subject?.subjectName %></div>
+                                            <div class="teacher-name"><%= entry.teacher?.name || 'No Teacher' %></div>
+                                        <% } else { %>
+                                            <div style="color: var(--text-muted); font-size: 12px;">—</div>
+                                        <% } %>
+                                    </td>
+                                <% } %>
+                            <% }) %>
+                        </tr>
+                    <% }) %>
+                </tbody>
+            </table>
+        <% } %>
+    </div>
+</div>
