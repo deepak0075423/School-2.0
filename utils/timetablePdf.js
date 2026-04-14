@@ -202,4 +202,29 @@ function _cell(doc, x, y, w, h, opts) {
     doc.fillColor(TEXT_DARK); // reset
 }
 
-module.exports = { generateTimetablePDF };
+/**
+ * Stream a single-page PDF containing only a text message.
+ * Used when there is no data to render (e.g. no timetables for the year).
+ */
+function generateMessagePDF(res, message, filename) {
+    const doc = new PDFDocument({
+        size: 'A4',
+        layout: 'landscape',
+        margins: { top: 30, bottom: 30, left: 30, right: 30 },
+        autoFirstPage: true
+    });
+
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `attachment; filename="${filename || 'timetable.pdf'}"`);
+    doc.pipe(res);
+
+    const W = doc.page.width;
+    const H = doc.page.height;
+
+    doc.font('Helvetica').fontSize(14).fillColor(TEXT_MUTED)
+       .text(message, 0, H / 2 - 20, { width: W, align: 'center' });
+
+    doc.end();
+}
+
+module.exports = { generateTimetablePDF, generateMessagePDF };

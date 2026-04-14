@@ -9,7 +9,7 @@
             <input type="hidden" name="year" value="<%= selectedYear %>">
             <button type="submit" class="btn btn-success">Assign Students to Classes</button>
         </form>
-        <a href="/admin/timetable/download-all" class="btn btn-secondary">⬇ Download All Class Timetable PDF</a>
+        <a href="/admin/timetable/download-all?year=<%= selectedYear %>" class="btn btn-secondary">⬇ Download All Class Timetable PDF</a>
         <a href="/admin/classes/create" class="btn btn-primary">+ New Class</a>
     </div>
 </div>

@@ -585,15 +585,27 @@ const adminDownloadAllTimetables = async (req, res) => {
         const AcademicYear = require('../models/AcademicYear');
         const School = require('../models/School');
 
-        const activeYear = await AcademicYear.findOne({ school: req.session.schoolId, status: 'active' });
-        if (!activeYear) return res.status(404).send('No active academic year.');
+        // Use year from query param (passed from the classes page filter); fall back to active year
+        let selectedYear;
+        if (req.query.year) {
+            selectedYear = await AcademicYear.findOne({ _id: req.query.year, school: req.session.schoolId });
+        }
+        if (!selectedYear) {
+            selectedYear = await AcademicYear.findOne({ school: req.session.schoolId, status: 'active' });
+        }
+        if (!selectedYear) return res.status(404).send('No academic year found.');
 
-        // All timetables for this school in the active year
-        const timetables = await Timetable.find({ academicYear: activeYear._id })
+        // All timetables for this school in the selected year
+        const timetables = await Timetable.find({ academicYear: selectedYear._id })
             .populate({ path: 'section', populate: { path: 'class' } });
 
         if (!timetables.length) {
-            return res.status(404).send('No timetables configured for the active academic year.');
+            const { generateMessagePDF } = require('../utils/timetablePdf');
+            return generateMessagePDF(
+                res,
+                `No timetables configured for ${selectedYear.yearName}.`,
+                `all-timetables-${selectedYear.yearName}.pdf`
+            );
         }
 
         // Sort: by class name (numeric-aware), then section name
@@ -616,7 +628,7 @@ const adminDownloadAllTimetables = async (req, res) => {
             return {
                 className:   section.class?.className || 'Class',
                 sectionName: section.sectionName,
-                yearName:    activeYear.yearName,
+                yearName:    selectedYear.yearName,
                 timetable:   tt,
                 entries,
                 days
@@ -624,12 +636,19 @@ const adminDownloadAllTimetables = async (req, res) => {
         }));
 
         const validPages = pages.filter(Boolean);
-        if (!validPages.length) return res.status(404).send('No timetable data found.');
+        if (!validPages.length) {
+            const { generateMessagePDF } = require('../utils/timetablePdf');
+            return generateMessagePDF(
+                res,
+                `No timetable data found for ${selectedYear.yearName}.`,
+                `all-timetables-${selectedYear.yearName}.pdf`
+            );
+        }
 
         const school = await School.findById(req.session.schoolId);
         const { generateTimetablePDF } = require('../utils/timetablePdf');
 
-        generateTimetablePDF(res, validPages, school.name, `all-timetables-${activeYear.yearName}.pdf`);
+        generateTimetablePDF(res, validPages, school.name, `all-timetables-${selectedYear.yearName}.pdf`);
 
     } catch (err) {
         console.error(err);
