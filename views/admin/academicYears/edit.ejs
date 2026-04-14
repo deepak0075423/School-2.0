@@ -1,0 +1,49 @@
+<div class="page-header">
+    <div style="display:flex; align-items:center; justify-content:space-between; width:100%;">
+        <div>
+            <h1>✏️ Edit Academic Year</h1>
+            <p>Update details for <%= year.yearName %></p>
+        </div>
+        <a href="/admin/academic-years" class="btn btn-secondary">🔙 Back to List</a>
+    </div>
+</div>
+
+<div class="card" style="max-width: 600px;">
+    <div class="card-body">
+        <form action="/admin/academic-years/<%= year._id %>/edit" method="POST">
+            <div class="form-group">
+                <label class="form-label">Year Name *</label>
+                <input type="text" name="yearName" class="form-control" value="<%= year.yearName %>" required>
+            </div>
+            
+            <div class="form-group" style="display:grid; grid-template-columns:1fr 1fr; gap:15px;">
+                <div>
+                    <label class="form-label">Start Date *</label>
+                    <% 
+                        // format to YYYY-MM-DD for date input
+                        const formatDt = (d) => d ? new Date(d).toISOString().split('T')[0] : '';
+                    %>
+                    <input type="date" name="startDate" class="form-control" value="<%= formatDt(year.startDate) %>" required>
+                </div>
+                <div>
+                    <label class="form-label">End Date *</label>
+                    <input type="date" name="endDate" class="form-control" value="<%= formatDt(year.endDate) %>" required>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">Status</label>
+                <select name="status" class="form-control">
+                    <option value="active" <%= year.status === 'active' ? 'selected' : '' %>>Active (Current)</option>
+                    <option value="inactive" <%= year.status === 'inactive' ? 'selected' : '' %>>Inactive</option>
+                    <option value="archived" <%= year.status === 'archived' ? 'selected' : '' %>>Archived</option>
+                </select>
+                <small class="text-muted" style="display:block; margin-top:5px;">
+                    Setting this to "Active" will automatically mark all other academic years as Inactive.
+                </small>
+            </div>
+
+            <button type="submit" class="btn btn-primary" style="width:100%;">💾 Save Changes</button>
+        </form>
+    </div>
+</div>

@@ -16,6 +16,23 @@ const TimetableSchema = new mongoose.Schema({
         ref: 'User',
         required: true,
     },
+    schoolStartTime: {
+        type: String,
+        required: true,
+    },
+    schoolEndTime: {
+        type: String,
+        required: true,
+    },
+    periodsStructure: [
+        {
+            periodNumber: { type: Number },
+            startTime: { type: String, required: true },
+            endTime: { type: String, required: true },
+            isRecess: { type: Boolean, default: false },
+            recessName: { type: String, default: 'Break' }
+        }
+    ],
     createdAt: {
         type: Date,
         default: Date.now,

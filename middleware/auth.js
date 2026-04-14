@@ -29,6 +29,8 @@ const requireRole = (...roles) => {
 
 // Load current user into req.user for all authenticated routes
 const loadUser = async (req, res, next) => {
+    res.locals.currentUser = null;
+    res.locals.userRole = null;
     if (req.session && req.session.userId) {
         try {
             const user = await User.findById(req.session.userId).populate('school');

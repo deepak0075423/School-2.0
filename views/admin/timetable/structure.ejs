@@ -1,0 +1,121 @@
+<div class="page-header">
+    <div>
+        <h1>📅 Timetable Structure — <%= section.sectionName %></h1>
+        <p><%= section.class?.className %> ( <%= section.academicYear?.yearName %> )</p>
+    </div>
+    <div style="display:flex; gap:8px;">
+        <% if (timetable && timetable.periodsStructure && timetable.periodsStructure.length > 0) { %>
+            <a href="/admin/sections/<%= section._id %>/timetable/entries" class="btn btn-secondary">Assign Subjects & Teachers →</a>
+        <% } %>
+        <a href="/admin/sections/<%= section._id %>" class="btn btn-secondary">← Back to Section</a>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-header">
+        <div class="card-title">School Timing & Periods</div>
+    </div>
+    <div class="card-body">
+        <form action="/admin/sections/<%= section._id %>/timetable/structure" method="POST">
+            <div style="display:flex; gap:20px; margin-bottom: 20px;">
+                <div class="form-group" style="flex:1;">
+                    <label class="form-label">School Start Time</label>
+                    <input type="time" name="schoolStartTime" class="form-control" value="<%= timetable?.schoolStartTime || '08:00' %>" required>
+                </div>
+                <div class="form-group" style="flex:1;">
+                    <label class="form-label">School End Time</label>
+                    <input type="time" name="schoolEndTime" class="form-control" value="<%= timetable?.schoolEndTime || '14:30' %>" required>
+                </div>
+            </div>
+
+            <div style="margin-bottom: 20px;">
+                <h4>Periods & Recess</h4>
+                <p class="text-muted" style="font-size: 13px;">Define the sequence of periods and breaks. Check 'Is Recess' for breaks.</p>
+                <div class="table-wrapper">
+                    <table id="periodsTable">
+                        <thead>
+                            <tr>
+                                <th>Period Number</th>
+                                <th>Start Time</th>
+                                <th>End Time</th>
+                                <th>Is Recess?</th>
+                                <th>Recess Name (Optional)</th>
+                                <th></th>
+                            </tr>
+                        </thead>
+                        <tbody id="periodsBody">
+                            <% if (timetable && timetable.periodsStructure && timetable.periodsStructure.length > 0) { %>
+                                <% timetable.periodsStructure.forEach((period, idx) => { %>
+                                    <tr>
+                                        <td><input type="number" name="periodNumbers" class="form-control" value="<%= period.periodNumber %>" style="width: 80px;" required></td>
+                                        <td><input type="time" name="startTimes" class="form-control" value="<%= period.startTime %>" required></td>
+                                        <td><input type="time" name="endTimes" class="form-control" value="<%= period.endTime %>" required></td>
+                                        <!-- Because HTML forms only send checkboxes if checked, we use a hidden input trick or standard array matching. -->
+                                        <!-- Since we map by index in backend, it's easier to use a hidden input and visible checkbox -->
+                                        <!-- Or we can just use a hidden input that gets updated on Checkbox toggle. -->
+                                        <td style="text-align: center;">
+                                            <input type="hidden" name="recesses" value="<%= period.isRecess ? 'true' : 'false' %>">
+                                            <input type="checkbox" onchange="this.previousElementSibling.value = this.checked ? 'true' : 'false'" <%= period.isRecess ? 'checked' : '' %>>
+                                        </td>
+                                        <td><input type="text" name="recessNames" class="form-control" value="<%= period.recessName %>" placeholder="e.g. Lunch Break"></td>
+                                        <td><button type="button" class="btn btn-danger btn-sm" onclick="this.closest('tr').remove()">Remove</button></td>
+                                    </tr>
+                                <% }) %>
+                            <% } else { %>
+                                <!-- Default row -->
+                                <tr>
+                                    <td><input type="number" name="periodNumbers" class="form-control" value="1" style="width: 80px;" required></td>
+                                    <td><input type="time" name="startTimes" class="form-control" required></td>
+                                    <td><input type="time" name="endTimes" class="form-control" required></td>
+                                    <td style="text-align: center;">
+                                        <input type="hidden" name="recesses" value="false">
+                                        <input type="checkbox" onchange="this.previousElementSibling.value = this.checked ? 'true' : 'false'">
+                                    </td>
+                                    <td><input type="text" name="recessNames" class="form-control" placeholder="e.g. Lunch Break"></td>
+                                    <td><button type="button" class="btn btn-danger btn-sm" onclick="this.closest('tr').remove()">Remove</button></td>
+                                </tr>
+                            <% } %>
+                        </tbody>
+                    </table>
+                </div>
+                <button type="button" class="btn btn-secondary" onclick="addPeriodRow()" style="margin-top: 10px;">+ Add Period / Break</button>
+            </div>
+
+            <button type="submit" class="btn btn-primary" style="width: 100%;">Save Timetable Structure</button>
+        </form>
+    </div>
+</div>
+
+<script>
+function addPeriodRow() {
+    const tbody = document.getElementById('periodsBody');
+    const rowCount = tbody.children.length;
+    let nextPeriodNum = 1;
+    if (rowCount > 0) {
+        // Try to guess the next period number based on the last row's period number.
+        // If last row was a recess, keep same period num.
+        const lastRow = tbody.children[rowCount - 1];
+        const lastNumStr = lastRow.querySelector('input[name="periodNumbers"]').value;
+        const lastCheckbox = lastRow.querySelector('input[type="checkbox"]').checked;
+        if (!lastCheckbox) {
+            nextPeriodNum = parseInt(lastNumStr) + 1;
+        } else {
+            nextPeriodNum = parseInt(lastNumStr);
+        }
+    }
+
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+        <td><input type="number" name="periodNumbers" class="form-control" value="${nextPeriodNum}" style="width: 80px;" required></td>
+        <td><input type="time" name="startTimes" class="form-control" required></td>
+        <td><input type="time" name="endTimes" class="form-control" required></td>
+        <td style="text-align: center;">
+            <input type="hidden" name="recesses" value="false">
+            <input type="checkbox" onchange="this.previousElementSibling.value = this.checked ? 'true' : 'false'">
+        </td>
+        <td><input type="text" name="recessNames" class="form-control" placeholder="e.g. Lunch Break"></td>
+        <td><button type="button" class="btn btn-danger btn-sm" onclick="this.closest('tr').remove()">Remove</button></td>
+    `;
+    tbody.appendChild(tr);
+}
+</script>

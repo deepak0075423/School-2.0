@@ -5,6 +5,7 @@ const classCtrl = require('../controllers/classController');
 const subjectCtrl = require('../controllers/subjectController');
 const reportCtrl = require('../controllers/reportController');
 const attendanceCtrl = require('../controllers/attendanceController');
+const timetableCtrl = require('../controllers/timetableController');
 const { isAuthenticated, requireRole, requirePasswordReset } = require('../middleware/auth');
 const requireModule = require('../middleware/requireModule');
 const upload = require('../middleware/upload');
@@ -41,7 +42,10 @@ router.post('/admins/:id/delete', guard, ctrl.deleteUser);
 // ── Academic Years ────────────────────────────────────────────
 router.get('/academic-years', guard, classCtrl.getAcademicYears);
 router.post('/academic-years/create', guard, classCtrl.postCreateAcademicYear);
+router.get('/academic-years/:id/edit', guard, classCtrl.getEditAcademicYear);
+router.post('/academic-years/:id/edit', guard, classCtrl.postEditAcademicYear);
 router.post('/academic-years/:id/delete', guard, classCtrl.postDeleteAcademicYear);
+router.post('/academic-years/:id/set-active', guard, classCtrl.postSetActiveAcademicYear);
 
 // ── Classes ───────────────────────────────────────────────────
 router.get('/classes', guard, classCtrl.getClasses);
@@ -49,6 +53,7 @@ router.get('/classes/create', guard, classCtrl.getCreateClass);
 router.post('/classes/create', guard, classCtrl.postCreateClass);
 router.get('/classes/:classId', guard, classCtrl.getClassDetail);
 router.post('/classes/:classId/delete', guard, classCtrl.postDeleteClass);
+router.post('/classes/auto-assign', guard, classCtrl.postAutoAssignStudents);
 
 // Class → Sections
 router.post('/classes/:classId/sections/create', guard, classCtrl.postCreateSection);
@@ -65,6 +70,13 @@ router.post('/sections/:sectionId/update-capacity', guard, classCtrl.postUpdateS
 router.post('/sections/:sectionId/delete', guard, classCtrl.postDeleteSection);
 router.get('/sections/:sectionId/subjects', guard, subjectCtrl.getSectionSubjectTeachers);
 router.post('/sections/:sectionId/subjects/assign', guard, subjectCtrl.postAssignSubjectTeacher);
+
+// Timetable
+router.get('/sections/:sectionId/timetable', guard, timetableCtrl.adminManageTimetable);
+router.post('/sections/:sectionId/timetable/structure', guard, timetableCtrl.adminSaveTimetableStructure);
+router.get('/sections/:sectionId/timetable/entries', guard, timetableCtrl.adminAssignPeriods);
+router.post('/sections/:sectionId/timetable/entries', guard, timetableCtrl.adminSaveEntries);
+router.get('/api/timetable/teachers', guard, timetableCtrl.apiGetTeachersBySubject);
 
 // ── Subjects ──────────────────────────────────────────────────
 router.get('/subjects', guard, subjectCtrl.getSubjects);

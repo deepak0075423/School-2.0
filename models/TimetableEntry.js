@@ -26,14 +26,6 @@ const TimetableEntrySchema = new mongoose.Schema({
         ref: 'User',
         default: null,
     },
-    startTime: {
-        type: String,
-        required: true,
-    },
-    endTime: {
-        type: String,
-        required: true,
-    },
 });
 
 // Unique period per day per timetable

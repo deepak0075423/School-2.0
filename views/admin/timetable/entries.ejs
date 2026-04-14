@@ -1,0 +1,144 @@
+<style>
+.timetable-grid {
+    width: 100%;
+    border-collapse: collapse;
+    margin-bottom: 20px;
+}
+.timetable-grid th, .timetable-grid td {
+    border: 1px solid var(--border);
+    padding: 10px;
+    vertical-align: top;
+    text-align: center;
+}
+.timetable-grid th {
+    background-color: var(--sidebar-bg);
+}
+.subject-select, .teacher-select {
+    width: 100%;
+    margin-bottom: 8px;
+    padding: 6px;
+    border-radius: 6px;
+    border: 1px solid var(--border);
+    background: var(--input-bg);
+    color: var(--text);
+}
+.recess-cell {
+    background-color: var(--sidebar-bg);
+    color: var(--text-muted);
+    font-size: 14px;
+    font-weight: 500;
+    vertical-align: middle !important;
+}
+</style>
+
+<div class="page-header">
+    <div>
+        <h1>📅 Assign Timetable — <%= section.sectionName %></h1>
+        <p>Assign Subjects and Teachers for each period.</p>
+    </div>
+    <div style="display:flex; gap:8px;">
+        <a href="/admin/sections/<%= section._id %>/timetable" class="btn btn-secondary">Edit Structure</a>
+        <a href="/admin/sections/<%= section._id %>" class="btn btn-secondary">← Back to Section</a>
+    </div>
+</div>
+
+<div class="card" style="overflow-x: auto;">
+    <div class="card-body">
+        <form action="/admin/sections/<%= section._id %>/timetable/entries" method="POST">
+            <table class="timetable-grid">
+                <thead>
+                    <tr>
+                        <th>Day / Time</th>
+                        <% timetable.periodsStructure.forEach(p => { %>
+                            <th>
+                                <% if (p.isRecess) { %>
+                                    <div style="color: #ef4444; font-weight: normal; font-size: 12px;">BREAK</div>
+                                <% } else { %>
+                                    Period <%= p.periodNumber %>
+                                <% } %>
+                                <div style="font-size: 11px; font-weight: normal; color: var(--text-muted);">
+                                    <%= p.startTime %> - <%= p.endTime %>
+                                </div>
+                            </th>
+                        <% }) %>
+                    </tr>
+                </thead>
+                <tbody>
+                    <% days.forEach(day => { %>
+                        <tr>
+                            <td style="font-weight: 600; vertical-align: middle;"><%= day %></td>
+                            <% timetable.periodsStructure.forEach(p => { %>
+                                <% if (p.isRecess) { %>
+                                    <td class="recess-cell"><%= p.recessName || 'Recess' %></td>
+                                <% } else { %>
+                                    <% 
+                                        // Find existing entry if any
+                                        const entry = entries.find(e => e.dayOfWeek === day && e.periodNumber === p.periodNumber); 
+                                    %>
+                                    <td>
+                                        <select name="subject_<%= day %>_<%= p.periodNumber %>" class="subject-select" onchange="fetchTeachersForSubject(this, '<%= day %>', '<%= p.periodNumber %>')">
+                                            <option value="">— Subject —</option>
+                                            <% subjects.forEach(sub => { %>
+                                                <option value="<%= sub._id %>" <%= entry && entry.subject && entry.subject._id.toString() === sub._id.toString() ? 'selected' : '' %>>
+                                                    <%= sub.subjectName %>
+                                                </option>
+                                            <% }) %>
+                                        </select>
+                                        <select name="teacher_<%= day %>_<%= p.periodNumber %>" id="teacher_<%= day %>_<%= p.periodNumber %>" class="teacher-select">
+                                            <option value="">— Teacher —</option>
+                                            <% if (entry && entry.teacher) { %>
+                                                <!-- If already assigned, preset it -->
+                                                <option value="<%= entry.teacher._id %>" selected><%= entry.teacher.name %></option>
+                                            <% } %>
+                                        </select>
+                                    </td>
+                                <% } %>
+                            <% }) %>
+                        </tr>
+                    <% }) %>
+                </tbody>
+            </table>
+            
+            <button type="submit" class="btn btn-primary" style="width: 100%;">Save Timetable Entries</button>
+        </form>
+    </div>
+</div>
+
+<script>
+// On page load, auto-fetch teachers for pre-selected subjects (just the pre-selected ones that aren't loaded)
+// Though for simplicity, the existing teacher is rendered as a standalone <option>. 
+// If the user changes it, the fetch happens.
+
+async function fetchTeachersForSubject(selectElem, day, periodNumber) {
+    const subjectId = selectElem.value;
+    const teacherSelect = document.getElementById(`teacher_${day}_${periodNumber}`);
+    
+    // Clear current options
+    teacherSelect.innerHTML = '<option value="">— Loading —</option>';
+    
+    if (!subjectId) {
+        teacherSelect.innerHTML = '<option value="">— Teacher —</option>';
+        return;
+    }
+    
+    try {
+        const res = await fetch(`/admin/api/timetable/teachers?subjectId=${subjectId}`);
+        const data = await res.json();
+        
+        teacherSelect.innerHTML = '<option value="">— Select Teacher —</option>';
+        if (data.success && data.teachers && data.teachers.length > 0) {
+            data.teachers.forEach(t => {
+                const opt = document.createElement('option');
+                opt.value = t._id;
+                opt.textContent = t.name;
+                teacherSelect.appendChild(opt);
+            });
+        } else {
+             teacherSelect.innerHTML = '<option value="">— No Staff Found —</option>';
+        }
+    } catch (err) {
+        console.error('Error fetching teachers', err);
+        teacherSelect.innerHTML = '<option value="">— Error —</option>';
+    }
+}
+</script>

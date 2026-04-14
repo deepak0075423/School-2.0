@@ -28,14 +28,24 @@ const getAcademicYears = async (req, res) => {
 const postCreateAcademicYear = async (req, res) => {
     try {
         const { yearName, startDate, endDate, status } = req.body;
-        await AcademicYear.create({
+        const newYearStatus = status || 'active';
+        const newYear = await AcademicYear.create({
             school: req.session.schoolId,
             yearName: yearName.trim(),
             startDate,
             endDate,
-            status: status || 'active',
+            status: newYearStatus,
             createdBy: req.session.userId,
         });
+
+        if (newYearStatus === 'active') {
+             // Set all other years to inactive to maintain single source of truth
+             await AcademicYear.updateMany(
+                 { school: req.session.schoolId, _id: { $ne: newYear._id } },
+                 { $set: { status: 'inactive' } }
+             );
+        }
+
         await ActivityLog.create({
             user: req.session.userId, school: req.session.schoolId,
             actionType: 'CREATE_ACADEMIC_YEAR', entityType: 'AcademicYear',
@@ -53,6 +63,62 @@ const postCreateAcademicYear = async (req, res) => {
     }
 };
 
+const getEditAcademicYear = async (req, res) => {
+    try {
+        const year = await AcademicYear.findOne({ _id: req.params.id, school: req.session.schoolId });
+        if (!year) {
+            req.flash('error', 'Academic year not found.');
+            return res.redirect('/admin/academic-years');
+        }
+        res.render('admin/academicYears/edit', { title: 'Edit Academic Year', layout: 'layouts/main', year });
+    } catch (err) {
+        req.flash('error', 'Failed to load form: ' + err.message);
+        res.redirect('/admin/academic-years');
+    }
+};
+
+const postEditAcademicYear = async (req, res) => {
+    try {
+        const { yearName, startDate, endDate, status } = req.body;
+        const year = await AcademicYear.findOne({ _id: req.params.id, school: req.session.schoolId });
+        if (!year) {
+            req.flash('error', 'Academic year not found.');
+            return res.redirect('/admin/academic-years');
+        }
+
+        year.yearName = yearName.trim();
+        if (startDate) year.startDate = startDate;
+        if (endDate) year.endDate = endDate;
+        if (status) year.status = status;
+
+        await year.save();
+
+        if (year.status === 'active') {
+             // Set all other years to inactive to maintain single source of truth
+             await AcademicYear.updateMany(
+                 { school: req.session.schoolId, _id: { $ne: year._id } },
+                 { $set: { status: 'inactive' } }
+             );
+        }
+
+        await ActivityLog.create({
+            user: req.session.userId, school: req.session.schoolId,
+            actionType: 'UPDATE_ACADEMIC_YEAR', entityType: 'AcademicYear',
+            newValue: { yearName },
+        });
+
+        req.flash('success', `Academic Year "${year.yearName}" updated successfully.`);
+        res.redirect('/admin/academic-years');
+    } catch (err) {
+        if (err.code === 11000) {
+            req.flash('error', 'An academic year with that name already exists.');
+        } else {
+            req.flash('error', 'Failed to update academic year: ' + err.message);
+        }
+        res.redirect(`/admin/academic-years/${req.params.id}/edit`);
+    }
+};
+
 const postDeleteAcademicYear = async (req, res) => {
     try {
         const year = await AcademicYear.findOneAndDelete({ _id: req.params.id, school: req.session.schoolId });
@@ -61,6 +127,33 @@ const postDeleteAcademicYear = async (req, res) => {
         res.redirect('/admin/academic-years');
     } catch (err) {
         req.flash('error', 'Failed to delete: ' + err.message);
+        res.redirect('/admin/academic-years');
+    }
+};
+
+const postSetActiveAcademicYear = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const year = await AcademicYear.findOne({ _id: id, school: req.session.schoolId });
+        if (!year) {
+            req.flash('error', 'Academic year not found.');
+            return res.redirect('/admin/academic-years');
+        }
+
+        // Set all other years to inactive
+        await AcademicYear.updateMany(
+            { school: req.session.schoolId, _id: { $ne: id } },
+            { $set: { status: 'inactive' } }
+        );
+
+        // Set the requested year to active
+        year.status = 'active';
+        await year.save();
+
+        req.flash('success', `Academic Year "${year.yearName}" is now set as the active current year.`);
+        res.redirect('/admin/academic-years');
+    } catch (err) {
+        req.flash('error', 'Failed to set active year: ' + err.message);
         res.redirect('/admin/academic-years');
     }
 };
@@ -143,22 +236,21 @@ const getClassDetail = async (req, res) => {
             .populate('substituteTeacher', 'name email')
             .sort({ sectionName: 1 });
             
-        // Get occupied teachers
-        const occupiedSections = await ClassSection.find({ school: req.session.schoolId });
+        // Find all other sections in this academic year
+        const occupiedSections = await ClassSection.find({ school: req.session.schoolId, academicYear: cls.academicYear });
         const occupiedTeacherIds = [];
         occupiedSections.forEach(sec => {
+            // ONLY filter out primary class teachers (max 1 per year).
+            // Do not filter out substituteTeachers (who can have infinite classes/can become CT).
             if (sec.classTeacher) occupiedTeacherIds.push(sec.classTeacher.toString());
-            if (sec.substituteTeacher) occupiedTeacherIds.push(sec.substituteTeacher.toString());
         });
 
-        // Filter unassigned active teachers
-        const teachers = await User.find({ role: 'teacher', school: req.session.schoolId, isActive: true })
-            .select('name email');
-        const availableTeachers = teachers.filter(t => !occupiedTeacherIds.includes(t._id.toString()));
+        const allTeachers = await User.find({ role: 'teacher', school: req.session.schoolId }).select('name email');
+        const teachers = allTeachers.filter(t => !occupiedTeacherIds.includes(t._id.toString()));
 
         res.render('admin/classes/show', {
             title: `Class ${cls.className}`, layout: 'layouts/main',
-            cls, sections, teachers: availableTeachers,
+            cls, sections, teachers,
         });
     } catch (err) {
         req.flash('error', 'Failed to load class.'); res.redirect('/admin/classes');
@@ -194,31 +286,32 @@ const postCreateSection = async (req, res) => {
             return res.redirect(`/admin/classes/${classId}`);
         }
 
-        // Validate teacher conflict
+        // Validate teacher constraints per Academic Year
         const ct = classTeacher ? classTeacher.toString().trim() : '';
         const st = substituteTeacher ? substituteTeacher.toString().trim() : '';
         
-        if (ct && st && ct === st) {
-            req.flash('error', 'Class teacher and substitute teacher cannot be the same person.');
-            return res.redirect(`/admin/classes/${classId}`);
-        }
-        
-        // Verify teacher globabl availability
         if (ct || st) {
-            const checkIds = [];
-            if (ct) checkIds.push(ct);
-            if (st) checkIds.push(st);
-            
-            const occupied = await ClassSection.findOne({
-                school: req.session.schoolId,
-                $or: [
-                    { classTeacher: { $in: checkIds } },
-                    { substituteTeacher: { $in: checkIds } }
-                ]
-            });
-            if (occupied) {
-                req.flash('error', 'One or both of the selected teachers are already assigned to a section.');
-                return res.redirect(`/admin/classes/${classId}`);
+            if (ct) {
+                const occupiedCt = await ClassSection.findOne({
+                    school: req.session.schoolId,
+                    academicYear: cls.academicYear,
+                    classTeacher: ct
+                });
+                if (occupiedCt) {
+                    req.flash('error', 'The selected class teacher is already assigned as a primary class teacher in another class for this academic year.');
+                    return res.redirect(`/admin/classes/${classId}`);
+                }
+            }
+            if (st) {
+                const occupiedSt = await ClassSection.findOne({
+                    school: req.session.schoolId,
+                    academicYear: cls.academicYear,
+                    classTeacher: st
+                });
+                if (occupiedSt) {
+                    req.flash('error', 'The selected vice class teacher is a primary class teacher in another class (which prevents taking vice duties elsewhere).');
+                    return res.redirect(`/admin/classes/${classId}`);
+                }
             }
         }
 
@@ -257,31 +350,39 @@ const getSectionDetail = async (req, res) => {
             .populate('substituteTeacher', 'name email');
         if (!section) { req.flash('error', 'Section not found.'); return res.redirect('/admin/classes'); }
 
-        // Students in this section
-        const studentProfiles = await StudentProfile.find({ currentSection: section._id, school: req.session.schoolId })
+        // Students in this section historically and currently
+        const studentProfiles = await StudentProfile.find({ user: { $in: section.enrolledStudents || [] } })
             .populate('user', 'name email phone');
 
-        // All students NOT yet in a section (for assign dropdown)
+        // All students NOT yet in ANY section for THIS academic year (for assign dropdown)
+        const yearSections = await ClassSection.find({ school: req.session.schoolId, academicYear: section.academicYear });
+        const assignedStudentIds = [];
+        yearSections.forEach(s => {
+            if (s.enrolledStudents) assignedStudentIds.push(...s.enrolledStudents);
+        });
+
         const unassignedProfiles = await StudentProfile.find({
             school: req.session.schoolId,
-            $or: [{ currentSection: null }, { currentSection: { $exists: false } }],
+            user: { $nin: assignedStudentIds }
         }).populate('user', 'name email');
 
-        // Filter unassigned active teachers
-        const occupiedSections = await ClassSection.find({ school: req.session.schoolId, _id: { $ne: section._id } });
+        // Filter out primary class teachers from OTHER sections in this academic year
+        const occupiedSections = await ClassSection.find({ 
+            school: req.session.schoolId, 
+            academicYear: section.academicYear, 
+            _id: { $ne: section._id } 
+        });
         const occupiedTeacherIds = [];
         occupiedSections.forEach(sec => {
             if (sec.classTeacher) occupiedTeacherIds.push(sec.classTeacher.toString());
-            if (sec.substituteTeacher) occupiedTeacherIds.push(sec.substituteTeacher.toString());
         });
 
-        const teachers = await User.find({ role: 'teacher', school: req.session.schoolId, isActive: true })
-            .select('name email');
-        const availableTeachers = teachers.filter(t => !occupiedTeacherIds.includes(t._id.toString()));
+        const allTeachers = await User.find({ role: 'teacher', school: req.session.schoolId }).select('name email');
+        const teachers = allTeachers.filter(t => !occupiedTeacherIds.includes(t._id.toString()));
 
         res.render('admin/sections/show', {
             title: `Section ${section.sectionName}`, layout: 'layouts/main',
-            section, studentProfiles, unassignedProfiles, teachers: availableTeachers,
+            section, studentProfiles, unassignedProfiles, teachers,
         });
     } catch (err) {
         req.flash('error', 'Failed to load section.'); res.redirect('/admin/classes');
@@ -304,24 +405,27 @@ const postAssignStudentToSection = async (req, res) => {
         const profile = await StudentProfile.findOne({ user: studentId, school: req.session.schoolId });
         if (!profile) { req.flash('error', 'Student profile not found.'); return res.redirect(`/admin/sections/${sectionId}`); }
 
-        const oldSectionId = profile.currentSection || null;
-
-        // Decrement old section count
-        if (oldSectionId) {
-            await ClassSection.findByIdAndUpdate(oldSectionId, { $inc: { currentCount: -1 } });
+        // Assign to new section without pulling from past years!
+        // We enforce "one per year" by making the user remove them from the current year's section manually if they want to move them
+        const yearSections = await ClassSection.find({ school: req.session.schoolId, academicYear: section.academicYear });
+        const alreadyInYear = yearSections.some(s => s.enrolledStudents && s.enrolledStudents.includes(studentId));
+        if (alreadyInYear) {
+            req.flash('error', 'Student is already assigned to a section in this academic year! Please remove them from their current section first.');
+            return res.redirect(`/admin/sections/${sectionId}`); 
         }
 
-        // Assign to new section
         profile.currentSection = sectionId;
         await profile.save();
 
-        // Increment new section count
-        await ClassSection.findByIdAndUpdate(sectionId, { $inc: { currentCount: 1 } });
+        await ClassSection.findByIdAndUpdate(sectionId, { 
+            $inc: { currentCount: 1 },
+            $addToSet: { enrolledStudents: studentId }
+        });
 
         // Record history
         await StudentSectionHistory.create({
             student: studentId,
-            oldSection: oldSectionId,
+            oldSection: null, // Initial manually assigned for this year
             newSection: sectionId,
             transferReason: req.body.reason || 'Initial assignment',
             transferredBy: req.session.userId,
@@ -339,18 +443,24 @@ const postRemoveStudentFromSection = async (req, res) => {
     try {
         const { studentId } = req.body;
         const profile = await StudentProfile.findOne({ user: studentId, school: req.session.schoolId });
+        
+        await ClassSection.findByIdAndUpdate(sectionId, { 
+            $inc: { currentCount: -1 },
+            $pull: { enrolledStudents: studentId }
+        });
+
         if (profile && profile.currentSection && profile.currentSection.toString() === sectionId) {
             profile.currentSection = null;
             await profile.save();
-            await ClassSection.findByIdAndUpdate(sectionId, { $inc: { currentCount: -1 } });
-            await StudentSectionHistory.create({
-                student: studentId,
-                oldSection: sectionId,
-                newSection: null,
-                transferReason: 'Removed from section',
-                transferredBy: req.session.userId,
-            });
         }
+
+        await StudentSectionHistory.create({
+            student: studentId,
+            oldSection: sectionId,
+            newSection: null,
+            transferReason: 'Removed from section by admin',
+            transferredBy: req.session.userId,
+        });
         req.flash('success', 'Student removed from section.');
         res.redirect(`/admin/sections/${sectionId}`);
     } catch (err) {
@@ -363,31 +473,37 @@ const postUpdateSectionTeacher = async (req, res) => {
     const { sectionId } = req.params;
     try {
         const { classTeacher, substituteTeacher } = req.body;
+        const sectionToUpdate = await ClassSection.findOne({ _id: sectionId, school: req.session.schoolId });
+        if (!sectionToUpdate) return res.redirect('/admin/classes');
+
         const ct = classTeacher ? classTeacher.toString().trim() : '';
         const st = substituteTeacher ? substituteTeacher.toString().trim() : '';
 
-        if (ct && st && ct === st) {
-            req.flash('error', 'Class teacher and substitute teacher cannot be the same person.');
-            return res.redirect(`/admin/sections/${sectionId}`);
-        }
-        
-        // Block already assigned teachers
+        // Validate teacher constraints per Academic Year
         if (ct || st) {
-            const checkIds = [];
-            if (ct) checkIds.push(ct);
-            if (st) checkIds.push(st);
-            
-            const occupied = await ClassSection.findOne({
-                school: req.session.schoolId,
-                _id: { $ne: sectionId },
-                $or: [
-                    { classTeacher: { $in: checkIds } },
-                    { substituteTeacher: { $in: checkIds } }
-                ]
-            });
-            if (occupied) {
-                req.flash('error', 'One or both of the selected teachers are already assigned to another section.');
-                return res.redirect(`/admin/sections/${sectionId}`);
+            if (ct) {
+                const occupiedCt = await ClassSection.findOne({
+                    school: req.session.schoolId,
+                    academicYear: sectionToUpdate.academicYear,
+                    _id: { $ne: sectionId },
+                    classTeacher: ct
+                });
+                if (occupiedCt) {
+                    req.flash('error', 'The selected class teacher is already assigned as a primary class teacher in another class for this academic year.');
+                    return res.redirect(`/admin/sections/${sectionId}`);
+                }
+            }
+            if (st) {
+                const occupiedSt = await ClassSection.findOne({
+                    school: req.session.schoolId,
+                    academicYear: sectionToUpdate.academicYear,
+                    _id: { $ne: sectionId },
+                    classTeacher: st
+                });
+                if (occupiedSt) {
+                    req.flash('error', 'The selected vice class teacher is a primary class teacher in another class (which prevents taking vice duties elsewhere).');
+                    return res.redirect(`/admin/sections/${sectionId}`);
+                }
             }
         }
 
@@ -440,11 +556,118 @@ const postDeleteSection = async (req, res) => {
     }
 };
 
+const postAutoAssignStudents = async (req, res) => {
+    try {
+        const { year } = req.body;
+        if (!year) {
+            req.flash('error', 'No academic year selected.');
+            return res.redirect('/admin/classes');
+        }
+
+        const availableClasses = await Class.find({ school: req.session.schoolId, academicYear: year });
+        const availableSections = await ClassSection.find({ school: req.session.schoolId, academicYear: year });
+
+        // Fetch students belonging to the school that have class string set
+        const students = await StudentProfile.find({ school: req.session.schoolId, class: { $ne: '' } })
+            .populate('currentSection');
+
+        // Pre-compute all assigned students in this academic year from the new authority source
+        const alreadyAssignedStudentIds = new Set();
+        availableSections.forEach(s => {
+            if (s.enrolledStudents) {
+                s.enrolledStudents.forEach(id => alreadyAssignedStudentIds.add(id.toString()));
+            }
+        });
+
+        let assignedCount = 0;
+
+        for (const st of students) {
+            // "In every academic year a student can assign once"
+            // Skip students who are already tracked in ANY section's array within THIS academic year
+            if (st.user && alreadyAssignedStudentIds.has(st.user.toString())) {
+                continue;
+            }
+
+            const parsedNum = parseInt(st.class);
+            const isNum = !isNaN(parsedNum);
+            const sClassStr = st.class.toString().trim().toLowerCase();
+            const sSectionStr = st.section ? st.section.toString().trim().toLowerCase() : '';
+
+            const foundClass = availableClasses.find(c => 
+                c.className.toLowerCase() === sClassStr || 
+                (isNum && c.classNumber === parsedNum)
+            );
+
+            if (foundClass) {
+                const foundSec = availableSections.find(s => 
+                    s.class.toString() === foundClass._id.toString() &&
+                    s.sectionName.toLowerCase() === sSectionStr
+                );
+
+                if (foundSec && foundSec.currentCount < foundSec.maxStudents) {
+                    let oldSectionId = st.currentSection ? st.currentSection._id : null;
+                    
+                    // Directly use findByIdAndUpdate to bypass pre-save hook anomalies that can arise from population
+                    await StudentProfile.findByIdAndUpdate(st._id, { currentSection: foundSec._id });
+
+                    if (oldSectionId) {
+                        const oldSecObj = await ClassSection.findById(oldSectionId);
+                        if (oldSecObj && oldSecObj.academicYear && oldSecObj.academicYear.toString() === year.toString()) {
+                            // Student is leaving a section within THIS same year
+                            await ClassSection.findByIdAndUpdate(oldSectionId, { 
+                                $inc: { currentCount: -1 },
+                                $pull: { enrolledStudents: st._id }
+                            });
+                        } else {
+                            // Boundary crossed! Do not pull or decrement from the old year!
+                            // Just null out oldSectionId so history log makes sense
+                            oldSectionId = null;
+                        }
+                    }
+
+                    const updatedSec = await ClassSection.findByIdAndUpdate(foundSec._id, { 
+                        $addToSet: { enrolledStudents: st.user }
+                    }, { new: true });
+                    
+                    if (updatedSec) {
+                        updatedSec.currentCount = updatedSec.enrolledStudents.length;
+                        await updatedSec.save();
+                    }
+                    
+                    if (st.user) {
+                        await StudentSectionHistory.create({
+                            student: st.user,
+                            oldSection: oldSectionId,
+                            newSection: foundSec._id,
+                            transferReason: 'Auto-assigned by admin',
+                            transferredBy: req.session.userId
+                        });
+                    }
+
+                    foundSec.currentCount++; // update in memory for next capacity check
+                    assignedCount++;
+                }
+            }
+        }
+
+        if (assignedCount > 0) {
+            req.flash('success', `Successfully auto-assigned ${assignedCount} students for this academic year.`);
+        } else {
+            req.flash('success', `No students were newly assigned (students may already be assigned or class strings mismatch).`);
+        }
+        res.redirect(`/admin/classes?year=${year}`);
+    } catch (err) {
+        console.error(err);
+        req.flash('error', 'Failed to auto-assign students: ' + err.message);
+        res.redirect('/admin/classes');
+    }
+};
+
 module.exports = {
     // Academic years
-    getAcademicYears, postCreateAcademicYear, postDeleteAcademicYear,
+    getAcademicYears, postCreateAcademicYear, getEditAcademicYear, postEditAcademicYear, postDeleteAcademicYear, postSetActiveAcademicYear,
     // Classes
-    getClasses, getCreateClass, postCreateClass, getClassDetail, postDeleteClass,
+    getClasses, getCreateClass, postCreateClass, getClassDetail, postDeleteClass, postAutoAssignStudents,
     // Sections
     postCreateSection, getSectionDetail,
     postAssignStudentToSection, postRemoveStudentFromSection,
