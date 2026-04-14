@@ -4,7 +4,7 @@
         <% if (section) { %>
             <p>
                 <%= section.class?.className %> – Section <%= section.sectionName %> &middot; <%=
-                            section.academicYear?.yearName %>
+                            activeYear?.yearName || section.academicYear?.yearName %>
             </p>
             <% } %>
     </div>
@@ -15,7 +15,7 @@
         <div class="empty-state">
             <div class="empty-icon">🏫</div>
             <h3>Not Assigned to a Class</h3>
-            <p>You haven't been assigned to any class section yet. Please contact your School Admin.</p>
+            <p>You haven't been assigned to any class section for the current academic year<% if (activeYear?.yearName) { %> (<strong><%= activeYear.yearName %></strong>)<% } %>. Please contact your School Admin.</p>
         </div>
     </div>
     <% } else { %>
@@ -46,6 +46,15 @@
                             <%= section.classTeacher?.name || '—' %>
                         </div>
                         <div class="stat-label">Class Teacher</div>
+                    </div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon purple">📅</div>
+                    <div class="stat-info">
+                        <div class="stat-value" style="font-size:1rem;">
+                            <%= activeYear?.yearName || section.academicYear?.yearName || '—' %>
+                        </div>
+                        <div class="stat-label">Academic Year</div>
                     </div>
                 </div>
                 <% if (isMonitor) { %>
