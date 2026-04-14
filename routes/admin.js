@@ -50,6 +50,7 @@ router.get('/classes/create', guard, classCtrl.getCreateClass);
 router.post('/classes/create', guard, classCtrl.postCreateClass);
 router.get('/classes/:classId', guard, classCtrl.getClassDetail);
 router.post('/classes/:classId/delete', guard, classCtrl.postDeleteClass);
+router.post('/classes/auto-assign', guard, classCtrl.postAutoAssignStudents);
 
 // Class → Sections
 router.post('/classes/:classId/sections/create', guard, classCtrl.postCreateSection);

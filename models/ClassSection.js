@@ -43,6 +43,10 @@ const ClassSectionSchema = new mongoose.Schema({
         default: 0,
         min: 0,
     },
+    enrolledStudents: [{
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'User'
+    }],
     status: {
         type: String,
         enum: ['active', 'inactive', 'archived'],
@@ -56,16 +60,5 @@ const ClassSectionSchema = new mongoose.Schema({
 
 // Unique section name within a class
 ClassSectionSchema.index({ class: 1, sectionName: 1 }, { unique: true });
-
-// Validate classTeacher != substituteTeacher
-ClassSectionSchema.pre('save', async function () {
-    if (
-        this.classTeacher &&
-        this.substituteTeacher &&
-        this.classTeacher.toString() === this.substituteTeacher.toString()
-    ) {
-        throw new Error('Class teacher and substitute teacher cannot be the same person.');
-    }
-});
 
 module.exports = mongoose.model('ClassSection', ClassSectionSchema);

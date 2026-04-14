@@ -335,7 +335,10 @@ const postCreateStudent = async (req, res) => {
         if (matchedSectionId) {
             const ClassSection = require('../models/ClassSection');
             const StudentSectionHistory = require('../models/StudentSectionHistory');
-            await ClassSection.findByIdAndUpdate(matchedSectionId, { $inc: { currentCount: 1 } });
+            await ClassSection.findByIdAndUpdate(matchedSectionId, { 
+                $inc: { currentCount: 1 },
+                $addToSet: { enrolledStudents: studentUser._id }
+            });
             await StudentSectionHistory.create({
                 student: studentUser._id,
                 oldSection: null,
@@ -539,7 +542,10 @@ const postBulkStudents = async (req, res) => {
                 });
 
                 if (matchedSectionId) {
-                    await ClassSection.findByIdAndUpdate(matchedSectionId, { $inc: { currentCount: 1 } });
+                    await ClassSection.findByIdAndUpdate(matchedSectionId, { 
+                        $inc: { currentCount: 1 },
+                        $addToSet: { enrolledStudents: studentUser._id }
+                    });
                     await StudentSectionHistory.create({
                         student: studentUser._id,
                         oldSection: null,
@@ -762,8 +768,9 @@ const postEditUser = async (req, res) => {
             const { parentName, parentEmail, parentPhone, parentRelationship, fatherOccupation, motherOccupation, guardianOccupation, annualIncome, emergencyContact, studentClass, studentSection, ...studentUpdates } = profileData;
             studentUpdates.class = studentClass;
             studentUpdates.section = studentSection;
-            
+
             const studProf = await StudentProfile.findOneAndUpdate({ user: user._id }, studentUpdates);
+
             if (studProf && studProf.parent) {
                 if (parentName || parentEmail || parentPhone) {
                     await User.findByIdAndUpdate(studProf.parent, {

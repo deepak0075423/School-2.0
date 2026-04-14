@@ -4,7 +4,13 @@
         <p>Manage classes at <%= session.schoolName %>
         </p>
     </div>
-    <a href="/admin/classes/create" class="btn btn-primary">+ New Class</a>
+    <div style="display:flex; gap:12px;">
+        <form action="/admin/classes/auto-assign" method="POST" style="margin:0;">
+            <input type="hidden" name="year" value="<%= selectedYear %>">
+            <button type="submit" class="btn btn-success">Assign Students to Classes</button>
+        </form>
+        <a href="/admin/classes/create" class="btn btn-primary">+ New Class</a>
+    </div>
 </div>
 
 <%# Year Filter %>
