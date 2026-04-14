@@ -4,11 +4,12 @@
         <p>Manage classes at <%= session.schoolName %>
         </p>
     </div>
-    <div style="display:flex; gap:12px;">
+    <div style="display:flex; gap:12px; flex-wrap:wrap;">
         <form action="/admin/classes/auto-assign" method="POST" style="margin:0;">
             <input type="hidden" name="year" value="<%= selectedYear %>">
             <button type="submit" class="btn btn-success">Assign Students to Classes</button>
         </form>
+        <a href="/admin/timetable/download-all" class="btn btn-secondary">⬇ Download All Class Timetable PDF</a>
         <a href="/admin/classes/create" class="btn btn-primary">+ New Class</a>
     </div>
 </div>

@@ -43,6 +43,7 @@ router.post('/correction-requests/review', attendanceGuard, attendanceCtrl.postR
 
 // ── Timetable ─────────────────────────────────────────────────
 router.get('/timetable', guard, timetableCtrl.teacherViewTimetable);
+router.get('/timetable/download', guard, timetableCtrl.teacherDownloadTimetable);
 
 // ── Notifications ─────────────────────────────────────────────
 const notifCtrl  = require('../controllers/notificationController');

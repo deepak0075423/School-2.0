@@ -380,9 +380,13 @@ const getSectionDetail = async (req, res) => {
         const allTeachers = await User.find({ role: 'teacher', school: req.session.schoolId }).select('name email');
         const teachers = allTeachers.filter(t => !occupiedTeacherIds.includes(t._id.toString()));
 
+        // Check if timetable is generated
+        const Timetable = require('../models/Timetable');
+        const timetable = await Timetable.findOne({ section: section._id, academicYear: section.academicYear });
+
         res.render('admin/sections/show', {
             title: `Section ${section.sectionName}`, layout: 'layouts/main',
-            section, studentProfiles, unassignedProfiles, teachers,
+            section, studentProfiles, unassignedProfiles, teachers, timetable
         });
     } catch (err) {
         req.flash('error', 'Failed to load section.'); res.redirect('/admin/classes');

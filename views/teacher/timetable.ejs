@@ -38,10 +38,24 @@
                     <option value="<%= t._id %>" <%= searchTeacherId && searchTeacherId.toString() === t._id.toString() ? 'selected' : '' %>><%= t.name %></option>
                 <% }) %>
             </select>
+            <% if (!searchTeacherId) { %>
+                <!-- If viewing self, allow changing the academic year -->
+                <select name="yearId" class="form-control" onchange="this.form.submit()" style="min-width: 150px;">
+                    <% years.forEach(y => { %>
+                        <option value="<%= y._id %>" <%= selectedYearId && selectedYearId.toString() === y._id.toString() ? 'selected' : '' %>>
+                            <%= y.yearName %> <%= y.status === 'active' ? '(Current)' : '' %>
+                        </option>
+                    <% }) %>
+                </select>
+            <% } %>
             <button type="submit" class="btn btn-secondary">Search</button>
         </form>
         <% if (searchTeacherId) { %>
             <a href="/teacher/timetable" class="btn btn-primary">My Timetable</a>
+        <% } else { %>
+            <% if (entries && entries.length > 0) { %>
+            <a href="/teacher/timetable/download" class="btn btn-secondary">⬇ Download PDF</a>
+            <% } %>
         <% } %>
     </div>
 </div>
@@ -53,42 +67,62 @@
                 No periods assigned to this teacher yet.
             </div>
         <% } else { %>
-            <!-- Since a teacher can have classes from multiple timetables with DIFFERENT structures (though rarely), 
-                 we must build a generic grid from Day vs Period, up to max PeriodNumber. -->
-            <% 
-                let maxPeriod = 1;
-                entries.forEach(e => {
-                    if (e.periodNumber > maxPeriod) maxPeriod = e.periodNumber;
-                });
+            <%
+                // Use periodsStructure if available (includes lunch break), else fall back to numbered periods
+                let gridPeriods = periodsStructure && periodsStructure.length > 0
+                    ? periodsStructure
+                    : (() => {
+                        let mx = 1;
+                        entries.forEach(e => { if (e.periodNumber > mx) mx = e.periodNumber; });
+                        return Array.from({ length: mx }, (_, i) => ({
+                            periodNumber: i + 1, startTime: '', endTime: '', isRecess: false, recessName: ''
+                        }));
+                    })();
             %>
             <table class="timetable-grid">
                 <thead>
                     <tr>
-                        <th>Day</th>
-                        <% for(let i=1; i<=maxPeriod; i++) { %>
-                            <th>Period <%= i %></th>
-                        <% } %>
+                        <th>Day / Time</th>
+                        <% gridPeriods.forEach(p => { %>
+                            <th<% if (p.isRecess) { %> style="background:var(--warning-bg, #fef9c3); color:#92400e; min-width:60px;"<% } %>>
+                                <% if (p.isRecess) { %>
+                                    <div style="font-size:11px; font-weight:600;">BREAK</div>
+                                    <div style="font-size:11px; font-weight:normal; color:inherit;"><%= p.recessName || 'Lunch' %></div>
+                                <% } else { %>
+                                    Period <%= p.periodNumber %>
+                                <% } %>
+                                <% if (p.startTime) { %>
+                                <div style="font-size: 11px; font-weight: normal; color: var(--text-muted);">
+                                    <%= p.startTime %> - <%= p.endTime %>
+                                </div>
+                                <% } %>
+                            </th>
+                        <% }) %>
                     </tr>
                 </thead>
                 <tbody>
                     <% days.forEach(day => { %>
                         <tr>
                             <td style="font-weight: 600; vertical-align: middle;"><%= day %></td>
-                            <% for(let i=1; i<=maxPeriod; i++) { %>
-                                <% 
-                                    const entry = entries.find(e => e.dayOfWeek === day && e.periodNumber === i); 
-                                %>
-                                <td>
-                                    <% if (entry) { %>
-                                        <div class="subject-name"><%= entry.subject?.subjectName %></div>
-                                        <div class="class-info">
-                                            <%= entry.timetable?.section?.class?.classNumber %> - <%= entry.timetable?.section?.sectionName %>
-                                        </div>
-                                    <% } else { %>
-                                        <div style="color: var(--text-muted); font-size: 12px;">—</div>
-                                    <% } %>
-                                </td>
-                            <% } %>
+                            <% gridPeriods.forEach(p => { %>
+                                <% if (p.isRecess) { %>
+                                    <td class="recess-cell" style="background:var(--warning-bg, #fef9c3); color:#92400e;">
+                                        <%= p.recessName || 'Lunch' %>
+                                    </td>
+                                <% } else { %>
+                                    <% const entry = entries.find(e => e.dayOfWeek === day && e.periodNumber === p.periodNumber); %>
+                                    <td>
+                                        <% if (entry) { %>
+                                            <div class="subject-name"><%= entry.subject?.subjectName %></div>
+                                            <div class="class-info">
+                                                <%= entry.timetable?.section?.class?.className %> - <%= entry.timetable?.section?.sectionName %>
+                                            </div>
+                                        <% } else { %>
+                                            <div style="color: var(--text-muted); font-size: 12px;">—</div>
+                                        <% } %>
+                                    </td>
+                                <% } %>
+                            <% }) %>
                         </tr>
                     <% }) %>
                 </tbody>

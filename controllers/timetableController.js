@@ -13,7 +13,7 @@ const adminManageTimetable = async (req, res) => {
         let timetable = await Timetable.findOne({ section: sectionId, academicYear: section.academicYear._id || section.academicYear });
         
         res.render('admin/timetable/structure', {
-            title: `Manage Timetable Structure - ${section.sectionName}`,
+            title: `Manage Timetable Config - ${section.sectionName}`,
             layout: 'layouts/main',
             section,
             timetable
@@ -27,36 +27,74 @@ const adminManageTimetable = async (req, res) => {
 const adminSaveTimetableStructure = async (req, res) => {
     try {
         const { sectionId } = req.params;
-        const { schoolStartTime, schoolEndTime, periodNumbers, startTimes, endTimes, recesses, recessNames } = req.body;
+        const { startTime, endTime, totalPeriods, lunchTimeTotalInMinutes, lunchAfterPeriod, openOnSaturday } = req.body;
         
         const section = await ClassSection.findOne({ _id: sectionId, school: req.session.schoolId });
         if (!section) { req.flash('error', 'Section not found.'); return res.redirect('/admin/classes'); }
 
+        // Save config in ClassSection
+        section.startTime = startTime || '08:00';
+        section.endTime = endTime || '14:00';
+        section.totalPeriods = parseInt(totalPeriods) || 8;
+        section.lunchTimeTotalInMinutes = parseInt(lunchTimeTotalInMinutes) || 30;
+        section.lunchAfterPeriod = parseInt(lunchAfterPeriod) || 4;
+        section.openOnSaturday = openOnSaturday === 'on' || openOnSaturday === 'true' || openOnSaturday === true;
+        await section.save();
+
+        // Calculate Timetable Periods
+        const parseTime = t => { const [h,m] = t.split(':'); return parseInt(h)*60 + parseInt(m); };
+        const formatTime = m => {
+            const hh = Math.floor(m / 60).toString().padStart(2, '0');
+            const mm = Math.floor(m % 60).toString().padStart(2, '0');
+            return `${hh}:${mm}`;
+        };
+
+        let startMin = parseTime(section.startTime);
+        let endMin = parseTime(section.endTime);
+        let totalAvail = endMin - startMin - section.lunchTimeTotalInMinutes;
+        let periodLen = Math.floor(totalAvail / section.totalPeriods);
+        let remainder = totalAvail % section.totalPeriods; // added to the last period if any
+        
         let periodsStructure = [];
-        if (Array.isArray(startTimes)) {
-            for (let i = 0; i < startTimes.length; i++) {
+        let currentMin = startMin;
+        let pCount = 1;
+
+        for (let i = 1; i <= section.totalPeriods + 1; i++) {
+            if (i - 1 === section.lunchAfterPeriod) {
+                // Lunch Time!
                 periodsStructure.push({
-                    periodNumber: periodNumbers ? parseInt(periodNumbers[i]) || (i+1) : (i+1),
-                    startTime: startTimes[i],
-                    endTime: endTimes[i],
-                    isRecess: recesses && recesses[i] === 'true',
-                    recessName: recessNames && recessNames[i] ? recessNames[i] : 'Break'
+                    periodNumber: 0,
+                    startTime: formatTime(currentMin),
+                    endTime: formatTime(currentMin + section.lunchTimeTotalInMinutes),
+                    isRecess: true,
+                    recessName: 'Lunch'
                 });
+                currentMin += section.lunchTimeTotalInMinutes;
             }
-        } else if (startTimes) {
-            periodsStructure.push({
-                periodNumber: parseInt(periodNumbers) || 1,
-                startTime: startTimes,
-                endTime: endTimes,
-                isRecess: recesses === 'true',
-                recessName: recessNames || 'Break'
-            });
+
+            if (pCount <= section.totalPeriods) {
+                let pDuration = periodLen;
+                if (pCount === section.totalPeriods) {
+                    pDuration += remainder; // remainder into the last period
+                }
+                
+                let nextMin = currentMin + pDuration;
+                periodsStructure.push({
+                    periodNumber: pCount,
+                    startTime: formatTime(currentMin),
+                    endTime: formatTime(nextMin),
+                    isRecess: false,
+                    recessName: 'Period'
+                });
+                currentMin = nextMin;
+                pCount++;
+            }
         }
 
         let timetable = await Timetable.findOne({ section: sectionId, academicYear: section.academicYear });
         if (timetable) {
-            timetable.schoolStartTime = schoolStartTime;
-            timetable.schoolEndTime = schoolEndTime;
+            timetable.schoolStartTime = section.startTime;
+            timetable.schoolEndTime = section.endTime;
             timetable.periodsStructure = periodsStructure;
             await timetable.save();
         } else {
@@ -64,12 +102,13 @@ const adminSaveTimetableStructure = async (req, res) => {
                 section: sectionId,
                 academicYear: section.academicYear,
                 createdBy: req.session.userId,
-                schoolStartTime,
-                schoolEndTime,
+                schoolStartTime: section.startTime,
+                schoolEndTime: section.endTime,
                 periodsStructure
             });
         }
-        req.flash('success', 'Timetable structure saved. Now you can assign subjects and teachers.');
+        
+        req.flash('success', 'Timetable automatically calculated and saved. Assign subjects below.');
         res.redirect(`/admin/sections/${sectionId}/timetable/entries`);
     } catch (err) {
         req.flash('error', 'Failed to save timetable structure: ' + err.message);
@@ -85,13 +124,16 @@ const adminAssignPeriods = async (req, res) => {
 
         const timetable = await Timetable.findOne({ section: sectionId, academicYear: section.academicYear._id || section.academicYear });
         if (!timetable || !timetable.periodsStructure || timetable.periodsStructure.length === 0) {
-            req.flash('error', 'Please define timetable structure first.');
+            req.flash('error', 'Please configure timetable options first.');
             return res.redirect(`/admin/sections/${sectionId}/timetable`);
         }
 
         const entries = await TimetableEntry.find({ timetable: timetable._id }).populate('subject').populate('teacher');
         const subjects = await Subject.find({ school: req.session.schoolId });
         
+        const days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];
+        if (section.openOnSaturday) days.push('Saturday');
+
         res.render('admin/timetable/entries', {
             title: `Assign Timetable - ${section.sectionName}`,
             layout: 'layouts/main',
@@ -99,7 +141,7 @@ const adminAssignPeriods = async (req, res) => {
             timetable,
             entries,
             subjects,
-            days: ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
+            days
         });
     } catch (err) {
         req.flash('error', 'Failed to load timetable assignment.');
@@ -122,7 +164,9 @@ const adminSaveEntries = async (req, res) => {
         // Drop all old entries and replace with new ones
         await TimetableEntry.deleteMany({ timetable: timetable._id });
 
-        const days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+        const days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];
+        if (section.openOnSaturday) days.push('Saturday');
+
         let newEntries = [];
 
         // Data from UI should be posted as nested arrays or specific names like: subject_Monday_1, teacher_Monday_1
@@ -159,46 +203,44 @@ const adminSaveEntries = async (req, res) => {
 
 const apiGetTeachersBySubject = async (req, res) => {
     try {
-        const { subjectId } = req.query;
-        // In the existing models, Teachers can be found via TeacherProfile.subjects or SectionSubjectTeacher.
-        // Let's just find all active teachers for the school since the UI is simple and can allow picking any teacher.
-        // Wait, the prompt specifically requested filtering: 
-        // "when assigning hindi teacher it will show all the avaliable teacher who takes hindi class"
+        const { subjectId, day, period, timetableId } = req.query;
         
-        // Let's look up the actual subject
-        const subject = await Subject.findOne({ _id: subjectId, school: req.session.schoolId });
+        const subject = await Subject.findOne({ _id: subjectId, school: req.session.schoolId }).populate({
+            path: 'teachers',
+            match: { isActive: true },
+            select: 'name email'
+        });
+        
         if (!subject) return res.json({ success: false, message: 'Subject not found' });
         
-        const TeacherProfile = require('../models/TeacherProfile');
-        
-        // Find teachers who have this subject name in their subjects array
-        // Fallback: If no teacher explicitly lists the subject, perhaps return all? 
-        // Let's strictly return teachers who have this subject in their profile OR all teachers if we want to be safe?
-        // To be strict as requested:
-        
-        const profiles = await TeacherProfile.find({
-            school: req.session.schoolId,
-            subjects: { $regex: new RegExp(`^${subject.subjectName}$`, 'i') }
-        }).populate({
-            path: 'user',
-            match: { isActive: true }
-        });
-
-        const teachers = profiles
-            .filter(p => p.user) // Filter out null users (inactive)
-            .map(p => ({
-                _id: p.user._id,
-                name: p.user.name,
-                email: p.user.email
-            }));
+        let potentialTeachers = subject.teachers || [];
             
-        // If no teachers found for the specific subject, optionally return all
-        if (teachers.length === 0) {
-             const allTeachers = await User.find({ school: req.session.schoolId, role: 'teacher', isActive: true });
-             res.json({ success: true, teachers: allTeachers.map(t => ({ _id: t._id, name: t.name, email: t.email })), note: 'All teachers returned as none specifically matched the subject.' });
-        } else {
-             res.json({ success: true, teachers });
+        if (potentialTeachers.length === 0) {
+             potentialTeachers = await User.find({ school: req.session.schoolId, role: 'teacher', isActive: true }).select('name email');
         }
+
+        // Filter availability
+        let availableTeachers = [];
+        if (day && period) {
+            for (const t of potentialTeachers) {
+                let conflictQuery = {
+                    teacher: t._id,
+                    dayOfWeek: day,
+                    periodNumber: period
+                };
+                if (timetableId) {
+                    conflictQuery.timetable = { $ne: timetableId };
+                }
+                const conflict = await TimetableEntry.findOne(conflictQuery);
+                if (!conflict) {
+                    availableTeachers.push(t);
+                }
+            }
+        } else {
+            availableTeachers = potentialTeachers;
+        }
+
+        res.json({ success: true, teachers: availableTeachers });
         
     } catch (err) {
         res.status(500).json({ success: false, message: err.message });
@@ -207,7 +249,7 @@ const apiGetTeachersBySubject = async (req, res) => {
 
 const teacherViewTimetable = async (req, res) => {
     try {
-        const { searchTeacherId } = req.query;
+        const { searchTeacherId, yearId } = req.query;
         const targetTeacherId = searchTeacherId || req.session.userId;
         
         const targetTeacher = await User.findOne({ _id: targetTeacherId, school: req.session.schoolId, role: 'teacher' });
@@ -216,28 +258,69 @@ const teacherViewTimetable = async (req, res) => {
             return res.redirect('/teacher/dashboard');
         }
 
-        // Get all entries for this teacher across all timetables
-        const entries = await TimetableEntry.find({ teacher: targetTeacher._id })
-            .populate('subject')
-            .populate({
-                path: 'timetable',
-                populate: {
-                    path: 'section',
-                    populate: { path: 'class' }
-                }
-            });
+        const AcademicYear = require('../models/AcademicYear');
+        const activeYear = await AcademicYear.findOne({ school: req.session.schoolId, status: 'active' });
+        
+        let selectedYearId = activeYear ? activeYear._id : null;
+        let years = [];
 
-        // Let's also fetch all teachers in the school for the search dropdown
+        // If viewing self, allow changing year
+        if (targetTeacherId.toString() === req.session.userId.toString()) {
+            years = await AcademicYear.find({ school: req.session.schoolId }).sort({ createdAt: -1 });
+            if (yearId) {
+                selectedYearId = yearId;
+            }
+        } else {
+            // For other teachers, strictly enforce active year
+            selectedYearId = activeYear ? activeYear._id : null;
+        }
+
+        let entries = [];
+        let periodsStructure = [];
+        if (selectedYearId) {
+            const timetables = await Timetable.find({ academicYear: selectedYearId });
+            const timetableIds = timetables.map(t => t._id);
+
+            // Get entries for this teacher for the specific academic year timetables
+            entries = await TimetableEntry.find({
+                teacher: targetTeacher._id,
+                timetable: { $in: timetableIds }
+            })
+                .populate('subject')
+                .populate({
+                    path: 'timetable',
+                    populate: {
+                        path: 'section',
+                        populate: { path: 'class' }
+                    }
+                });
+
+            // Use the period structure from the first timetable that has entries
+            // (all sections in a school share the same lunch break timing)
+            const firstTimetableId = entries.length ? entries[0].timetable._id.toString() : null;
+            const refTimetable = timetables.find(t => t._id.toString() === firstTimetableId)
+                              || timetables[0];
+            if (refTimetable && refTimetable.periodsStructure) {
+                periodsStructure = refTimetable.periodsStructure;
+            }
+        }
+
         const allTeachers = await User.find({ school: req.session.schoolId, role: 'teacher', isActive: true }).select('name email');
+
+        const days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];
+        if (entries.some(e => e.dayOfWeek === 'Saturday')) days.push('Saturday');
 
         res.render('teacher/timetable', {
             title: `Timetable - ${targetTeacher.name}`,
             layout: 'layouts/main',
             entries,
+            periodsStructure,
             targetTeacher,
             allTeachers,
             searchTeacherId,
-            days: ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
+            selectedYearId,
+            years,
+            days
         });
     } catch (err) {
         req.flash('error', 'Failed to load timetable.');
@@ -248,6 +331,8 @@ const teacherViewTimetable = async (req, res) => {
 const studentViewTimetable = async (req, res) => {
     try {
         const StudentProfile = require('../models/StudentProfile');
+        const AcademicYear = require('../models/AcademicYear');
+
         const profile = await StudentProfile.findOne({ user: req.session.userId }).populate('currentSection');
         if (!profile || !profile.currentSection) {
             req.flash('error', 'You are not assigned to a section yet.');
@@ -255,8 +340,39 @@ const studentViewTimetable = async (req, res) => {
         }
 
         const sectionId = profile.currentSection._id;
-        const timetable = await Timetable.findOne({ section: sectionId, academicYear: profile.currentSection.academicYear });
-        
+        const section = await ClassSection.findById(sectionId).populate('class').populate('academicYear');
+
+        // Always show timetable from the active academic year
+        const activeYear = await AcademicYear.findOne({ school: req.session.schoolId, status: 'active' });
+
+        let timetable = null;
+        let effectiveSection = section; // section whose openOnSaturday/timing settings apply
+        if (activeYear) {
+            // First try: student's own section in the active year
+            timetable = await Timetable.findOne({ section: sectionId, academicYear: activeYear._id })
+                .populate({ path: 'section', populate: { path: 'class' } });
+
+            // Second try: find the matching section in the active year by class name + section name
+            // (Needed when student's currentSection belongs to a different academic year)
+            if (!timetable && section && section.class) {
+                const sectionsInActiveYear = await ClassSection.find({
+                    school: req.session.schoolId,
+                    sectionName: section.sectionName,
+                    academicYear: activeYear._id
+                }).populate('class');
+
+                const matchingSection = sectionsInActiveYear.find(
+                    s => s.class && s.class.className === section.class.className
+                );
+
+                if (matchingSection) {
+                    timetable = await Timetable.findOne({ section: matchingSection._id, academicYear: activeYear._id })
+                        .populate({ path: 'section', populate: { path: 'class' } });
+                    effectiveSection = matchingSection;
+                }
+            }
+        }
+
         let entries = [];
         if (timetable) {
             entries = await TimetableEntry.find({ timetable: timetable._id })
@@ -264,16 +380,260 @@ const studentViewTimetable = async (req, res) => {
                 .populate('teacher');
         }
 
+        const days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];
+        if (effectiveSection.openOnSaturday) days.push('Saturday');
+
         res.render('student/timetable', {
             title: 'My Timetable',
             layout: 'layouts/main',
             timetable,
+            section,
             entries,
-            days: ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
+            days,
+            activeYear
         });
     } catch (err) {
         req.flash('error', 'Failed to load timetable.');
         res.redirect('/student/dashboard');
+    }
+};
+
+// ── Shared helpers ─────────────────────────────────────────────
+
+/**
+ * Resolve active-year timetable for a student section.
+ * Returns { timetable, effectiveSection, entries, days, activeYear }
+ */
+async function _resolveStudentTimetable(schoolId, currentSection) {
+    const AcademicYear = require('../models/AcademicYear');
+    const sectionId = currentSection._id;
+    const section   = await ClassSection.findById(sectionId).populate('class').populate('academicYear');
+    const activeYear = await AcademicYear.findOne({ school: schoolId, status: 'active' });
+
+    let timetable = null;
+    let effectiveSection = section;
+
+    if (activeYear) {
+        timetable = await Timetable.findOne({ section: sectionId, academicYear: activeYear._id });
+
+        if (!timetable && section && section.class) {
+            const candidates = await ClassSection.find({
+                school: schoolId,
+                sectionName: section.sectionName,
+                academicYear: activeYear._id
+            }).populate('class');
+
+            const match = candidates.find(s => s.class && s.class.className === section.class.className);
+            if (match) {
+                timetable = await Timetable.findOne({ section: match._id, academicYear: activeYear._id });
+                effectiveSection = match;
+            }
+        }
+    }
+
+    let entries = [];
+    if (timetable) {
+        entries = await TimetableEntry.find({ timetable: timetable._id })
+            .populate('subject').populate('teacher');
+    }
+
+    const days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];
+    if (effectiveSection.openOnSaturday) days.push('Saturday');
+
+    return { timetable, effectiveSection, section, entries, days, activeYear };
+}
+
+// ── Student download ───────────────────────────────────────────
+
+const studentDownloadTimetable = async (req, res) => {
+    try {
+        const StudentProfile = require('../models/StudentProfile');
+        const School = require('../models/School');
+
+        const profile = await StudentProfile.findOne({ user: req.session.userId }).populate('currentSection');
+        if (!profile || !profile.currentSection) {
+            return res.status(404).send('You are not assigned to a section.');
+        }
+
+        const { timetable, effectiveSection, section, entries, days, activeYear } =
+            await _resolveStudentTimetable(req.session.schoolId, profile.currentSection);
+
+        if (!timetable) {
+            return res.status(404).send('No timetable configured for your section in the active academic year.');
+        }
+
+        const school = await School.findById(req.session.schoolId);
+        const { generateTimetablePDF } = require('../utils/timetablePdf');
+
+        generateTimetablePDF(res, [{
+            className:   section.class.className,
+            sectionName: section.sectionName,
+            yearName:    activeYear.yearName,
+            timetable,
+            entries,
+            days
+        }], school.name, 'my-timetable.pdf');
+
+    } catch (err) {
+        console.error(err);
+        res.status(500).send('Failed to generate timetable PDF.');
+    }
+};
+
+// ── Teacher download ───────────────────────────────────────────
+
+const teacherDownloadTimetable = async (req, res) => {
+    try {
+        const AcademicYear = require('../models/AcademicYear');
+        const School = require('../models/School');
+
+        const teacher = await User.findOne({ _id: req.session.userId, school: req.session.schoolId, role: 'teacher' });
+        if (!teacher) return res.status(404).send('Teacher not found.');
+
+        const activeYear = await AcademicYear.findOne({ school: req.session.schoolId, status: 'active' });
+        if (!activeYear) return res.status(404).send('No active academic year.');
+
+        const timetables = await Timetable.find({ academicYear: activeYear._id });
+        const timetableIds = timetables.map(t => t._id);
+        const entries = await TimetableEntry.find({
+            teacher: teacher._id,
+            timetable: { $in: timetableIds }
+        }).populate('subject').populate({
+            path: 'timetable',
+            populate: { path: 'section', populate: { path: 'class' } }
+        });
+
+        if (!entries.length) {
+            return res.status(404).send('No timetable entries found for the active academic year.');
+        }
+
+        const days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];
+        if (entries.some(e => e.dayOfWeek === 'Saturday')) days.push('Saturday');
+
+        // Use the period structure (incl. lunch) from the first referenced timetable
+        const firstTTId = entries[0].timetable._id.toString();
+        const refTimetable = timetables.find(t => t._id.toString() === firstTTId) || timetables[0];
+        const teacherTimetable = {
+            periodsStructure: refTimetable ? refTimetable.periodsStructure : [],
+            schoolStartTime:  refTimetable ? refTimetable.schoolStartTime : '',
+            schoolEndTime:    refTimetable ? refTimetable.schoolEndTime : ''
+        };
+
+        const school = await School.findById(req.session.schoolId);
+        const { generateTimetablePDF } = require('../utils/timetablePdf');
+
+        generateTimetablePDF(res, [{
+            className:   teacher.name,
+            sectionName: 'Schedule',
+            yearName:    activeYear.yearName,
+            timetable:   teacherTimetable,
+            entries,
+            days
+        }], school.name, 'my-timetable.pdf');
+
+    } catch (err) {
+        console.error(err);
+        res.status(500).send('Failed to generate timetable PDF.');
+    }
+};
+
+// ── Admin: single section download ────────────────────────────
+
+const adminDownloadSectionTimetable = async (req, res) => {
+    try {
+        const School = require('../models/School');
+        const { sectionId } = req.params;
+
+        const section = await ClassSection.findOne({ _id: sectionId, school: req.session.schoolId })
+            .populate('class').populate('academicYear');
+        if (!section) return res.status(404).send('Section not found.');
+
+        const timetable = await Timetable.findOne({
+            section: sectionId,
+            academicYear: section.academicYear._id || section.academicYear
+        });
+        if (!timetable) return res.status(404).send('No timetable configured for this section.');
+
+        const entries = await TimetableEntry.find({ timetable: timetable._id })
+            .populate('subject').populate('teacher');
+
+        const days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];
+        if (section.openOnSaturday) days.push('Saturday');
+
+        const school = await School.findById(req.session.schoolId);
+        const { generateTimetablePDF } = require('../utils/timetablePdf');
+
+        generateTimetablePDF(res, [{
+            className:   section.class.className,
+            sectionName: section.sectionName,
+            yearName:    section.academicYear.yearName,
+            timetable,
+            entries,
+            days
+        }], school.name, `timetable-${section.class.className}-${section.sectionName}.pdf`);
+
+    } catch (err) {
+        console.error(err);
+        res.status(500).send('Failed to generate timetable PDF.');
+    }
+};
+
+// ── Admin: all sections download ───────────────────────────────
+
+const adminDownloadAllTimetables = async (req, res) => {
+    try {
+        const AcademicYear = require('../models/AcademicYear');
+        const School = require('../models/School');
+
+        const activeYear = await AcademicYear.findOne({ school: req.session.schoolId, status: 'active' });
+        if (!activeYear) return res.status(404).send('No active academic year.');
+
+        // All timetables for this school in the active year
+        const timetables = await Timetable.find({ academicYear: activeYear._id })
+            .populate({ path: 'section', populate: { path: 'class' } });
+
+        if (!timetables.length) {
+            return res.status(404).send('No timetables configured for the active academic year.');
+        }
+
+        // Sort: by class name (numeric-aware), then section name
+        timetables.sort((a, b) => {
+            const ca = a.section?.class?.className || '';
+            const cb = b.section?.class?.className || '';
+            const cmp = ca.localeCompare(cb, undefined, { numeric: true });
+            if (cmp !== 0) return cmp;
+            return (a.section?.sectionName || '').localeCompare(b.section?.sectionName || '');
+        });
+
+        // Build pages
+        const pages = await Promise.all(timetables.map(async tt => {
+            const section = tt.section;
+            if (!section) return null;
+            const entries = await TimetableEntry.find({ timetable: tt._id })
+                .populate('subject').populate('teacher');
+            const days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];
+            if (section.openOnSaturday) days.push('Saturday');
+            return {
+                className:   section.class?.className || 'Class',
+                sectionName: section.sectionName,
+                yearName:    activeYear.yearName,
+                timetable:   tt,
+                entries,
+                days
+            };
+        }));
+
+        const validPages = pages.filter(Boolean);
+        if (!validPages.length) return res.status(404).send('No timetable data found.');
+
+        const school = await School.findById(req.session.schoolId);
+        const { generateTimetablePDF } = require('../utils/timetablePdf');
+
+        generateTimetablePDF(res, validPages, school.name, `all-timetables-${activeYear.yearName}.pdf`);
+
+    } catch (err) {
+        console.error(err);
+        res.status(500).send('Failed to generate timetables PDF.');
     }
 };
 
@@ -284,5 +644,9 @@ module.exports = {
     adminSaveEntries,
     apiGetTeachersBySubject,
     teacherViewTimetable,
-    studentViewTimetable
+    studentViewTimetable,
+    studentDownloadTimetable,
+    teacherDownloadTimetable,
+    adminDownloadSectionTimetable,
+    adminDownloadAllTimetables
 };
