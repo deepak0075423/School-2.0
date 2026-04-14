@@ -28,14 +28,24 @@ const getAcademicYears = async (req, res) => {
 const postCreateAcademicYear = async (req, res) => {
     try {
         const { yearName, startDate, endDate, status } = req.body;
-        await AcademicYear.create({
+        const newYearStatus = status || 'active';
+        const newYear = await AcademicYear.create({
             school: req.session.schoolId,
             yearName: yearName.trim(),
             startDate,
             endDate,
-            status: status || 'active',
+            status: newYearStatus,
             createdBy: req.session.userId,
         });
+
+        if (newYearStatus === 'active') {
+             // Set all other years to inactive to maintain single source of truth
+             await AcademicYear.updateMany(
+                 { school: req.session.schoolId, _id: { $ne: newYear._id } },
+                 { $set: { status: 'inactive' } }
+             );
+        }
+
         await ActivityLog.create({
             user: req.session.userId, school: req.session.schoolId,
             actionType: 'CREATE_ACADEMIC_YEAR', entityType: 'AcademicYear',
@@ -53,6 +63,62 @@ const postCreateAcademicYear = async (req, res) => {
     }
 };
 
+const getEditAcademicYear = async (req, res) => {
+    try {
+        const year = await AcademicYear.findOne({ _id: req.params.id, school: req.session.schoolId });
+        if (!year) {
+            req.flash('error', 'Academic year not found.');
+            return res.redirect('/admin/academic-years');
+        }
+        res.render('admin/academicYears/edit', { title: 'Edit Academic Year', layout: 'layouts/main', year });
+    } catch (err) {
+        req.flash('error', 'Failed to load form: ' + err.message);
+        res.redirect('/admin/academic-years');
+    }
+};
+
+const postEditAcademicYear = async (req, res) => {
+    try {
+        const { yearName, startDate, endDate, status } = req.body;
+        const year = await AcademicYear.findOne({ _id: req.params.id, school: req.session.schoolId });
+        if (!year) {
+            req.flash('error', 'Academic year not found.');
+            return res.redirect('/admin/academic-years');
+        }
+
+        year.yearName = yearName.trim();
+        if (startDate) year.startDate = startDate;
+        if (endDate) year.endDate = endDate;
+        if (status) year.status = status;
+
+        await year.save();
+
+        if (year.status === 'active') {
+             // Set all other years to inactive to maintain single source of truth
+             await AcademicYear.updateMany(
+                 { school: req.session.schoolId, _id: { $ne: year._id } },
+                 { $set: { status: 'inactive' } }
+             );
+        }
+
+        await ActivityLog.create({
+            user: req.session.userId, school: req.session.schoolId,
+            actionType: 'UPDATE_ACADEMIC_YEAR', entityType: 'AcademicYear',
+            newValue: { yearName },
+        });
+
+        req.flash('success', `Academic Year "${year.yearName}" updated successfully.`);
+        res.redirect('/admin/academic-years');
+    } catch (err) {
+        if (err.code === 11000) {
+            req.flash('error', 'An academic year with that name already exists.');
+        } else {
+            req.flash('error', 'Failed to update academic year: ' + err.message);
+        }
+        res.redirect(`/admin/academic-years/${req.params.id}/edit`);
+    }
+};
+
 const postDeleteAcademicYear = async (req, res) => {
     try {
         const year = await AcademicYear.findOneAndDelete({ _id: req.params.id, school: req.session.schoolId });
@@ -61,6 +127,33 @@ const postDeleteAcademicYear = async (req, res) => {
         res.redirect('/admin/academic-years');
     } catch (err) {
         req.flash('error', 'Failed to delete: ' + err.message);
+        res.redirect('/admin/academic-years');
+    }
+};
+
+const postSetActiveAcademicYear = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const year = await AcademicYear.findOne({ _id: id, school: req.session.schoolId });
+        if (!year) {
+            req.flash('error', 'Academic year not found.');
+            return res.redirect('/admin/academic-years');
+        }
+
+        // Set all other years to inactive
+        await AcademicYear.updateMany(
+            { school: req.session.schoolId, _id: { $ne: id } },
+            { $set: { status: 'inactive' } }
+        );
+
+        // Set the requested year to active
+        year.status = 'active';
+        await year.save();
+
+        req.flash('success', `Academic Year "${year.yearName}" is now set as the active current year.`);
+        res.redirect('/admin/academic-years');
+    } catch (err) {
+        req.flash('error', 'Failed to set active year: ' + err.message);
         res.redirect('/admin/academic-years');
     }
 };
@@ -572,7 +665,7 @@ const postAutoAssignStudents = async (req, res) => {
 
 module.exports = {
     // Academic years
-    getAcademicYears, postCreateAcademicYear, postDeleteAcademicYear,
+    getAcademicYears, postCreateAcademicYear, getEditAcademicYear, postEditAcademicYear, postDeleteAcademicYear, postSetActiveAcademicYear,
     // Classes
     getClasses, getCreateClass, postCreateClass, getClassDetail, postDeleteClass, postAutoAssignStudents,
     // Sections

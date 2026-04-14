@@ -42,7 +42,10 @@ router.post('/admins/:id/delete', guard, ctrl.deleteUser);
 // ── Academic Years ────────────────────────────────────────────
 router.get('/academic-years', guard, classCtrl.getAcademicYears);
 router.post('/academic-years/create', guard, classCtrl.postCreateAcademicYear);
+router.get('/academic-years/:id/edit', guard, classCtrl.getEditAcademicYear);
+router.post('/academic-years/:id/edit', guard, classCtrl.postEditAcademicYear);
 router.post('/academic-years/:id/delete', guard, classCtrl.postDeleteAcademicYear);
+router.post('/academic-years/:id/set-active', guard, classCtrl.postSetActiveAcademicYear);
 
 // ── Classes ───────────────────────────────────────────────────
 router.get('/classes', guard, classCtrl.getClasses);

@@ -72,7 +72,15 @@
                                                 <%= y.status %>
                                             </span>
                                         </td>
-                                        <td>
+                                        <td style="display:flex; gap:6px; flex-wrap:wrap;">
+                                            <% if (y.status !== 'active') { %>
+                                                <form action="/admin/academic-years/<%= y._id %>/set-active" method="POST"
+                                                    style="display:inline;"
+                                                    onsubmit="return confirm('Set <%= y.yearName %> as the active current year?')">
+                                                    <button type="submit" class="btn btn-success btn-sm">⭐ Make Current</button>
+                                                </form>
+                                            <% } %>
+                                            <a href="/admin/academic-years/<%= y._id %>/edit" class="btn btn-primary btn-sm">✏️ Edit</a>
                                             <form action="/admin/academic-years/<%= y._id %>/delete" method="POST"
                                                 style="display:inline;"
                                                 onsubmit="return confirm('Delete academic year <%= y.yearName %>?')">
