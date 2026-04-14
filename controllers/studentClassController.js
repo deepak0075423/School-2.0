@@ -4,29 +4,33 @@ const StudentProfile = require('../models/StudentProfile');
 const Timetable = require('../models/Timetable');
 const TimetableEntry = require('../models/TimetableEntry');
 const ClassMonitor = require('../models/ClassMonitor');
+const AcademicYear = require('../models/AcademicYear');
 
 // Student: view my class
 const getMyClass = async (req, res) => {
     try {
-        const profile = await StudentProfile.findOne({
-            user: req.session.userId, school: req.session.schoolId,
-        }).populate({
-            path: 'currentSection', populate: [
-                { path: 'class', select: 'className classNumber' },
-                { path: 'academicYear', select: 'yearName' },
-                { path: 'classTeacher', select: 'name email' },
-                { path: 'substituteTeacher', select: 'name email' },
-            ]
-        });
+        // Active academic year for the school
+        const activeYear = await AcademicYear.findOne({ school: req.session.schoolId, status: 'active' }).select('yearName');
 
-        if (!profile || !profile.currentSection) {
+        // Find the section the student is enrolled in for the active academic year
+        const section = activeYear
+            ? await ClassSection.findOne({
+                school: req.session.schoolId,
+                academicYear: activeYear._id,
+                enrolledStudents: req.session.userId,
+            })
+                .populate('class', 'className classNumber')
+                .populate('academicYear', 'yearName')
+                .populate('classTeacher', 'name email')
+                .populate('substituteTeacher', 'name email')
+            : null;
+
+        if (!section) {
             return res.render('student/myClass', {
                 title: 'My Class', layout: 'layouts/main',
-                section: null, announcements: [], timetable: null, byDay: {}, days: [], isMonitor: false,
+                section: null, announcements: [], timetable: null, byDay: {}, days: [], isMonitor: false, activeYear,
             });
         }
-
-        const section = profile.currentSection;
         const announcements = await ClassAnnouncement.find({ section: section._id, status: 'active' })
             .populate('createdBy', 'name').sort({ createdAt: -1 });
 
@@ -44,7 +48,7 @@ const getMyClass = async (req, res) => {
 
         res.render('student/myClass', {
             title: 'My Class', layout: 'layouts/main',
-            section, announcements, timetable, byDay, days, isMonitor: !!monitorEntry,
+            section, announcements, timetable, byDay, days, isMonitor: !!monitorEntry, activeYear,
         });
     } catch (err) {
         req.flash('error', 'Failed to load class info.'); res.redirect('/student/dashboard');
