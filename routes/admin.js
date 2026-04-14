@@ -81,6 +81,8 @@ router.get('/api/timetable/teachers', guard, timetableCtrl.apiGetTeachersBySubje
 // ── Subjects ──────────────────────────────────────────────────
 router.get('/subjects', guard, subjectCtrl.getSubjects);
 router.post('/subjects/create', guard, subjectCtrl.postCreateSubject);
+router.get('/subjects/:subjectId/edit', guard, subjectCtrl.getEditSubject);
+router.post('/subjects/:subjectId/edit', guard, subjectCtrl.postEditSubject);
 router.post('/subjects/:subjectId/delete', guard, subjectCtrl.postDeleteSubject);
 
 // ── Reports ───────────────────────────────────────────────────
