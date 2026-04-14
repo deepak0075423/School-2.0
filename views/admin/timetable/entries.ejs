@@ -36,8 +36,10 @@
         <h1>📅 Assign Timetable — <%= section.sectionName %></h1>
         <p>Assign Subjects and Teachers for each period.</p>
     </div>
-    <div style="display:flex; gap:8px;">
+    <div style="display:flex; gap:8px; flex-wrap:wrap;">
         <a href="/admin/sections/<%= section._id %>/timetable" class="btn btn-secondary">Edit Structure</a>
+        <a href="/admin/sections/<%= section._id %>/timetable/download" class="btn btn-secondary">⬇ This Section PDF</a>
+        <a href="/admin/timetable/download-all" class="btn btn-primary">⬇ All Classes PDF</a>
         <a href="/admin/sections/<%= section._id %>" class="btn btn-secondary">← Back to Section</a>
     </div>
 </div>
@@ -76,7 +78,7 @@
                                         const entry = entries.find(e => e.dayOfWeek === day && e.periodNumber === p.periodNumber); 
                                     %>
                                     <td>
-                                        <select name="subject_<%= day %>_<%= p.periodNumber %>" class="subject-select" onchange="fetchTeachersForSubject(this, '<%= day %>', '<%= p.periodNumber %>')">
+                                        <select name="subject_<%= day %>_<%= p.periodNumber %>" class="subject-select" onchange="fetchTeachersForSubject(this, '<%= day %>', '<%= p.periodNumber %>', '<%= timetable._id %>')">
                                             <option value="">— Subject —</option>
                                             <% subjects.forEach(sub => { %>
                                                 <option value="<%= sub._id %>" <%= entry && entry.subject && entry.subject._id.toString() === sub._id.toString() ? 'selected' : '' %>>
@@ -109,7 +111,7 @@
 // Though for simplicity, the existing teacher is rendered as a standalone <option>. 
 // If the user changes it, the fetch happens.
 
-async function fetchTeachersForSubject(selectElem, day, periodNumber) {
+async function fetchTeachersForSubject(selectElem, day, periodNumber, timetableId) {
     const subjectId = selectElem.value;
     const teacherSelect = document.getElementById(`teacher_${day}_${periodNumber}`);
     
@@ -122,7 +124,7 @@ async function fetchTeachersForSubject(selectElem, day, periodNumber) {
     }
     
     try {
-        const res = await fetch(`/admin/api/timetable/teachers?subjectId=${subjectId}`);
+        const res = await fetch(`/admin/api/timetable/teachers?subjectId=${subjectId}&day=${day}&period=${periodNumber}&timetableId=${timetableId}`);
         const data = await res.json();
         
         teacherSelect.innerHTML = '<option value="">— Select Teacher —</option>';

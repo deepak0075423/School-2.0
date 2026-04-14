@@ -31,18 +31,24 @@
 }
 </style>
 
-<div class="page-header">
+<div class="page-header" style="display:flex; justify-content:space-between; align-items:flex-start; flex-wrap:wrap; gap:16px;">
     <div>
         <h1>📅 My Timetable</h1>
-        <p>Class & Section: <strong><%= timetable?.section?.class?.className %> - <%= timetable?.section?.sectionName %></strong></p>
+        <p>Class & Section: <strong><%= section?.class?.className %> - <%= section?.sectionName %></strong>
+        <% if (activeYear) { %>&nbsp;&nbsp;|&nbsp;&nbsp;Academic Year: <strong><%= activeYear.yearName %></strong><% } %></p>
     </div>
+    <% if (timetable) { %>
+    <a href="/student/timetable/download" class="btn btn-primary" style="align-self:center;">
+        ⬇ Download PDF
+    </a>
+    <% } %>
 </div>
 
 <div class="card" style="overflow-x: auto;">
     <div class="card-body">
         <% if (!timetable || !timetable.periodsStructure || timetable.periodsStructure.length === 0) { %>
             <div class="empty-state">
-                Timetable has not been configured for your section yet.
+                Timetable has not been configured for <strong><%= section?.class?.className %> - <%= section?.sectionName %></strong> yet. Please contact your admin.
             </div>
         <% } else { %>
             <div style="margin-bottom: 20px; color: var(--text-muted);">

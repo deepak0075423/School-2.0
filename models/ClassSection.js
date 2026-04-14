@@ -52,6 +52,30 @@ const ClassSectionSchema = new mongoose.Schema({
         enum: ['active', 'inactive', 'archived'],
         default: 'active',
     },
+    startTime: {
+        type: String,
+        default: '08:00',
+    },
+    endTime: {
+        type: String,
+        default: '14:00',
+    },
+    totalPeriods: {
+        type: Number,
+        default: 8,
+    },
+    lunchTimeTotalInMinutes: {
+        type: Number,
+        default: 30,
+    },
+    lunchAfterPeriod: {
+        type: Number,
+        default: 4,
+    },
+    openOnSaturday: {
+        type: Boolean,
+        default: false,
+    },
     createdAt: {
         type: Date,
         default: Date.now,

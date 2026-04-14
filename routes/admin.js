@@ -76,6 +76,8 @@ router.get('/sections/:sectionId/timetable', guard, timetableCtrl.adminManageTim
 router.post('/sections/:sectionId/timetable/structure', guard, timetableCtrl.adminSaveTimetableStructure);
 router.get('/sections/:sectionId/timetable/entries', guard, timetableCtrl.adminAssignPeriods);
 router.post('/sections/:sectionId/timetable/entries', guard, timetableCtrl.adminSaveEntries);
+router.get('/sections/:sectionId/timetable/download', guard, timetableCtrl.adminDownloadSectionTimetable);
+router.get('/timetable/download-all', guard, timetableCtrl.adminDownloadAllTimetables);
 router.get('/api/timetable/teachers', guard, timetableCtrl.apiGetTeachersBySubject);
 
 // ── Subjects ──────────────────────────────────────────────────

@@ -15,6 +15,7 @@ router.get('/my-class', guard, classCtrl.getMyClass);
 
 // ── Timetable ─────────────────────────────────────────────────
 router.get('/timetable', guard, timetableCtrl.studentViewTimetable);
+router.get('/timetable/download', guard, timetableCtrl.studentDownloadTimetable);
 
 // ── Attendance Calendar ───────────────────────────────────────
 router.get('/my-attendance', attendanceGuard, attendanceCtrl.getStudentAttendanceCalendar);
