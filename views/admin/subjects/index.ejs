@@ -13,7 +13,7 @@
         </div>
         <div class="card-body">
             <form action="/admin/subjects/create" method="POST"
-                style="display:grid; grid-template-columns:1fr 1fr 2fr auto; gap:12px; align-items:end;">
+                style="display:grid; grid-template-columns:1fr 1fr 2fr 1fr auto; gap:12px; align-items:end;">
                 <div class="form-group" style="margin:0;">
                     <label class="form-label">Subject Name *</label>
                     <input type="text" name="subjectName" class="form-control" placeholder="e.g. Mathematics" required>
@@ -26,6 +26,20 @@
                 <div class="form-group" style="margin:0;">
                     <label class="form-label">Description</label>
                     <input type="text" name="description" class="form-control" placeholder="Optional description">
+                </div>
+                <div class="form-group" style="margin:0;">
+                    <label class="form-label">Assign Teachers</label>
+                    <div style="border: 1px solid #cbd5e1; border-radius: 6px; overflow: hidden; background: #fff;">
+                        <input type="text" placeholder="🔍 Search teacher..." style="width: 100%; border: none; border-bottom: 1px solid #cbd5e1; padding: 6px 10px; font-size: 0.85em; background: #f8fafc; outline: none;" onkeyup="filterCheckboxes(this, 'createTeacherList')">
+                        <div id="createTeacherList" style="height: 100px; overflow-y: auto; padding: 4px 0;">
+                            <% teachers.forEach(teacher => { %>
+                                <label class="teacher-option" style="display: flex; align-items: center; padding: 4px 10px; cursor: pointer; font-size: 0.85em; font-weight: normal; margin: 0;">
+                                    <input type="checkbox" name="teachers" value="<%= teacher._id %>" style="margin-right: 8px; cursor: pointer;">
+                                    <span class="teacher-name" style="color: #334155;"><%= teacher.name %> <span style="color:#94a3b8; font-size:0.9em;">(<%= teacher.email %>)</span></span>
+                                </label>
+                            <% }) %>
+                        </div>
+                    </div>
                 </div>
                 <button type="submit" class="btn btn-primary">Add</button>
             </form>
@@ -48,23 +62,37 @@
                                     <th>#</th>
                                     <th>Subject</th>
                                     <th>Code</th>
+                                    <th>Teachers</th>
                                     <th>Description</th>
                                     <th>Actions</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 <% subjects.forEach((s, i)=> { %>
-                                    <tr>
+                                    <tr style="cursor: pointer; transition: background-color 0.2s;" onmouseover="this.style.backgroundColor='#f8fafc'" onmouseout="this.style.backgroundColor='transparent'" onclick="if(!event.target.closest('form') && !event.target.closest('a')) openSubjectModal(this)" data-name="<%= s.subjectName %>" data-code="<%= s.subjectCode %>" data-desc="<%= s.description || '—' %>" data-teachers="<%= encodeURIComponent(JSON.stringify(s.teachers ? s.teachers.map(t => { return {name: t.name, email: t.email}; }) : [])) %>">
                                         <td class="text-muted">
                                             <%= i + 1 %>
                                         </td>
                                         <td class="text-primary fw-semibold">📚 <%= s.subjectName %>
                                         </td>
                                         <td><code><%= s.subjectCode %></code></td>
+                                        <td>
+                                            <% if (s.teachers && s.teachers.length > 0) { %>
+                                                <span class="badge bg-info"><%= s.teachers.length %></span> assigned
+                                                <% if (s.teachers.length <= 2) { %>
+                                                    <div class="text-muted" style="font-size: 0.8em; margin-top: 4px;">
+                                                        <%= s.teachers.map(t => t.name).join(', ') %>
+                                                    </div>
+                                                <% } %>
+                                            <% } else { %>
+                                                <span class="text-muted" style="font-style: italic;">None</span>
+                                            <% } %>
+                                        </td>
                                         <td class="text-muted">
                                             <%= s.description || '—' %>
                                         </td>
                                         <td>
+                                            <a href="/admin/subjects/<%= s._id %>/edit" class="btn btn-secondary btn-sm">✏️ Edit</a>
                                             <form action="/admin/subjects/<%= s._id %>/delete" method="POST"
                                                 style="display:inline;"
                                                 onsubmit="return confirm('Delete subject: <%= s.subjectName %>?')">
@@ -78,3 +106,79 @@
                         <% } %>
             </div>
         </div>
+
+<!-- Subject Modal -->
+<div id="subjectModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); z-index:1000; align-items:center; justify-content:center;">
+    <div class="card" style="width: 450px; max-width: 90%; max-height: 80vh; overflow-y: auto; margin: 0; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);">
+        <div class="card-header" style="display:flex; justify-content:space-between; align-items:center; border-bottom: 1px solid #e2e8f0; padding-bottom: 15px;">
+            <div class="card-title" id="modalSubjectName" style="font-size: 1.25rem; font-weight: 600; color: #1e293b;">Subject Details</div>
+            <button type="button" onclick="closeSubjectModal()" style="background:none; border:none; font-size:1.5rem; cursor:pointer; color: #64748b; line-height: 1;">&times;</button>
+        </div>
+        <div class="card-body" style="padding-top: 15px;">
+            <p style="margin-bottom: 8px;"><strong>Subject Code:</strong> <code id="modalSubjectCode" style="background: #f1f5f9; padding: 2px 6px; border-radius: 4px; color: #3b82f6;"></code></p>
+            <p style="margin-bottom: 15px; color: #475569;"><strong>Description:</strong> <span id="modalSubjectDesc"></span></p>
+            
+            <h5 style="margin: 0 0 10px 0; font-size: 1rem; color: #334155; border-bottom: 1px solid #e2e8f0; padding-bottom: 5px;">👨‍🏫 Assigned Teachers</h5>
+            <ul id="modalSubjectTeachers" style="list-style-type: none; padding: 0; margin: 0;"></ul>
+        </div>
+    </div>
+</div>
+
+<script>
+function openSubjectModal(btn) {
+    const name = btn.getAttribute('data-name');
+    const code = btn.getAttribute('data-code');
+    const desc = btn.getAttribute('data-desc');
+    const teachers = JSON.parse(decodeURIComponent(btn.getAttribute('data-teachers')));
+
+    document.getElementById('modalSubjectName').innerText = '📚 ' + name;
+    document.getElementById('modalSubjectCode').innerText = code;
+    document.getElementById('modalSubjectDesc').innerText = desc;
+
+    const list = document.getElementById('modalSubjectTeachers');
+    list.innerHTML = '';
+    
+    if (teachers.length === 0) {
+        list.innerHTML = '<li class="text-muted" style="padding: 8px 0; font-style: italic;">No teachers assigned</li>';
+    } else {
+        teachers.forEach(t => {
+            list.innerHTML += '<li style="padding: 8px 0; border-bottom: 1px dashed #e2e8f0; display: flex; flex-direction: column;">' + 
+                              '<strong style="color: #0f172a;">' + t.name + '</strong>' + 
+                              '<span style="color: #64748b; font-size: 0.85em;">' + t.email + '</span>' + 
+                              '</li>';
+        });
+    }
+
+    document.getElementById('subjectModal').style.display = 'flex';
+}
+
+function closeSubjectModal() {
+    document.getElementById('subjectModal').style.display = 'none';
+}
+
+// Close when clicking outside modal content
+window.onclick = function(event) {
+    var modal = document.getElementById('subjectModal');
+    if (event.target == modal) {
+        closeSubjectModal();
+    }
+}
+
+// Global filter function for custom checkbox lists
+function filterCheckboxes(input, listId) {
+    const filter = input.value.toLowerCase();
+    const list = document.getElementById(listId);
+    const labels = list.getElementsByTagName('label');
+    for (let i = 0; i < labels.length; i++) {
+        const span = labels[i].querySelector('.teacher-name');
+        if (span) {
+            const txtValue = span.textContent || span.innerText;
+            if (txtValue.toLowerCase().indexOf(filter) > -1) {
+                labels[i].style.display = "flex";
+            } else {
+                labels[i].style.display = "none";
+            }
+        }
+    }
+}
+</script>

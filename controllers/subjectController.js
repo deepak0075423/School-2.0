@@ -12,9 +12,14 @@ const ActivityLog = require('../models/ActivityLog');
 
 const getSubjects = async (req, res) => {
     try {
-        const subjects = await Subject.find({ school: req.session.schoolId }).sort({ subjectName: 1 });
+        const subjects = await Subject.find({ school: req.session.schoolId })
+            .populate('teachers', 'name email profileImage')
+            .sort({ subjectName: 1 });
+        const teachers = await User.find({ role: 'teacher', school: req.session.schoolId, isActive: true })
+            .select('name email')
+            .sort({ name: 1 });
         res.render('admin/subjects/index', {
-            title: 'Subjects', layout: 'layouts/main', subjects,
+            title: 'Subjects', layout: 'layouts/main', subjects, teachers
         });
     } catch (err) {
         req.flash('error', 'Failed to load subjects.'); res.redirect('/admin/dashboard');
@@ -23,12 +28,17 @@ const getSubjects = async (req, res) => {
 
 const postCreateSubject = async (req, res) => {
     try {
-        const { subjectName, subjectCode, description } = req.body;
+        const { subjectName, subjectCode, description, teachers } = req.body;
+        let assignedTeachers = [];
+        if (teachers) {
+            assignedTeachers = Array.isArray(teachers) ? teachers : [teachers];
+        }
         await Subject.create({
             school: req.session.schoolId,
             subjectName: subjectName.trim(),
             subjectCode: subjectCode.trim().toUpperCase(),
             description: description || '',
+            teachers: assignedTeachers
         });
         req.flash('success', `Subject "${subjectName}" created.`);
         res.redirect('/admin/subjects');
@@ -49,6 +59,57 @@ const postDeleteSubject = async (req, res) => {
         res.redirect('/admin/subjects');
     } catch (err) {
         req.flash('error', 'Failed to delete subject.'); res.redirect('/admin/subjects');
+    }
+};
+
+const getEditSubject = async (req, res) => {
+    try {
+        const subject = await Subject.findOne({ _id: req.params.subjectId, school: req.session.schoolId })
+            .populate('teachers', 'name email');
+        if (!subject) {
+            req.flash('error', 'Subject not found.');
+            return res.redirect('/admin/subjects');
+        }
+        const teachers = await User.find({ role: 'teacher', school: req.session.schoolId, isActive: true })
+            .select('name email')
+            .sort({ name: 1 });
+
+        res.render('admin/subjects/edit', {
+            title: 'Edit Subject', layout: 'layouts/main',
+            subject, teachers
+        });
+    } catch (err) {
+        req.flash('error', 'Failed to load subject for editing.'); res.redirect('/admin/subjects');
+    }
+};
+
+const postEditSubject = async (req, res) => {
+    try {
+        const { subjectName, subjectCode, description, teachers } = req.body;
+        // teachers could be undefined, string or array
+        let assignedTeachers = [];
+        if (teachers) {
+            assignedTeachers = Array.isArray(teachers) ? teachers : [teachers];
+        }
+
+        await Subject.findOneAndUpdate(
+            { _id: req.params.subjectId, school: req.session.schoolId },
+            {
+                subjectName: subjectName.trim(),
+                subjectCode: subjectCode.trim().toUpperCase(),
+                description: description || '',
+                teachers: assignedTeachers
+            }
+        );
+        req.flash('success', `Subject "${subjectName}" updated successfully.`);
+        res.redirect('/admin/subjects');
+    } catch (err) {
+        if (err.code === 11000) {
+            req.flash('error', 'A subject with that code already exists.');
+        } else {
+            req.flash('error', 'Failed to update subject: ' + err.message);
+        }
+        res.redirect('/admin/subjects');
     }
 };
 
@@ -151,7 +212,7 @@ const postAssignSubjectTeacher = async (req, res) => {
 };
 
 module.exports = {
-    getSubjects, postCreateSubject, postDeleteSubject,
+    getSubjects, postCreateSubject, postDeleteSubject, getEditSubject, postEditSubject,
     getClassSubjects, postAssignSubjectToClass, postRemoveSubjectFromClass,
     getSectionSubjectTeachers, postAssignSubjectTeacher,
 };
