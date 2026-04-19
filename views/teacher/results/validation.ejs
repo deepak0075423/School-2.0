@@ -1,0 +1,50 @@
+
+<div class="page-header">
+    <div>
+        <h1>✅ Marks Validation</h1>
+        <p>Review and validate marks submitted by subject teachers for your section.</p>
+    </div>
+</div>
+
+<% if (!exams || exams.length === 0) { %>
+<div class="card">
+    <div class="empty-state">
+        <div class="empty-icon">✅</div>
+        <h3>Nothing to Validate</h3>
+        <p>No exams are currently pending your validation.</p>
+    </div>
+</div>
+<% } else { %>
+<% const statusBadge = { SUBMITTED:'badge-blue', REJECTED:'badge-red' }; %>
+<div class="card">
+    <div class="table-wrapper">
+        <table>
+            <thead>
+                <tr>
+                    <th>Exam</th>
+                    <th>Type</th>
+                    <th>Section</th>
+                    <th>Subjects</th>
+                    <th>Status</th>
+                    <th>Action</th>
+                </tr>
+            </thead>
+            <tbody>
+                <% const typeLabel = { MID_TERM: 'Mid Term', FINAL: 'Final', UNIT_TEST: 'Unit Test' }; %>
+                <% exams.forEach(exam => { %>
+                <tr>
+                    <td class="fw-semibold"><%= exam.title %></td>
+                    <td><span class="badge badge-blue"><%= typeLabel[exam.examType] %></span></td>
+                    <td><%= exam.section?.class?.className %> – <%= exam.section?.sectionName %></td>
+                    <td class="text-center"><%= exam.subjects.length %></td>
+                    <td><span class="badge <%= statusBadge[exam.status] || 'badge-yellow' %>"><%= exam.status %></span></td>
+                    <td>
+                        <a href="/teacher/results/validation/<%= exam._id %>" class="btn btn-sm btn-primary">Review</a>
+                    </td>
+                </tr>
+                <% }) %>
+            </tbody>
+        </table>
+    </div>
+</div>
+<% } %>

@@ -1,0 +1,62 @@
+
+<div class="page-header">
+    <div>
+        <h1>📊 My Results</h1>
+        <p>View your formal exam results. Results are visible after the publish date.</p>
+    </div>
+    <a href="/student/results/class-tests" class="btn btn-secondary">Class Test Results</a>
+</div>
+
+<% if (!results || results.length === 0) { %>
+<div class="card">
+    <div class="empty-state">
+        <div class="empty-icon">📊</div>
+        <h3>No Results Published Yet</h3>
+        <p>Your exam results will appear here once they are published by the admin.</p>
+    </div>
+</div>
+<% } else { %>
+<% const typeLabel = { MID_TERM: 'Mid Term', FINAL: 'Final', UNIT_TEST: 'Unit Test' }; %>
+<div class="card">
+    <div class="table-wrapper">
+        <table>
+            <thead>
+                <tr>
+                    <th>Exam</th>
+                    <th>Type</th>
+                    <th>Total Marks</th>
+                    <th>Percentage</th>
+                    <th>Grade</th>
+                    <th>Rank</th>
+                    <th>Result</th>
+                    <th>Details</th>
+                </tr>
+            </thead>
+            <tbody>
+                <% results.forEach(r => { %>
+                <tr>
+                    <td class="fw-semibold"><%= r.exam?.title %></td>
+                    <td><span class="badge badge-blue"><%= typeLabel[r.exam?.examType] || r.exam?.examType %></span></td>
+                    <td class="text-center"><%= r.totalMarks %>/<%= r.totalMaxMarks %></td>
+                    <td class="text-center fw-semibold"><%= r.percentage %>%</td>
+                    <td class="text-center">
+                        <span class="badge <%= r.grade==='F' ? 'badge-red' : r.grade.startsWith('A') ? 'badge-green' : 'badge-blue' %>">
+                            <%= r.grade %>
+                        </span>
+                    </td>
+                    <td class="text-center">#<%= r.rank %></td>
+                    <td class="text-center">
+                        <span class="badge <%= r.isPassed ? 'badge-green' : 'badge-red' %>">
+                            <%= r.isPassed ? 'PASS' : 'FAIL' %>
+                        </span>
+                    </td>
+                    <td>
+                        <a href="/student/results/<%= r._id %>" class="btn btn-sm btn-secondary">View Details</a>
+                    </td>
+                </tr>
+                <% }) %>
+            </tbody>
+        </table>
+    </div>
+</div>
+<% } %>

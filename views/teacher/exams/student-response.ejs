@@ -1,0 +1,59 @@
+<div class="page-header">
+    <div>
+        <h1>📋 Response — <%= result.student?.name %></h1>
+        <p><%= exam.title %> · Score: <strong><%= result.obtainedMarks %> / <%= result.totalMarks %></strong> (<%= result.percentage %>%)</p>
+    </div>
+    <a href="/teacher/exams/<%= exam._id %>/submissions" class="btn btn-secondary">← Submissions</a>
+</div>
+
+<% result.questionResults.forEach((qr, i) => {
+    const typeLabels = { mcq_single: 'MCQ Single', mcq_multiple: 'MCQ Multiple', true_false: 'True / False' };
+%>
+<div class="card" style="margin-bottom:12px; border-left: 3px solid <%= qr.isCorrect ? '#22c55e' : '#ef4444' %>;">
+    <div class="card-body" style="padding:16px;">
+        <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:12px; margin-bottom:10px;">
+            <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
+                <span style="font-size:12px; color:var(--text-muted);">Q<%= i+1 %></span>
+                <span class="badge" style="background:rgba(139,92,246,.15); color:#a78bfa; border:1px solid rgba(139,92,246,.3); font-size:11px; padding:2px 8px; border-radius:99px;">
+                    <%= typeLabels[qr.questionType] || qr.questionType %>
+                </span>
+            </div>
+            <div style="text-align:right; flex-shrink:0;">
+                <span style="font-weight:700; color:<%= qr.isCorrect ? '#22c55e' : '#ef4444' %>; font-size:15px;">
+                    <%= qr.isCorrect ? '✓' : '✗' %> <%= qr.marksAwarded %> / <%= qr.marksTotal %>
+                </span>
+            </div>
+        </div>
+
+        <p style="font-size:15px; font-weight:600; margin:0 0 12px;"><%= qr.questionText %></p>
+
+        <div style="display:flex; flex-direction:column; gap:6px;">
+            <% const optTexts = qr.optionTexts || {};
+               const allOptIds = Object.keys(optTexts);
+               allOptIds.forEach(optId => {
+                   const isStudentAnswer  = (qr.studentAnswers || []).includes(optId);
+                   const isCorrectAnswer  = (qr.correctAnswers || []).includes(optId);
+                   let borderColor = 'var(--border)';
+                   let bg = 'transparent';
+                   let label = '';
+                   if (isCorrectAnswer) { borderColor = '#22c55e'; bg = 'rgba(34,197,94,.08)'; label = '✓ Correct'; }
+                   if (isStudentAnswer && !isCorrectAnswer) { borderColor = '#ef4444'; bg = 'rgba(239,68,68,.08)'; label = '✗ Wrong pick'; }
+                   if (isStudentAnswer && isCorrectAnswer) { label = '✓ Your answer (correct)'; }
+            %>
+            <div style="display:flex; align-items:center; gap:10px; background:<%= bg %>; border:1.5px solid <%= borderColor %>; border-radius:10px; padding:8px 12px;">
+                <span style="width:20px; height:20px; border-radius:50%; background:<%= isCorrectAnswer ? '#22c55e22' : isStudentAnswer ? '#ef444422' : 'transparent' %>; border:1px solid <%= borderColor %>; display:flex; align-items:center; justify-content:center; font-size:10px; font-weight:700; flex-shrink:0; color:<%= borderColor %>;">
+                    <%= optId.charAt(0).toUpperCase() %>
+                </span>
+                <span style="flex:1; font-size:14px;"><%= optTexts[optId] %></span>
+                <% if (label) { %>
+                <span style="font-size:11px; color:<%= isCorrectAnswer ? '#22c55e' : '#ef4444' %>; white-space:nowrap;"><%= label %></span>
+                <% } %>
+            </div>
+            <% }) %>
+            <% if (!qr.studentAnswers || qr.studentAnswers.length === 0) { %>
+            <p style="font-size:13px; color:#f59e0b; margin:0;">⚠️ Not answered</p>
+            <% } %>
+        </div>
+    </div>
+</div>
+<% }) %>

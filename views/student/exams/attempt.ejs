@@ -1,0 +1,346 @@
+<!-- Exam Attempt Interface — uses layouts/exam.ejs -->
+
+<!-- Top bar -->
+<div class="exam-topbar">
+    <div class="exam-topbar-title">📝 <%= exam.title %></div>
+    <div id="timer" class="exam-timer">--:--</div>
+    <button onclick="openSubmitModal()" class="btn btn-primary" style="white-space:nowrap; padding:8px 18px;">
+        Submit Exam
+    </button>
+</div>
+
+<!-- Body -->
+<div class="exam-body">
+    <!-- Question panel -->
+    <div class="exam-question-panel" id="questionPanel">
+        <% orderedQuestions.forEach((q, idx) => {
+            const typeLabels = { mcq_single: 'MCQ – Single Correct', mcq_multiple: 'MCQ – Multiple Correct', true_false: 'True / False' };
+            const savedAnswers = answerMap[q._id.toString()] || [];
+        %>
+        <div class="question-card" id="qcard-<%= idx %>" style="<%= idx !== 0 ? 'display:none;' : '' %>">
+            <div class="question-meta">
+                <span>Question <%= idx+1 %> of <%= orderedQuestions.length %></span>
+                <span class="question-type-badge"><%= typeLabels[q.questionType] %></span>
+                <span style="margin-left:auto; color:#22c55e; font-weight:600;"><%= q.marks %> mark<%= q.marks !== 1 ? 's' : '' %></span>
+            </div>
+            <div class="question-text"><%= q.questionText %></div>
+
+            <% if (q.questionType === 'mcq_multiple') { %>
+            <div class="multiple-hint">⚠️ Select ALL correct answers — partial selection gives 0 marks.</div>
+            <% } %>
+
+            <div class="options-list">
+                <% (q.options || []).forEach((opt, oi) => {
+                    const isSelected = savedAnswers.includes(opt.optionId);
+                    const inputType  = (q.questionType === 'mcq_multiple') ? 'checkbox' : 'radio';
+                    const inputName  = (q.questionType === 'mcq_multiple') ? `q_${q._id}_multi` : `q_${q._id}`;
+                %>
+                <label class="option-label <%= isSelected ? 'selected' : '' %>"
+                    data-qid="<%= q._id %>"
+                    onclick="selectOption(event, this, '<%= q._id %>', '<%= opt.optionId %>', '<%= inputType %>')">
+                    <span class="option-indicator"><%= String.fromCharCode(65+oi) %></span>
+                    <span class="option-text"><%= opt.text %></span>
+                </label>
+                <% }) %>
+            </div>
+        </div>
+        <% }) %>
+    </div>
+
+    <!-- Palette sidebar -->
+    <div class="exam-palette">
+        <div class="palette-title">Question Navigator</div>
+        <div class="palette-grid" id="paletteGrid">
+            <% orderedQuestions.forEach((q, idx) => {
+                const savedAnswers = answerMap[q._id.toString()] || [];
+                const isAnswered   = savedAnswers.length > 0;
+            %>
+            <button class="palette-btn <%= idx === 0 ? 'current' : isAnswered ? 'answered' : '' %>"
+                id="pb-<%= idx %>" onclick="jumpTo(<%= idx %>)"><%= idx+1 %></button>
+            <% }) %>
+        </div>
+        <div class="palette-legend">
+            <div class="legend-row"><div class="legend-dot" style="background:#3b82f640; border:1px solid #3b82f6;"></div> Current</div>
+            <div class="legend-row"><div class="legend-dot" style="background:#22c55e20; border:1px solid #22c55e;"></div> Answered</div>
+            <div class="legend-row"><div class="legend-dot" style="background:var(--bg); border:1px solid var(--border);"></div> Not visited</div>
+        </div>
+        <div style="margin-top:auto; padding-top:16px; border-top:1px solid var(--border);">
+            <div id="answeredCount" style="font-size:13px; color:var(--text-muted); margin-bottom:8px;"></div>
+            <button onclick="openSubmitModal()" class="btn btn-primary" style="width:100%;">Submit Exam</button>
+        </div>
+    </div>
+</div>
+
+<!-- Bottom navigation -->
+<div class="exam-nav">
+    <button id="btnPrev" class="btn btn-secondary" onclick="prevQuestion()">← Previous</button>
+    <div class="exam-nav-info">
+        <span id="navInfo">1 / <%= orderedQuestions.length %></span>
+    </div>
+    <button id="btnNext" class="btn btn-primary" onclick="nextQuestion()">Next →</button>
+</div>
+
+<!-- Submit modal -->
+<div class="modal-overlay" id="submitModal">
+    <div class="modal-box">
+        <div class="modal-title">Submit Exam?</div>
+        <div class="modal-body" id="submitSummary">
+            Submitting will lock your answers. You cannot reattempt after submission.
+        </div>
+        <div class="modal-actions">
+            <button onclick="closeSubmitModal()" class="btn btn-secondary">Go Back</button>
+            <button onclick="submitExam()" class="btn btn-primary" id="submitBtn">Submit Now</button>
+        </div>
+    </div>
+</div>
+
+<!-- Violation warning modal -->
+<div class="violation-overlay" id="violationOverlay">
+    <div class="violation-box">
+        <div class="violation-icon">⚠️</div>
+        <div class="violation-title">Attention!</div>
+        <div class="violation-msg" id="violationMsg">You left the exam window. This has been recorded.</div>
+        <button onclick="closeViolationModal()" class="btn btn-primary" style="width:100%;">I Understand — Return to Exam</button>
+    </div>
+</div>
+
+<script>
+const EXAM_ID        = '<%= exam._id %>';
+const SERVER_END_MS  = <%= serverEndTime %>;
+const TOTAL_Q        = <%= orderedQuestions.length %>;
+const MAX_VIOLATIONS = <%= exam.maxViolations %>;
+let currentIdx       = 0;
+let saveTimeout      = null;
+
+// ── Answer tracking in memory ────────────────────────────────
+const answers = {};
+<% orderedQuestions.forEach((q, idx) => {
+    const saved = answerMap[q._id.toString()] || [];
+%>
+answers['<%= q._id %>'] = <%- JSON.stringify(saved) %>;
+<% }) %>
+
+const questionIds = [<% orderedQuestions.forEach((q,i) => { %>'<%= q._id %>'<%= i < orderedQuestions.length-1 ? ',' : '' %><% }) %>];
+
+// ── Option selection ─────────────────────────────────────────
+function selectOption(e, labelEl, qid, optionId, inputType) {
+    // Prevent the browser from dispatching a second synthetic click on any
+    // contained input element, which would bubble back and toggle the class twice.
+    e.preventDefault();
+
+    const card = labelEl.closest('.question-card');
+
+    if (inputType === 'radio') {
+        card.querySelectorAll('.option-label').forEach(l => l.classList.remove('selected'));
+        labelEl.classList.add('selected');
+        answers[qid] = [optionId];
+    } else {
+        // Explicit add/remove instead of toggle to be safe against double-firing
+        const nowSelected = !labelEl.classList.contains('selected');
+        if (nowSelected) {
+            labelEl.classList.add('selected');
+            if (!answers[qid]) answers[qid] = [];
+            if (!answers[qid].includes(optionId)) answers[qid].push(optionId);
+        } else {
+            labelEl.classList.remove('selected');
+            answers[qid] = (answers[qid] || []).filter(o => o !== optionId);
+        }
+    }
+
+    updatePalette();
+    debouncedSave(qid);
+}
+
+// ── Navigation ───────────────────────────────────────────────
+function showQuestion(idx) {
+    document.querySelectorAll('.question-card').forEach((c,i) => {
+        c.style.display = i === idx ? '' : 'none';
+    });
+    currentIdx = idx;
+    document.getElementById('navInfo').textContent = `${idx+1} / ${TOTAL_Q}`;
+    document.getElementById('btnPrev').disabled = idx === 0;
+    document.getElementById('btnNext').disabled = idx === TOTAL_Q - 1;
+    document.querySelectorAll('.palette-btn').forEach((b,i) => {
+        b.classList.toggle('current', i === idx);
+    });
+    updatePalette();
+}
+
+function nextQuestion() { if (currentIdx < TOTAL_Q-1) showQuestion(currentIdx+1); }
+function prevQuestion() { if (currentIdx > 0)         showQuestion(currentIdx-1); }
+function jumpTo(idx)    { showQuestion(idx); }
+
+// ── Palette state ────────────────────────────────────────────
+function updatePalette() {
+    let answeredCount = 0;
+    questionIds.forEach((qid, i) => {
+        const btn = document.getElementById('pb-' + i);
+        if (!btn) return;
+        const hasAnswer = answers[qid] && answers[qid].length > 0;
+        if (hasAnswer) answeredCount++;
+        btn.classList.toggle('answered', hasAnswer && i !== currentIdx);
+        btn.classList.toggle('current',  i === currentIdx);
+        btn.classList.toggle('skipped',  !hasAnswer && i < currentIdx && i !== currentIdx);
+    });
+    const el = document.getElementById('answeredCount');
+    if (el) el.textContent = `${answeredCount} of ${TOTAL_Q} answered`;
+
+    // Update submit modal summary
+    const unanswered = TOTAL_Q - answeredCount;
+    document.getElementById('submitSummary').innerHTML =
+        `<strong>${answeredCount}</strong> question${answeredCount!==1?'s':''} answered, <strong style="color:${unanswered>0?'#f59e0b':'#22c55e'}">${unanswered} unanswered</strong>.<br><br>Submitting is final. You cannot reattempt.`;
+}
+
+// ── Save answer (AJAX) ───────────────────────────────────────
+function debouncedSave(qid) {
+    clearTimeout(saveTimeout);
+    saveTimeout = setTimeout(() => saveAnswer(qid), 400);
+}
+
+async function saveAnswer(qid) {
+    const selected = answers[qid] || [];
+    try {
+        const res = await fetch(`/student/exams/${EXAM_ID}/save-answer`, {
+            method:  'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body:    JSON.stringify({ questionId: qid, selectedOptions: selected }),
+        });
+        const data = await res.json();
+        if (data.autoSubmitted) handleAutoSubmit(data.message);
+    } catch { /* non-fatal */ }
+}
+
+// Auto-save every 30 s
+setInterval(() => {
+    questionIds.forEach(qid => saveAnswer(qid));
+}, 30000);
+
+// ── Countdown timer ──────────────────────────────────────────
+function formatTime(ms) {
+    if (ms <= 0) return '00:00';
+    const totalSec = Math.floor(ms / 1000);
+    const m = Math.floor(totalSec / 60);
+    const s = totalSec % 60;
+    return `${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
+}
+
+function tick() {
+    const remaining = SERVER_END_MS - Date.now();
+    const el = document.getElementById('timer');
+    el.textContent = formatTime(remaining);
+    el.className = 'exam-timer';
+    if (remaining <= 0) {
+        el.textContent = '00:00';
+        autoSubmitByTime();
+    } else if (remaining <= 60000) {
+        el.classList.add('danger');
+    } else if (remaining <= 300000) {
+        el.classList.add('warning');
+    }
+}
+setInterval(tick, 1000);
+tick();
+
+function autoSubmitByTime() {
+    const el = document.getElementById('submitBtn');
+    if (el) { el.disabled = true; el.textContent = 'Auto-submitting…'; }
+    fetch(`/student/exams/${EXAM_ID}/submit`, { method: 'POST', headers: {'Content-Type':'application/json'} })
+        .then(r => r.json())
+        .then(data => {
+            if (data.redirect) window.location.href = data.redirect;
+        })
+        .catch(() => window.location.href = '/student/exams');
+}
+
+// ── Submit exam ──────────────────────────────────────────────
+function openSubmitModal()  {
+    updatePalette();
+    document.getElementById('submitModal').classList.add('open');
+}
+function closeSubmitModal() { document.getElementById('submitModal').classList.remove('open'); }
+
+async function submitExam() {
+    const btn = document.getElementById('submitBtn');
+    btn.disabled = true;
+    btn.textContent = 'Submitting…';
+
+    // Flush all answers first
+    await Promise.all(questionIds.map(qid => saveAnswer(qid)));
+
+    try {
+        const res  = await fetch(`/student/exams/${EXAM_ID}/submit`, {
+            method:  'POST',
+            headers: { 'Content-Type': 'application/json' },
+        });
+        const data = await res.json();
+        if (data.success && data.redirect) {
+            window.location.href = data.redirect;
+        } else {
+            alert(data.message || 'Submission failed. Please try again.');
+            btn.disabled = false;
+            btn.textContent = 'Submit Now';
+        }
+    } catch {
+        alert('Network error. Please try again.');
+        btn.disabled = false;
+        btn.textContent = 'Submit Now';
+    }
+}
+
+function handleAutoSubmit(msg) {
+    document.getElementById('submitModal').classList.remove('open');
+    document.getElementById('violationMsg').textContent = msg || 'Your exam has been auto-submitted.';
+    document.getElementById('violationOverlay').classList.add('open');
+    setTimeout(() => { window.location.href = '/student/exams'; }, 3000);
+}
+
+// ── Anti-cheating ─────────────────────────────────────────────
+let violationActive = false;
+
+async function reportViolation(type) {
+    if (violationActive) return;
+    violationActive = true;
+
+    try {
+        const res  = await fetch(`/student/exams/${EXAM_ID}/violation`, {
+            method:  'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body:    JSON.stringify({ violationType: type }),
+        });
+        const data = await res.json();
+
+        if (data.autoSubmit) {
+            handleAutoSubmit(data.message);
+        } else {
+            const overlay = document.getElementById('violationOverlay');
+            const msg     = data.warningsRemaining !== undefined
+                ? `Warning ${data.violationCount}/${MAX_VIOLATIONS}: You left the exam window. ${data.warningsRemaining} more violation(s) will auto-submit the exam.`
+                : 'Tab switching detected. This has been recorded.';
+            document.getElementById('violationMsg').textContent = msg;
+            overlay.classList.add('open');
+        }
+    } catch { /* non-fatal */ }
+}
+
+function closeViolationModal() {
+    document.getElementById('violationOverlay').classList.remove('open');
+    violationActive = false;
+}
+
+document.addEventListener('visibilitychange', () => {
+    if (document.hidden) reportViolation('tab_switch');
+});
+
+window.addEventListener('blur', () => {
+    reportViolation('window_blur');
+});
+
+// Prevent context menu and copy
+document.addEventListener('contextmenu', e => e.preventDefault());
+document.addEventListener('copy',        e => e.preventDefault());
+document.addEventListener('cut',         e => e.preventDefault());
+
+// Init
+updatePalette();
+showQuestion(0);
+</script>

@@ -1,0 +1,86 @@
+
+<% const typeLabel = { MID_TERM: 'Mid Term', FINAL: 'Final', UNIT_TEST: 'Unit Test' }; %>
+
+<div class="page-header">
+    <div>
+        <h1>📊 <%= result.exam?.title %></h1>
+        <p><%= result.student?.name %> — <%= typeLabel[result.exam?.examType] %> — <%= result.section?.class?.className %></p>
+    </div>
+    <a href="/parent/results" class="btn btn-ghost">← Back</a>
+</div>
+
+<!-- Summary -->
+<div class="stats-grid mb-4">
+    <div class="stat-card <%= result.isPassed ? 'stat-card-green' : 'stat-card-red' %>">
+        <div class="stat-value"><%= result.isPassed ? 'PASS' : 'FAIL' %></div>
+        <div class="stat-label">Overall Result</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-value"><%= result.totalMarks %>/<%= result.totalMaxMarks %></div>
+        <div class="stat-label">Total Marks</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-value"><%= result.percentage %>%</div>
+        <div class="stat-label">Percentage</div>
+    </div>
+    <div class="stat-card <%= result.grade === 'F' ? 'stat-card-red' : result.grade.startsWith('A') ? 'stat-card-green' : '' %>">
+        <div class="stat-value"><%= result.grade %></div>
+        <div class="stat-label">Grade</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-value">#<%= result.rank %></div>
+        <div class="stat-label">Class Rank</div>
+    </div>
+    <% if (result.attendancePercentage !== null && result.attendancePercentage !== undefined) { %>
+    <div class="stat-card">
+        <div class="stat-value"><%= result.attendancePercentage %>%</div>
+        <div class="stat-label">Attendance</div>
+    </div>
+    <% } %>
+</div>
+
+<!-- Subject Breakdown -->
+<div class="card">
+    <h3 class="card-title">Subject-wise Performance</h3>
+    <div class="table-wrapper">
+        <table>
+            <thead>
+                <tr>
+                    <th>Subject</th>
+                    <th class="text-center">Marks</th>
+                    <th class="text-center">Max</th>
+                    <th class="text-center">%</th>
+                    <th class="text-center">Grade</th>
+                    <th class="text-center">Status</th>
+                </tr>
+            </thead>
+            <tbody>
+                <% result.subjects.forEach(sr => {
+                    const pct = sr.isAbsent ? 0 : Math.round((sr.marksObtained / sr.maxMarks) * 100);
+                %>
+                <tr>
+                    <td class="fw-semibold"><%= sr.subject?.subjectName || '—' %></td>
+                    <td class="text-center">
+                        <% if (sr.isAbsent) { %><span class="badge badge-orange">Absent</span>
+                        <% } else { %><strong><%= sr.marksObtained %></strong><% } %>
+                    </td>
+                    <td class="text-center"><%= sr.maxMarks %></td>
+                    <td class="text-center"><%= sr.isAbsent ? '—' : pct + '%' %></td>
+                    <td class="text-center">
+                        <span class="badge <%= sr.grade==='F'||sr.grade==='AB' ? 'badge-red' : sr.grade.startsWith('A') ? 'badge-green' : 'badge-blue' %>">
+                            <%= sr.grade %>
+                        </span>
+                    </td>
+                    <td class="text-center">
+                        <% if (sr.isAbsent) { %>
+                            <span class="badge badge-orange">Absent</span>
+                        <% } else { %>
+                            <span class="badge <%= sr.isPassed ? 'badge-green' : 'badge-red' %>"><%= sr.isPassed ? 'Pass' : 'Fail' %></span>
+                        <% } %>
+                    </td>
+                </tr>
+                <% }) %>
+            </tbody>
+        </table>
+    </div>
+</div>

@@ -1,0 +1,113 @@
+<div class="page-header">
+    <div>
+        <h1>📊 Exam Result — <%= exam.title %></h1>
+        <p><%= exam.section?.class?.className %> – Section <%= exam.section?.sectionName %></p>
+    </div>
+    <a href="/student/exams" class="btn btn-secondary">← My Exams</a>
+</div>
+
+<% if (!canView) { %>
+<div class="card" style="border-left:3px solid #f59e0b;">
+    <div class="card-body" style="display:flex; align-items:center; gap:16px;">
+        <span style="font-size:32px;">⏳</span>
+        <div>
+            <div style="font-weight:700; margin-bottom:4px;">Result Not Yet Available</div>
+            <% if (exam.resultApprovalStatus !== 'approved') { %>
+            <p style="margin:0; color:var(--text-muted); font-size:14px;">Your class teacher has not approved the results yet. Check back later.</p>
+            <% } else { %>
+            <p style="margin:0; color:var(--text-muted); font-size:14px;">
+                Results will be visible from <strong><%= new Date(exam.resultPublishDate).toDateString() %></strong>.
+            </p>
+            <% } %>
+            <p style="margin:4px 0 0; font-size:13px; color:#22c55e;">✓ Your submission has been recorded.</p>
+        </div>
+    </div>
+</div>
+<% } else { %>
+
+<!-- Score card -->
+<div class="card" style="margin-bottom:20px; background: linear-gradient(135deg, rgba(59,130,246,.08), rgba(139,92,246,.05)); border:1px solid rgba(59,130,246,.2);">
+    <div class="card-body" style="text-align:center; padding:32px;">
+        <div style="font-size:14px; color:var(--text-muted); margin-bottom:8px;">Your Score</div>
+        <div style="font-size:56px; font-weight:800; color:#3b82f6; line-height:1;">
+            <%= result.obtainedMarks %><span style="font-size:28px; color:var(--text-muted);">/<%= result.totalMarks %></span>
+        </div>
+        <div style="font-size:24px; font-weight:700; margin:8px 0; color:<%= result.percentage >= 60 ? '#22c55e' : result.percentage >= 40 ? '#f59e0b' : '#ef4444' %>;">
+            <%= result.percentage %>%
+        </div>
+        <% if (classAvg !== null) { %>
+        <div style="font-size:13px; color:var(--text-muted); margin-top:8px;">
+            Class average: <strong style="color:var(--text);"><%= classAvg %> / <%= result.totalMarks %></strong>
+            <% if (result.obtainedMarks > classAvg) { %>
+            <span style="color:#22c55e; margin-left:6px;">▲ Above average</span>
+            <% } else if (result.obtainedMarks < classAvg) { %>
+            <span style="color:#f59e0b; margin-left:6px;">▼ Below average</span>
+            <% } else { %>
+            <span style="color:#3b82f6; margin-left:6px;">= At average</span>
+            <% } %>
+        </div>
+        <% } %>
+
+        <!-- Progress bar -->
+        <div style="max-width:300px; margin:16px auto 0;">
+            <div style="height:12px; background:var(--bg); border-radius:99px; overflow:hidden;">
+                <div style="height:100%; width:<%= result.percentage %>%; background:<%= result.percentage >= 60 ? '#22c55e' : result.percentage >= 40 ? '#f59e0b' : '#ef4444' %>; border-radius:99px; transition:width 1s;"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Question-wise breakdown -->
+<div class="card">
+    <div class="card-header">
+        <div class="card-title">📋 Question-wise Breakdown</div>
+    </div>
+    <div class="card-body" style="padding:0;">
+        <% result.questionResults.forEach((qr, i) => {
+            const typeLabels = { mcq_single: 'MCQ Single', mcq_multiple: 'MCQ Multiple', true_false: 'True / False' };
+        %>
+        <div style="padding:16px 20px; border-bottom:1px solid var(--border); display:flex; align-items:flex-start; gap:16px;">
+            <div style="width:32px; height:32px; border-radius:50%; background:<%= qr.isCorrect ? 'rgba(34,197,94,.15)' : 'rgba(239,68,68,.15)' %>; border:1px solid <%= qr.isCorrect ? '#22c55e' : '#ef4444' %>; display:flex; align-items:center; justify-content:center; font-size:15px; flex-shrink:0;">
+                <%= qr.isCorrect ? '✓' : '✗' %>
+            </div>
+            <div style="flex:1; min-width:0;">
+                <div style="display:flex; gap:8px; align-items:center; margin-bottom:6px; flex-wrap:wrap;">
+                    <span style="font-size:12px; color:var(--text-muted);">Q<%= i+1 %></span>
+                    <span style="font-size:11px; color:#a78bfa; background:rgba(139,92,246,.1); border:1px solid rgba(139,92,246,.2); padding:1px 8px; border-radius:99px;"><%= typeLabels[qr.questionType] %></span>
+                    <span style="font-size:12px; color:<%= qr.isCorrect ? '#22c55e' : '#ef4444' %>; font-weight:700; margin-left:auto;">
+                        <%= qr.marksAwarded %> / <%= qr.marksTotal %>
+                    </span>
+                </div>
+                <p style="font-size:14px; font-weight:600; margin:0 0 8px;"><%= qr.questionText %></p>
+
+                <div style="display:flex; flex-direction:column; gap:4px;">
+                    <% const optTexts = qr.optionTexts || {};
+                       Object.keys(optTexts).forEach(optId => {
+                           const isStudentAnswer = (qr.studentAnswers || []).includes(optId);
+                           const isCorrectAnswer = (qr.correctAnswers || []).includes(optId);
+                    %>
+                    <% if (isStudentAnswer || isCorrectAnswer) { %>
+                    <div style="display:flex; align-items:center; gap:8px; font-size:13px; padding:5px 10px; border-radius:8px;
+                        background:<%= isCorrectAnswer ? 'rgba(34,197,94,.08)' : 'rgba(239,68,68,.08)' %>;
+                        border:1px solid <%= isCorrectAnswer ? 'rgba(34,197,94,.25)' : 'rgba(239,68,68,.25)' %>;">
+                        <span style="color:<%= isCorrectAnswer ? '#22c55e' : '#ef4444' %>; font-weight:700; font-size:11px; width:12px;">
+                            <%= isCorrectAnswer ? '✓' : '✗' %>
+                        </span>
+                        <span style="color:var(--text);"><%= optTexts[optId] %></span>
+                        <% if (isStudentAnswer && isCorrectAnswer) { %><span style="font-size:11px; color:#22c55e; margin-left:auto;">Your answer ✓</span><% } %>
+                        <% if (isStudentAnswer && !isCorrectAnswer) { %><span style="font-size:11px; color:#ef4444; margin-left:auto;">Your answer</span><% } %>
+                        <% if (!isStudentAnswer && isCorrectAnswer) { %><span style="font-size:11px; color:#22c55e; margin-left:auto;">Correct answer</span><% } %>
+                    </div>
+                    <% } %>
+                    <% }) %>
+                    <% if (!qr.studentAnswers || qr.studentAnswers.length === 0) { %>
+                    <p style="font-size:12px; color:#f59e0b; margin:4px 0 0;">Not answered</p>
+                    <% } %>
+                </div>
+            </div>
+        </div>
+        <% }) %>
+    </div>
+</div>
+
+<% } %>

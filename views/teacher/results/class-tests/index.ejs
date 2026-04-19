@@ -1,0 +1,67 @@
+
+<div class="page-header">
+    <div>
+        <h1>📝 Class Tests</h1>
+        <p>Create and manage class tests for your subjects.</p>
+    </div>
+    <a href="/teacher/results/class-tests/create" class="btn btn-primary">+ New Class Test</a>
+</div>
+
+<% if (!tests || tests.length === 0) { %>
+<div class="card">
+    <div class="empty-state">
+        <div class="empty-icon">📝</div>
+        <h3>No Class Tests Yet</h3>
+        <p>Create your first class test to start tracking student performance.</p>
+        <a href="/teacher/results/class-tests/create" class="btn btn-primary">Create Test</a>
+    </div>
+</div>
+<% } else { %>
+<%
+const statusBadge = {
+    DRAFT:'badge-yellow', SUBMITTED:'badge-blue', FINAL_APPROVED:'badge-green',
+    REJECTED:'badge-red', REOPENED:'badge-orange'
+};
+%>
+<div class="card">
+    <div class="table-wrapper">
+        <table>
+            <thead>
+                <tr>
+                    <th>Title</th>
+                    <th>Subject</th>
+                    <th>Section</th>
+                    <th>Date</th>
+                    <th>Max Marks</th>
+                    <th>Status</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                <% tests.forEach(test => { %>
+                <tr>
+                    <td class="fw-semibold"><%= test.title %></td>
+                    <td><%= test.subject?.subjectName %></td>
+                    <td><%= test.section?.class?.className %> – <%= test.section?.sectionName %></td>
+                    <td class="text-sm"><%= new Date(test.testDate).toLocaleDateString('en-IN') %></td>
+                    <td class="text-center"><%= test.maxMarks %></td>
+                    <td><span class="badge <%= statusBadge[test.status] || 'badge-yellow' %>"><%= test.status.replace(/_/g,' ') %></span></td>
+                    <td>
+                        <div class="action-btns">
+                            <% if (['DRAFT', 'REJECTED', 'REOPENED'].includes(test.status)) { %>
+                                <a href="/teacher/results/class-tests/<%= test._id %>/marks" class="btn btn-sm btn-primary">Enter Marks</a>
+                            <% } %>
+                            <% if (test.status === 'FINAL_APPROVED') { %>
+                                <form method="POST" action="/teacher/results/class-tests/<%= test._id %>/reopen" style="display:inline">
+                                    <button type="submit" class="btn btn-sm btn-warning" onclick="return confirm('Reopen this test for correction?')">Reopen</button>
+                                </form>
+                            <% } %>
+                        </div>
+                    </td>
+                </tr>
+                <% }) %>
+            </tbody>
+        </table>
+    </div>
+</div>
+<% } %>

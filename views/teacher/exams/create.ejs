@@ -1,0 +1,99 @@
+<div class="page-header">
+    <div>
+        <h1>📝 Create Exam</h1>
+        <p>Set up a new aptitude exam for your section.</p>
+    </div>
+    <a href="/teacher/exams" class="btn btn-secondary">← Back</a>
+</div>
+
+<% if (errors && errors.length > 0) { %>
+<div class="card" style="border-color: #ef4444; margin-bottom:16px;">
+    <div class="card-body">
+        <% errors.forEach(e => { %><p style="color:#ef4444; margin:4px 0;">❌ <%= e %></p><% }) %>
+    </div>
+</div>
+<% } %>
+
+<div class="card">
+    <div class="card-header">
+        <div class="card-title">Exam Configuration</div>
+    </div>
+    <div class="card-body">
+        <form action="/teacher/exams/create" method="POST">
+
+            <div class="form-group">
+                <label class="form-label">Exam Title *</label>
+                <input type="text" name="title" class="form-control" placeholder="e.g. Mid-Term Aptitude Test"
+                    value="<%= formData.title || '' %>" required>
+            </div>
+
+            <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px;">
+                <div class="form-group">
+                    <label class="form-label">Section *</label>
+                    <select name="sectionId" class="form-control" required>
+                        <option value="">— Select Section —</option>
+                        <% (sections || []).forEach(s => { %>
+                        <option value="<%= s._id %>" <%= formData.sectionId === s._id.toString() ? 'selected' : '' %>>
+                            <%= s.class?.className %> – Section <%= s.sectionName %>
+                            (<%= s.academicYear?.yearName || '' %>)
+                        </option>
+                        <% }) %>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Subject (optional)</label>
+                    <select name="subjectId" class="form-control">
+                        <option value="">— Select Subject —</option>
+                        <% (subjects || []).forEach(s => { %>
+                        <option value="<%= s._id %>" <%= formData.subjectId === s._id.toString() ? 'selected' : '' %>>
+                            <%= s.subjectName %> (<%= s.subjectCode %>)
+                        </option>
+                        <% }) %>
+                    </select>
+                </div>
+            </div>
+
+            <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px;">
+                <div class="form-group">
+                    <label class="form-label">Exam Date *</label>
+                    <input type="date" name="examDate" class="form-control"
+                        value="<%= formData.examDate || '' %>" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Start Time *</label>
+                    <input type="time" name="startTime" class="form-control"
+                        value="<%= formData.startTime || '09:00' %>" required>
+                </div>
+            </div>
+
+            <div style="display:grid; grid-template-columns:1fr 1fr 1fr 1fr; gap:16px;">
+                <div class="form-group">
+                    <label class="form-label">Duration (minutes) *</label>
+                    <input type="number" name="duration" class="form-control" min="1" placeholder="60"
+                        value="<%= formData.duration || '' %>" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Total Questions *</label>
+                    <input type="number" name="totalQuestions" class="form-control" min="1" placeholder="20"
+                        value="<%= formData.totalQuestions || '' %>" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Total Marks *</label>
+                    <input type="number" name="totalMarks" class="form-control" min="1" placeholder="40"
+                        value="<%= formData.totalMarks || '' %>" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Max Violations (auto-submit)</label>
+                    <input type="number" name="maxViolations" class="form-control" min="1" max="20" placeholder="3"
+                        value="<%= formData.maxViolations || 3 %>">
+                </div>
+            </div>
+
+            <div style="margin-top:8px;">
+                <button type="submit" class="btn btn-primary">Create Exam & Add Questions →</button>
+                <a href="/teacher/exams" class="btn btn-secondary" style="margin-left:8px;">Cancel</a>
+            </div>
+        </form>
+    </div>
+</div>

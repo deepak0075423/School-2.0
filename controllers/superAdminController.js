@@ -612,6 +612,8 @@ const downloadStudentTemplate = (req, res) => {
 const ALL_MODULES = [
     { key: 'attendance',   label: 'Attendance Management', icon: '📋', description: 'Student & teacher attendance tracking, calendars, correction requests, regularisation, parent notifications.' },
     { key: 'notification', label: 'Notification Module',   icon: '🔔', description: 'In-app and email notifications from school admin and teachers to students, parents, and staff.' },
+    { key: 'aptitudeExam', label: 'Aptitude Exam Module',  icon: '📝', description: 'Role-based aptitude exams with randomized questions, anti-cheating, auto-evaluation, analytics, and result approval workflow.' },
+    { key: 'result',       label: 'Result & Assessment Management', icon: '📊', description: 'Formal exam result management (Mid Term, Final, Unit Test) with multi-level approval workflow, class test tracking, grade computation, and role-based result visibility.' },
 ];
 
 const getPermissions = async (req, res) => {

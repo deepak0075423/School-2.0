@@ -16,6 +16,8 @@
 const MODULE_LABELS = {
     attendance:   'Attendance Management',
     notification: 'Notification Module',
+    aptitudeExam: 'Aptitude Exam Module',
+    result:       'Result & Assessment Management',
 };
 
 const requireModule = (moduleName) => (req, res, next) => {

@@ -1,0 +1,200 @@
+
+<%
+const statusBadge = {
+    DRAFT:'badge-yellow', MARKS_PENDING:'badge-yellow', SUBMITTED:'badge-blue',
+    CLASS_APPROVED:'badge-purple', FINAL_APPROVED:'badge-green', REJECTED:'badge-red', REOPENED:'badge-orange'
+};
+const typeLabel = { MID_TERM: 'Mid Term', FINAL: 'Final', UNIT_TEST: 'Unit Test' };
+%>
+
+<div class="page-header">
+    <div>
+        <h1>📋 <%= exam.title %></h1>
+        <p><%= typeLabel[exam.examType] %> &nbsp;|&nbsp; <%= exam.section?.class?.className %> – Section <%= exam.section?.sectionName %> &nbsp;|&nbsp; <%= exam.academicYear?.yearName %></p>
+    </div>
+    <div class="action-btns">
+        <a href="/admin/results/exams" class="btn btn-ghost">← Back</a>
+        <% if (exam.status === 'CLASS_APPROVED') { %>
+            <a href="/admin/results/exams/<%= exam._id %>/marks-review" class="btn btn-primary">Review & Approve</a>
+        <% } %>
+        <% if (exam.resultsGenerated) { %>
+            <a href="/admin/results/exams/<%= exam._id %>/result" class="btn btn-secondary">View Results</a>
+        <% } %>
+    </div>
+</div>
+
+<!-- Status Card -->
+<div class="card mb-4">
+    <div class="stats-row">
+        <div class="stat-item">
+            <div class="stat-label">Status</div>
+            <div><span class="badge badge-lg <%= statusBadge[exam.status] %>"><%= exam.status.replace(/_/g,' ') %></span></div>
+        </div>
+        <div class="stat-item">
+            <div class="stat-label">Exam Period</div>
+            <div class="stat-value text-sm"><%= new Date(exam.startDate).toLocaleDateString('en-IN') %> – <%= new Date(exam.endDate).toLocaleDateString('en-IN') %></div>
+        </div>
+        <div class="stat-item">
+            <div class="stat-label">Publish Date</div>
+            <div class="stat-value text-sm"><%= new Date(exam.publishDate).toLocaleDateString('en-IN') %></div>
+        </div>
+        <div class="stat-item">
+            <div class="stat-label">Subjects</div>
+            <div class="stat-value"><%= exam.subjects.length %></div>
+        </div>
+        <div class="stat-item">
+            <div class="stat-label">Created By</div>
+            <div class="stat-value text-sm"><%= exam.createdBy?.name %></div>
+        </div>
+    </div>
+</div>
+
+<% if (exam.status === 'REJECTED') { %>
+<div class="alert alert-error mb-4">
+    <strong>Rejected:</strong> <%= exam.rejectionReason || 'No reason provided.' %>
+</div>
+<% } %>
+
+<!-- Subjects & Marks Status -->
+<div class="card mb-4">
+    <h3 class="card-title">Subject Marks Status</h3>
+    <div class="table-wrapper">
+        <table>
+            <thead>
+                <tr>
+                    <th>Subject</th>
+                    <th>Assigned Teacher</th>
+                    <th>Max Marks</th>
+                    <th>Passing Marks</th>
+                    <th>Marks Status</th>
+                    <th>Submitted By</th>
+                </tr>
+            </thead>
+            <tbody>
+                <% exam.subjects.forEach(sc => {
+                    const sheet = sheets.find(s => String(s.subject?._id || s.subject) === String(sc.subject?._id || sc.subject));
+                %>
+                <tr>
+                    <td class="fw-semibold"><%= sc.subject?.subjectName || '—' %></td>
+                    <td><%= sc.assignedTeacher?.name || '—' %></td>
+                    <td class="text-center"><%= sc.maxMarks %></td>
+                    <td class="text-center"><%= sc.passingMarks %></td>
+                    <td>
+                        <% if (sheet) { %>
+                            <span class="badge <%= sheet.status === 'SUBMITTED' ? 'badge-green' : 'badge-yellow' %>">
+                                <%= sheet.status %>
+                            </span>
+                        <% } else { %>
+                            <span class="badge badge-yellow">PENDING</span>
+                        <% } %>
+                    </td>
+                    <td><%= sheet?.submittedBy?.name || '—' %></td>
+                </tr>
+                <% }) %>
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- Approval Actions -->
+<% if (['CLASS_APPROVED'].includes(exam.status)) { %>
+<div class="card mb-4">
+    <h3 class="card-title">Admin Actions</h3>
+    <div class="action-btns">
+        <form method="POST" action="/admin/results/exams/<%= exam._id %>/approve" style="display:inline">
+            <button type="submit" class="btn btn-primary" onclick="return confirm('Approve this exam and generate results?')">
+                Final Approve & Generate Results
+            </button>
+        </form>
+        <button class="btn btn-danger" onclick="document.getElementById('rejectForm').style.display='block'">Reject</button>
+    </div>
+    <div id="rejectForm" style="display:none; margin-top:1rem;">
+        <form method="POST" action="/admin/results/exams/<%= exam._id %>/reject">
+            <div class="form-group">
+                <label>Rejection Reason</label>
+                <textarea name="reason" class="form-control" rows="3" required placeholder="Enter reason for rejection"></textarea>
+            </div>
+            <button type="submit" class="btn btn-danger">Confirm Reject</button>
+            <button type="button" class="btn btn-ghost" onclick="document.getElementById('rejectForm').style.display='none'">Cancel</button>
+        </form>
+    </div>
+</div>
+<% } %>
+
+<% if (exam.status === 'FINAL_APPROVED') { %>
+<div class="card mb-4">
+    <h3 class="card-title">Reopen for Correction</h3>
+    <p class="text-muted text-sm">This will unlock all marks and restart the approval workflow.</p>
+    <button class="btn btn-warning" onclick="document.getElementById('reopenForm').style.display='block'">Reopen Exam</button>
+    <div id="reopenForm" style="display:none; margin-top:1rem;">
+        <form method="POST" action="/admin/results/exams/<%= exam._id %>/reopen">
+            <div class="form-group">
+                <label>Reason for Reopening</label>
+                <textarea name="reason" class="form-control" rows="2" placeholder="Enter reason"></textarea>
+            </div>
+            <button type="submit" class="btn btn-warning" onclick="return confirm('This will reset all approvals. Continue?')">Confirm Reopen</button>
+            <button type="button" class="btn btn-ghost" onclick="document.getElementById('reopenForm').style.display='none'">Cancel</button>
+        </form>
+    </div>
+</div>
+<% } %>
+
+<!-- Results Preview -->
+<% if (results && results.length > 0) { %>
+<div class="card mb-4">
+    <div class="card-header-row">
+        <h3 class="card-title">Results Overview</h3>
+        <a href="/admin/results/exams/<%= exam._id %>/result" class="btn btn-sm btn-secondary">Full Results</a>
+    </div>
+    <div class="table-wrapper">
+        <table>
+            <thead>
+                <tr>
+                    <th>Rank</th>
+                    <th>Student</th>
+                    <th>Total Marks</th>
+                    <th>Percentage</th>
+                    <th>Grade</th>
+                    <th>Status</th>
+                </tr>
+            </thead>
+            <tbody>
+                <% results.slice(0,10).forEach(r => { %>
+                <tr>
+                    <td class="text-center fw-semibold">#<%= r.rank %></td>
+                    <td><%= r.student?.name %></td>
+                    <td class="text-center"><%= r.totalMarks %>/<%= r.totalMaxMarks %></td>
+                    <td class="text-center"><%= r.percentage %>%</td>
+                    <td class="text-center"><span class="badge <%= r.grade === 'F' ? 'badge-red' : 'badge-green' %>"><%= r.grade %></span></td>
+                    <td><span class="badge <%= r.isPassed ? 'badge-green' : 'badge-red' %>"><%= r.isPassed ? 'Pass' : 'Fail' %></span></td>
+                </tr>
+                <% }) %>
+            </tbody>
+        </table>
+    </div>
+</div>
+<% } %>
+
+<!-- Audit Log -->
+<div class="card">
+    <h3 class="card-title">Audit Log</h3>
+    <% if (!exam.auditLog || exam.auditLog.length === 0) { %>
+        <p class="text-muted">No audit entries.</p>
+    <% } else { %>
+    <div class="table-wrapper">
+        <table>
+            <thead><tr><th>Action</th><th>By</th><th>Date</th><th>Notes</th></tr></thead>
+            <tbody>
+                <% exam.auditLog.slice().reverse().forEach(log => { %>
+                <tr>
+                    <td><span class="badge badge-blue"><%= log.action %></span></td>
+                    <td><%= log.by?.name || log.by %></td>
+                    <td class="text-sm"><%= new Date(log.at).toLocaleString('en-IN') %></td>
+                    <td class="text-muted text-sm"><%= log.notes || '—' %></td>
+                </tr>
+                <% }) %>
+            </tbody>
+        </table>
+    </div>
+    <% } %>
+</div>

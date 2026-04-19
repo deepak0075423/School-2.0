@@ -37,6 +37,8 @@
                     const _schoolModules   = (currentUser && currentUser.school && currentUser.school.modules) || {};
                     const _hasAttendance   = !!_schoolModules.attendance;
                     const _hasNotification = !!_schoolModules.notification;
+                    const _hasAptitudeExam = !!_schoolModules.aptitudeExam;
+                    const _hasResult       = !!_schoolModules.result;
                     const _path = (typeof locals !== 'undefined' && locals.title) ? title : '';
                     const _unreadCount = (typeof unreadNotificationCount !== 'undefined') ? unreadNotificationCount : 0;
                 %>
@@ -111,6 +113,20 @@
                         <span class="nav-icon">➕</span> Add Co-Admin
                     </a>
 
+                    <% if (_hasAptitudeExam) { %>
+                    <div class="nav-section-label">Exams</div>
+                    <a href="/admin/exams" class="nav-item <%= _path.includes('Exam') ? 'active' : '' %>">
+                        <span class="nav-icon">📝</span> Aptitude Exams
+                    </a>
+                    <% } %>
+
+                    <% if (_hasResult) { %>
+                    <div class="nav-section-label">Results</div>
+                    <a href="/admin/results/exams" class="nav-item <%= _path.includes('Formal Exam') || _path.includes('Result') ? 'active' : '' %>">
+                        <span class="nav-icon">📋</span> Formal Exams
+                    </a>
+                    <% } %>
+
                     <% if (_hasAttendance) { %>
                     <div class="nav-section-label">Attendance</div>
                     <a href="/admin/regularization-requests"
@@ -156,6 +172,29 @@
                     </a>
                     <% } %>
 
+                    <% if (_hasAptitudeExam) { %>
+                    <div class="nav-section-label">Exams</div>
+                    <a href="/teacher/exams" class="nav-item <%= _path.includes('Exam') ? 'active' : '' %>">
+                        <span class="nav-icon">📝</span> My Exams
+                    </a>
+                    <% } %>
+
+                    <% if (_hasResult) { %>
+                    <div class="nav-section-label">Results</div>
+                    <a href="/teacher/results/marks-entry" class="nav-item <%= _path.includes('Marks Entry') ? 'active' : '' %>">
+                        <span class="nav-icon">✏️</span> Marks Entry
+                    </a>
+                    <a href="/teacher/results/validation" class="nav-item <%= _path.includes('Marks Validation') ? 'active' : '' %>">
+                        <span class="nav-icon">✅</span> Validate Marks
+                    </a>
+                    <a href="/teacher/results/class-tests" class="nav-item <%= _path.includes('Class Test') ? 'active' : '' %>">
+                        <span class="nav-icon">📝</span> Class Tests
+                    </a>
+                    <a href="/teacher/results/class-test-validation" class="nav-item <%= _path.includes('Class Test Validation') ? 'active' : '' %>">
+                        <span class="nav-icon">🔍</span> Validate Class Tests
+                    </a>
+                    <% } %>
+
                     <% if (_hasAttendance) { %>
                     <div class="nav-section-label">Attendance</div>
                     <a href="/teacher/attendance"
@@ -195,6 +234,23 @@
                         <span class="nav-icon">📅</span> My Timetable
                     </a>
 
+                    <% if (_hasAptitudeExam) { %>
+                    <div class="nav-section-label">Exams</div>
+                    <a href="/student/exams" class="nav-item <%= _path.includes('Exam') ? 'active' : '' %>">
+                        <span class="nav-icon">📝</span> My Exams
+                    </a>
+                    <% } %>
+
+                    <% if (_hasResult) { %>
+                    <div class="nav-section-label">Results</div>
+                    <a href="/student/results" class="nav-item <%= _path.includes('My Results') || _path.includes('Result:') ? 'active' : '' %>">
+                        <span class="nav-icon">📊</span> My Results
+                    </a>
+                    <a href="/student/results/class-tests" class="nav-item <%= _path.includes('Class Test Results') ? 'active' : '' %>">
+                        <span class="nav-icon">📝</span> Class Tests
+                    </a>
+                    <% } %>
+
                     <% if (_hasAttendance) { %>
                     <div class="nav-section-label">Attendance</div>
                     <a href="/student/my-attendance"
@@ -217,6 +273,23 @@
                         class="nav-item <%= _path.includes('Child') && !_path.includes('Attendance') ? 'active' : '' %>">
                         <span class="nav-icon">🏫</span> Child's Class
                     </a>
+
+                    <% if (_hasAptitudeExam) { %>
+                    <div class="nav-section-label">Exams</div>
+                    <a href="/parent/exams" class="nav-item <%= _path.includes('Exam') ? 'active' : '' %>">
+                        <span class="nav-icon">📊</span> Exam Results
+                    </a>
+                    <% } %>
+
+                    <% if (_hasResult) { %>
+                    <div class="nav-section-label">Results</div>
+                    <a href="/parent/results" class="nav-item <%= _path.includes('Child Results') || _path.includes('Result:') ? 'active' : '' %>">
+                        <span class="nav-icon">📊</span> Child Results
+                    </a>
+                    <a href="/parent/results/class-tests" class="nav-item <%= _path.includes('Child Class Test') ? 'active' : '' %>">
+                        <span class="nav-icon">📝</span> Class Tests
+                    </a>
+                    <% } %>
 
                     <% if (_hasAttendance) { %>
                     <div class="nav-section-label">Attendance</div>

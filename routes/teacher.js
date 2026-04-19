@@ -52,5 +52,57 @@ router.get('/notifications',        notifGuard, notifCtrl.getNotificationList);
 router.get('/notifications/create', notifGuard, notifCtrl.getCreateNotification);
 router.post('/notifications/send',  notifGuard, notifCtrl.postSendNotification);
 
+// ── Aptitude Exams ─────────────────────────────────────────────
+const examCtrl  = require('../controllers/aptitudeExamController');
+const examGuard = [...guard, requireModule('aptitudeExam')];
+router.get('/exams',                           examGuard, examCtrl.getTeacherExams);
+router.get('/exams/create',                    examGuard, examCtrl.getCreateExam);
+router.post('/exams/create',                   examGuard, examCtrl.postCreateExam);
+router.get('/exams/:id/edit',                  examGuard, examCtrl.getEditExam);
+router.post('/exams/:id/edit',                 examGuard, examCtrl.postEditExam);
+router.get('/exams/:id/questions',             examGuard, examCtrl.getManageQuestions);
+router.post('/exams/:id/questions',            examGuard, examCtrl.postAddQuestion);
+router.get('/exams/:id/questions/:qid/edit',  examGuard, examCtrl.getEditQuestion);
+router.post('/exams/:id/questions/:qid/edit', examGuard, examCtrl.postEditQuestion);
+router.post('/exams/:id/questions/:qid/delete',examGuard, examCtrl.postDeleteQuestion);
+router.post('/exams/:id/publish',              examGuard, examCtrl.postPublishExam);
+router.post('/exams/:id/delete',               examGuard, examCtrl.postDeleteExam);
+router.get('/exams/:id/submissions',           examGuard, examCtrl.getSubmissions);
+router.get('/exams/:id/submissions/:studentId',examGuard, examCtrl.getStudentResponse);
+router.get('/exams/:id/analytics',             examGuard, examCtrl.getAnalytics);
+router.get('/exams/:id/result-approval',            examGuard, examCtrl.getResultApproval);
+router.post('/exams/:id/subject-approve',           examGuard, examCtrl.postSubjectApproveResults);
+router.post('/exams/:id/result-approval',           examGuard, examCtrl.postApproveResults);
+
+// ── Result & Assessment Management ────────────────────────────
+const formalExamCtrl  = require('../controllers/formalExamController');
+const classTestCtrl   = require('../controllers/classTestController');
+const resultGuard     = [...guard, requireModule('result')];
+
+// Formal Exam — Subject Teacher (marks entry)
+router.get('/results/marks-entry',                                    resultGuard, formalExamCtrl.teacherGetMarksEntry);
+router.get('/results/marks-entry/:examId/:subjectId',                 resultGuard, formalExamCtrl.teacherGetMarksForm);
+router.post('/results/marks-entry/:examId/:subjectId/save',           resultGuard, formalExamCtrl.teacherPostSaveMarks);
+
+// Formal Exam — Class Teacher (validation)
+router.get('/results/validation',                                     resultGuard, formalExamCtrl.teacherGetValidation);
+router.get('/results/validation/:examId',                             resultGuard, formalExamCtrl.teacherGetValidationDetail);
+router.post('/results/validation/:examId/approve',                    resultGuard, formalExamCtrl.teacherPostApproveExam);
+router.post('/results/validation/:examId/reject',                     resultGuard, formalExamCtrl.teacherPostRejectExam);
+
+// Class Tests — Subject Teacher
+router.get('/results/class-tests',                                    resultGuard, classTestCtrl.teacherGetClassTests);
+router.get('/results/class-tests/create',                             resultGuard, classTestCtrl.teacherGetCreateClassTest);
+router.post('/results/class-tests/create',                            resultGuard, classTestCtrl.teacherPostCreateClassTest);
+router.get('/results/class-tests/:id/marks',                          resultGuard, classTestCtrl.teacherGetTestMarks);
+router.post('/results/class-tests/:id/marks/save',                    resultGuard, classTestCtrl.teacherPostSaveTestMarks);
+router.post('/results/class-tests/:id/reopen',                        resultGuard, classTestCtrl.teacherPostReopenTest);
+
+// Class Tests — Class Teacher (validation)
+router.get('/results/class-test-validation',                          resultGuard, classTestCtrl.teacherGetClassTestValidation);
+router.get('/results/class-test-validation/:id',                      resultGuard, classTestCtrl.teacherGetClassTestValidationDetail);
+router.post('/results/class-test-validation/:id/approve',             resultGuard, classTestCtrl.teacherPostApproveClassTest);
+router.post('/results/class-test-validation/:id/reject',              resultGuard, classTestCtrl.teacherPostRejectClassTest);
+
 module.exports = router;
 

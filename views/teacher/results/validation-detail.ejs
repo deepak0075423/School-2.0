@@ -1,0 +1,88 @@
+
+<div class="page-header">
+    <div>
+        <h1>🔍 Validate: <%= exam.title %></h1>
+        <p><%= exam.section?.class?.className %> – Section <%= exam.section?.sectionName %></p>
+    </div>
+    <a href="/teacher/results/validation" class="btn btn-ghost">← Back</a>
+</div>
+
+<% sheets.forEach(sheet => {
+    const sc = exam.subjects.find(s => String(s.subject?._id || s.subject) === String(sheet.subject?._id));
+%>
+<div class="card mb-4">
+    <div class="card-header-row">
+        <div>
+            <h3 class="card-title mb-0"><%= sheet.subject?.subjectName %></h3>
+            <% if (sc) { %><p class="text-muted text-sm">Max: <%= sc.maxMarks %> | Passing: <%= sc.passingMarks %></p><% } %>
+        </div>
+        <span class="badge <%= sheet.status === 'SUBMITTED' ? 'badge-green' : 'badge-yellow' %>"><%= sheet.status %></span>
+    </div>
+
+    <div class="table-wrapper">
+        <table>
+            <thead>
+                <tr><th>Student</th><th>Marks</th><th>Absent</th><th>Grade</th><th>Remarks</th></tr>
+            </thead>
+            <tbody>
+                <% sheet.entries.forEach(entry => {
+                    const stud = students.find(s => String(s._id) === String(entry.student?._id || entry.student));
+                    const maxM = sc ? sc.maxMarks : 100;
+                    const pct  = entry.isAbsent ? 0 : ((entry.marksObtained || 0) / maxM * 100);
+                    let grade = 'AB';
+                    if (!entry.isAbsent) {
+                        if (pct>=90) grade='A+'; else if(pct>=80) grade='A';
+                        else if(pct>=70) grade='B+'; else if(pct>=60) grade='B';
+                        else if(pct>=50) grade='C'; else if(pct>=40) grade='D'; else grade='F';
+                    }
+                %>
+                <tr>
+                    <td class="fw-semibold"><%= stud?.name || entry.student?.name || '—' %></td>
+                    <td class="text-center">
+                        <% if (entry.isAbsent) { %><span class="text-muted">AB</span>
+                        <% } else if (entry.marksObtained === null || entry.marksObtained === undefined) { %>
+                            <span class="badge badge-red">MISSING</span>
+                        <% } else { %><strong><%= entry.marksObtained %></strong>/<%= maxM %><% } %>
+                    </td>
+                    <td class="text-center"><%= entry.isAbsent ? '✅' : '—' %></td>
+                    <td class="text-center">
+                        <span class="badge <%= grade==='F'||grade==='AB' ? 'badge-red' : grade.startsWith('A') ? 'badge-green' : 'badge-blue' %>"><%= grade %></span>
+                    </td>
+                    <td class="text-sm text-muted"><%= entry.remarks || '—' %></td>
+                </tr>
+                <% }) %>
+            </tbody>
+        </table>
+    </div>
+</div>
+<% }) %>
+
+<!-- Actions -->
+<% if (exam.status === 'SUBMITTED') { %>
+<div class="card">
+    <h3 class="card-title">Validation Actions</h3>
+    <div class="action-btns">
+        <form method="POST" action="/teacher/results/validation/<%= exam._id %>/approve" style="display:inline">
+            <div class="form-group mb-2">
+                <input type="text" name="notes" class="form-control" placeholder="Approval notes (optional)" />
+            </div>
+            <button type="submit" class="btn btn-primary" onclick="return confirm('Approve all marks and send for Admin final approval?')">
+                Approve Marks
+            </button>
+        </form>
+
+        <button class="btn btn-danger" onclick="document.getElementById('rejectPanel').style.display='block'">Reject & Return</button>
+    </div>
+
+    <div id="rejectPanel" style="display:none; margin-top:1rem;">
+        <form method="POST" action="/teacher/results/validation/<%= exam._id %>/reject">
+            <div class="form-group">
+                <label>Rejection Reason <span class="required">*</span></label>
+                <textarea name="reason" class="form-control" rows="3" required placeholder="Specify what needs to be corrected…"></textarea>
+            </div>
+            <button type="submit" class="btn btn-danger">Confirm Reject</button>
+            <button type="button" class="btn btn-ghost" onclick="document.getElementById('rejectPanel').style.display='none'">Cancel</button>
+        </form>
+    </div>
+</div>
+<% } %>

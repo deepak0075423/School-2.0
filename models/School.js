@@ -41,6 +41,14 @@ const SchoolSchema = new mongoose.Schema({
             type: Boolean,
             default: false,
         },
+        aptitudeExam: {
+            type: Boolean,
+            default: false,
+        },
+        result: {
+            type: Boolean,
+            default: false,
+        },
     },
     createdAt: {
         type: Date,

@@ -1,0 +1,152 @@
+<div class="page-header">
+    <div>
+        <h1>📝 My Exams</h1>
+        <p>Manage aptitude exams for your sections.</p>
+    </div>
+    <a href="/teacher/exams/create" class="btn btn-primary">+ Create Exam</a>
+</div>
+
+<!-- Section Exams (class teacher view — exams in my section by other teachers) -->
+<% if (sectionExams && sectionExams.length > 0) { %>
+<div class="card" style="margin-bottom:20px;">
+    <div class="card-header">
+        <div class="card-title">📋 Exams in My Section</div>
+        <span style="font-size:12px; color:var(--text-muted);">Exams conducted by subject teachers for your section. You can approve results after exam completion.</span>
+    </div>
+    <div class="table-wrapper">
+        <table>
+            <thead>
+                <tr>
+                    <th>Title</th>
+                    <th>Subject</th>
+                    <th>Date</th>
+                    <th>Subject Teacher</th>
+                    <th>Exam Status</th>
+                    <th>Result Status</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                <% sectionExams.forEach(exam => {
+                    const statusColors = { draft:'badge-yellow', published:'badge-blue', completed:'badge-green', cancelled:'badge-red' };
+                    let resultBadge = '', resultColor = '';
+                    if (exam.resultApprovalStatus === 'approved') {
+                        resultBadge = 'Published'; resultColor = 'badge-green';
+                    } else if (exam.subjectTeacherApprovalStatus === 'approved') {
+                        resultBadge = 'Needs Your Approval'; resultColor = 'badge-yellow';
+                    } else if (exam.subjectTeacherApprovalStatus === 'rejected') {
+                        resultBadge = 'Rejected'; resultColor = 'badge-red';
+                    } else if (exam.status === 'completed') {
+                        resultBadge = 'Awaiting Subject Teacher'; resultColor = 'badge-yellow';
+                    } else {
+                        resultBadge = '—'; resultColor = '';
+                    }
+                %>
+                <tr>
+                    <td class="fw-semibold"><%= exam.title %></td>
+                    <td><%= exam.subject?.subjectName || '—' %></td>
+                    <td><%= new Date(exam.examDate).toLocaleDateString('en-IN') %></td>
+                    <td><%= exam.createdBy?.name || '—' %></td>
+                    <td><span class="badge <%= statusColors[exam.status] %>"><%= exam.status %></span></td>
+                    <td>
+                        <% if (resultColor) { %>
+                        <span class="badge <%= resultColor %>" style="font-size:11px;"><%= resultBadge %></span>
+                        <% } else { %><span style="color:var(--text-muted); font-size:12px;">—</span><% } %>
+                    </td>
+                    <td>
+                        <div style="display:flex; gap:6px; flex-wrap:wrap;">
+                            <% if (exam.status === 'completed' || exam.status === 'published') { %>
+                            <a href="/teacher/exams/<%= exam._id %>/submissions" class="btn btn-secondary" style="padding:4px 10px; font-size:12px;">Submissions</a>
+                            <a href="/teacher/exams/<%= exam._id %>/analytics" class="btn btn-secondary" style="padding:4px 10px; font-size:12px;">Analytics</a>
+                            <% } %>
+                            <% if (exam.status === 'completed' && exam.subjectTeacherApprovalStatus === 'approved' && exam.resultApprovalStatus === 'pending') { %>
+                            <a href="/teacher/exams/<%= exam._id %>/result-approval" class="btn btn-primary" style="padding:4px 12px; font-size:12px;">✅ Final Approval</a>
+                            <% } else if (exam.status === 'completed') { %>
+                            <a href="/teacher/exams/<%= exam._id %>/result-approval" class="btn btn-secondary" style="padding:4px 10px; font-size:12px;">View Approval</a>
+                            <% } %>
+                        </div>
+                    </td>
+                </tr>
+                <% }) %>
+            </tbody>
+        </table>
+    </div>
+</div>
+<% } %>
+
+<!-- My Exams (created by this teacher) -->
+<% if (!exams || exams.length === 0) { %>
+<div class="card">
+    <div class="empty-state">
+        <div class="empty-icon">📝</div>
+        <h3>No Exams Created Yet</h3>
+        <p>Create your first aptitude exam to get started.</p>
+        <a href="/teacher/exams/create" class="btn btn-primary" style="margin-top:12px;">+ Create Exam</a>
+    </div>
+</div>
+<% } else { %>
+<div class="card">
+    <div class="card-header"><div class="card-title">Exams I Created</div></div>
+    <div class="table-wrapper">
+        <table>
+            <thead>
+                <tr>
+                    <th>Title</th>
+                    <th>Section</th>
+                    <th>Subject</th>
+                    <th>Date</th>
+                    <th>Time / Duration</th>
+                    <th>Questions</th>
+                    <th>Marks</th>
+                    <th>Status</th>
+                    <th>Result</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                <% exams.forEach(exam => {
+                    const statusColors = { draft:'badge-yellow', published:'badge-blue', completed:'badge-green', cancelled:'badge-red' };
+                %>
+                <tr>
+                    <td class="fw-semibold"><%= exam.title %></td>
+                    <td><%= exam.section?.class?.className %> – <%= exam.section?.sectionName %></td>
+                    <td><%= exam.subject?.subjectName || '—' %></td>
+                    <td><%= new Date(exam.examDate).toLocaleDateString('en-IN') %></td>
+                    <td><%= exam.startTime %> · <%= exam.duration %> min</td>
+                    <td class="text-center"><%= exam.totalQuestions %></td>
+                    <td class="text-center"><%= exam.totalMarks %></td>
+                    <td><span class="badge <%= statusColors[exam.status] || 'badge-yellow' %>"><%= exam.status %></span></td>
+                    <td>
+                        <% if (exam.status === 'completed') { %>
+                            <% if (exam.subjectTeacherApprovalStatus === 'approved' && exam.resultApprovalStatus === 'approved') { %>
+                            <span class="badge badge-green" style="font-size:11px;">Published</span>
+                            <% } else if (exam.subjectTeacherApprovalStatus === 'approved') { %>
+                            <span class="badge badge-blue" style="font-size:11px;">Awaiting Class Teacher</span>
+                            <% } else if (exam.subjectTeacherApprovalStatus === 'rejected') { %>
+                            <span class="badge badge-red" style="font-size:11px;">Rejected</span>
+                            <% } else { %>
+                            <span class="badge badge-yellow" style="font-size:11px;">Your Approval Needed</span>
+                            <% } %>
+                        <% } else { %>
+                        <span style="color:var(--text-muted); font-size:12px;">—</span>
+                        <% } %>
+                    </td>
+                    <td>
+                        <div style="display:flex; gap:6px; flex-wrap:wrap;">
+                            <a href="/teacher/exams/<%= exam._id %>/questions" class="btn btn-secondary" style="padding:4px 10px; font-size:12px;">Questions</a>
+                            <% if (exam.status !== 'draft') { %>
+                            <a href="/teacher/exams/<%= exam._id %>/submissions" class="btn btn-secondary" style="padding:4px 10px; font-size:12px;">Submissions</a>
+                            <a href="/teacher/exams/<%= exam._id %>/analytics" class="btn btn-secondary" style="padding:4px 10px; font-size:12px;">Analytics</a>
+                            <% } %>
+                            <% if (exam.status === 'completed' && exam.subjectTeacherApprovalStatus === 'pending') { %>
+                            <a href="/teacher/exams/<%= exam._id %>/result-approval" class="btn btn-primary" style="padding:4px 10px; font-size:12px;">✅ Review Results</a>
+                            <% } %>
+                        </div>
+                    </td>
+                </tr>
+                <% }) %>
+            </tbody>
+        </table>
+    </div>
+</div>
+<% } %>

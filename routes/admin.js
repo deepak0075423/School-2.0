@@ -101,5 +101,25 @@ router.get('/notifications',        notifGuard, notifCtrl.getNotificationList);
 router.get('/notifications/create', notifGuard, notifCtrl.getCreateNotification);
 router.post('/notifications/send',  notifGuard, notifCtrl.postSendNotification);
 
+// ── Aptitude Exams ─────────────────────────────────────────────
+const examCtrl  = require('../controllers/aptitudeExamController');
+const examGuard = [...guard, requireModule('aptitudeExam')];
+router.get('/exams', examGuard, examCtrl.getAdminExams);
+
+// ── Result & Assessment Management ────────────────────────────
+const formalExamCtrl = require('../controllers/formalExamController');
+const resultGuard    = [...guard, requireModule('result')];
+router.get('/results/exams',                              resultGuard, formalExamCtrl.adminGetExams);
+router.get('/results/exams/create',                       resultGuard, formalExamCtrl.adminGetCreateExam);
+router.post('/results/exams/create',                      resultGuard, formalExamCtrl.adminPostCreateExam);
+router.get('/results/exams/:id',                          resultGuard, formalExamCtrl.adminGetExamDetail);
+router.get('/results/exams/:id/marks-review',             resultGuard, formalExamCtrl.adminGetMarksReview);
+router.post('/results/exams/:id/approve',                 resultGuard, formalExamCtrl.adminPostApproveExam);
+router.post('/results/exams/:id/reject',                  resultGuard, formalExamCtrl.adminPostRejectExam);
+router.post('/results/exams/:id/reopen',                  resultGuard, formalExamCtrl.adminPostReopenExam);
+router.post('/results/exams/:id/marks/:subjectId',        resultGuard, formalExamCtrl.adminPostEditMarks);
+router.get('/results/exams/:id/result',                   resultGuard, formalExamCtrl.adminGetResult);
+router.get('/api/results/sections/:sectionId/subjects',   resultGuard, formalExamCtrl.adminApiSectionSubjects);
+
 module.exports = router;
 

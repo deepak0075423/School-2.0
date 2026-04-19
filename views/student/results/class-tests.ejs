@@ -1,0 +1,89 @@
+
+<div class="page-header">
+    <div>
+        <h1>📝 Class Test Results</h1>
+        <p>View your class test performance and continuous assessment scores.</p>
+    </div>
+    <a href="/student/results" class="btn btn-secondary">Formal Exam Results</a>
+</div>
+
+<% if (!myTests || myTests.length === 0) { %>
+<div class="card">
+    <div class="empty-state">
+        <div class="empty-icon">📝</div>
+        <h3>No Class Tests Yet</h3>
+        <p>Approved class test results will appear here.</p>
+    </div>
+</div>
+<% } else { %>
+
+<!-- Continuous Assessment Summary -->
+<%
+const bySubject = {};
+myTests.forEach(t => {
+    const sub = t.test.subject?.subjectName || 'Unknown';
+    if (!bySubject[sub]) bySubject[sub] = { total: 0, count: 0, max: 0 };
+    if (!t.isAbsent && t.marks !== null) {
+        const pct = (t.marks / t.test.maxMarks) * 100;
+        bySubject[sub].total += pct;
+        bySubject[sub].count++;
+    }
+});
+%>
+<% if (Object.keys(bySubject).length > 0) { %>
+<div class="card mb-4">
+    <h3 class="card-title">Continuous Assessment (Internal) Score</h3>
+    <p class="text-muted text-sm">Average performance across all approved class tests per subject.</p>
+    <div class="stats-row">
+        <% Object.entries(bySubject).forEach(([sub, data]) => { %>
+        <div class="stat-item">
+            <div class="stat-label"><%= sub %></div>
+            <div class="stat-value <%= data.count === 0 ? 'text-muted' : '' %>">
+                <%= data.count > 0 ? (data.total / data.count).toFixed(1) + '%' : '—' %>
+            </div>
+            <div class="text-muted text-xs"><%= data.count %> test<%= data.count !== 1 ? 's' : '' %></div>
+        </div>
+        <% }) %>
+    </div>
+</div>
+<% } %>
+
+<div class="card">
+    <div class="table-wrapper">
+        <table>
+            <thead>
+                <tr>
+                    <th>Test Title</th>
+                    <th>Subject</th>
+                    <th>Date</th>
+                    <th>Marks</th>
+                    <th>Percentage</th>
+                    <th>Grade</th>
+                </tr>
+            </thead>
+            <tbody>
+                <% myTests.forEach(t => { %>
+                <tr>
+                    <td class="fw-semibold"><%= t.test.title %><% if (t.test.topic) { %><br><span class="text-muted text-xs"><%= t.test.topic %></span><% } %></td>
+                    <td><%= t.test.subject?.subjectName %></td>
+                    <td class="text-sm"><%= new Date(t.test.testDate).toLocaleDateString('en-IN') %></td>
+                    <td class="text-center">
+                        <% if (t.isAbsent) { %><span class="badge badge-orange">Absent</span>
+                        <% } else if (t.marks === null) { %><span class="text-muted">—</span>
+                        <% } else { %><strong><%= t.marks %></strong>/<%= t.test.maxMarks %>
+                        <% } %>
+                    </td>
+                    <td class="text-center"><%= t.percentage !== null ? t.percentage + '%' : '—' %></td>
+                    <td class="text-center">
+                        <% const g = t.grade || '—'; %>
+                        <span class="badge <%= g==='F'||g==='AB' ? 'badge-red' : g.startsWith('A') ? 'badge-green' : g==='—' ? '' : 'badge-blue' %>"><%= g %></span>
+                    </td>
+                </tr>
+                <% }) %>
+            </tbody>
+        </table>
+    </div>
+</div>
+<% } %>
+
+<style>.text-xs { font-size: 0.75rem; }</style>

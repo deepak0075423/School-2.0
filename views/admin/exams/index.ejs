@@ -1,0 +1,54 @@
+<div class="page-header">
+    <div>
+        <h1>📝 Aptitude Exams</h1>
+        <p>Overview of all aptitude exams in your school.</p>
+    </div>
+</div>
+
+<% if (!exams || exams.length === 0) { %>
+<div class="card">
+    <div class="empty-state">
+        <div class="empty-icon">📝</div>
+        <h3>No Exams Created</h3>
+        <p>Subject teachers can create exams from their Teacher dashboard.</p>
+    </div>
+</div>
+<% } else { %>
+<div class="card">
+    <div class="table-wrapper">
+        <table>
+            <thead>
+                <tr>
+                    <th>Title</th>
+                    <th>Section</th>
+                    <th>Subject</th>
+                    <th>Created By</th>
+                    <th>Date</th>
+                    <th>Marks</th>
+                    <th>Status</th>
+                    <th>Submissions</th>
+                    <th>Result</th>
+                </tr>
+            </thead>
+            <tbody>
+                <% exams.forEach(exam => {
+                    const statusColors = { draft:'badge-yellow', published:'badge-blue', completed:'badge-green', cancelled:'badge-red' };
+                    const approvalColors = { pending:'badge-yellow', approved:'badge-green', rejected:'badge-red' };
+                %>
+                <tr>
+                    <td class="fw-semibold"><%= exam.title %></td>
+                    <td><%= exam.section?.class?.className %> – <%= exam.section?.sectionName %></td>
+                    <td><%= exam.subject?.subjectName || '—' %></td>
+                    <td>👨‍🏫 <%= exam.createdBy?.name || '—' %></td>
+                    <td><%= new Date(exam.examDate).toLocaleDateString('en-IN') %></td>
+                    <td class="text-center"><%= exam.totalMarks %></td>
+                    <td><span class="badge <%= statusColors[exam.status] || 'badge-yellow' %>"><%= exam.status %></span></td>
+                    <td class="text-center"><%= exam._submissionCount || 0 %></td>
+                    <td><span class="badge <%= approvalColors[exam.resultApprovalStatus] || 'badge-yellow' %>"><%= exam.resultApprovalStatus %></span></td>
+                </tr>
+                <% }) %>
+            </tbody>
+        </table>
+    </div>
+</div>
+<% } %>

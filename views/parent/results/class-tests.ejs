@@ -1,0 +1,60 @@
+
+<div class="page-header">
+    <div>
+        <h1>📝 Child Class Test Results</h1>
+        <p>View your child's performance in class tests.</p>
+    </div>
+    <a href="/parent/results" class="btn btn-secondary">Formal Exam Results</a>
+</div>
+
+<% if (!allTests || allTests.length === 0) { %>
+<div class="card">
+    <div class="empty-state">
+        <div class="empty-icon">📝</div>
+        <h3>No Class Test Results</h3>
+        <p>Approved class test results will appear here.</p>
+    </div>
+</div>
+<% } else { %>
+<% allTests.forEach(({ child, tests }) => { %>
+<div class="card mb-4">
+    <h3 class="card-title">👦 <%= child.name %></h3>
+    <% if (!tests || tests.length === 0) { %>
+        <p class="text-muted p-3">No approved class tests yet.</p>
+    <% } else { %>
+    <div class="table-wrapper">
+        <table>
+            <thead>
+                <tr>
+                    <th>Test</th>
+                    <th>Subject</th>
+                    <th>Date</th>
+                    <th>Marks</th>
+                    <th>Grade</th>
+                </tr>
+            </thead>
+            <tbody>
+                <% tests.forEach(t => { %>
+                <tr>
+                    <td class="fw-semibold"><%= t.test.title %></td>
+                    <td><%= t.test.subject?.subjectName %></td>
+                    <td class="text-sm"><%= new Date(t.test.testDate).toLocaleDateString('en-IN') %></td>
+                    <td class="text-center">
+                        <% if (t.isAbsent) { %><span class="badge badge-orange">Absent</span>
+                        <% } else if (t.marks === null) { %><span class="text-muted">—</span>
+                        <% } else { %><strong><%= t.marks %></strong>/<%= t.test.maxMarks %>
+                        <% } %>
+                    </td>
+                    <td class="text-center">
+                        <% const g = t.grade || '—'; %>
+                        <span class="badge <%= g==='F'||g==='AB' ? 'badge-red' : g.startsWith('A') ? 'badge-green' : g==='—' ? '' : 'badge-blue' %>"><%= g %></span>
+                    </td>
+                </tr>
+                <% }) %>
+            </tbody>
+        </table>
+    </div>
+    <% } %>
+</div>
+<% }) %>
+<% } %>

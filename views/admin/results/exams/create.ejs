@@ -1,0 +1,136 @@
+
+<div class="page-header">
+    <div>
+        <h1>📋 Create Formal Exam</h1>
+        <p>Configure an exam for a class section. Subject teachers will be auto-assigned from section assignments.</p>
+    </div>
+    <a href="/admin/results/exams" class="btn btn-ghost">← Back</a>
+</div>
+
+<div class="card">
+    <form method="POST" action="/admin/results/exams/create" id="examForm">
+        <div class="form-section">
+            <h3>Exam Details</h3>
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="title">Exam Title <span class="required">*</span></label>
+                    <input type="text" id="title" name="title" class="form-control" required placeholder="e.g. Mid Term Examination 2024-25" />
+                </div>
+                <div class="form-group">
+                    <label for="examType">Exam Type <span class="required">*</span></label>
+                    <select id="examType" name="examType" class="form-control" required>
+                        <option value="">Select Type</option>
+                        <option value="MID_TERM">Mid Term</option>
+                        <option value="FINAL">Final Exam</option>
+                        <option value="UNIT_TEST">Unit Test</option>
+                    </select>
+                </div>
+            </div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="academicYearId">Academic Year <span class="required">*</span></label>
+                    <select id="academicYearId" name="academicYearId" class="form-control" required>
+                        <option value="">Select Year</option>
+                        <% academicYears.forEach(y => { %>
+                            <option value="<%= y._id %>"><%= y.yearName %></option>
+                        <% }) %>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="sectionId">Class & Section <span class="required">*</span></label>
+                    <select id="sectionId" name="sectionId" class="form-control" required>
+                        <option value="">Select Section</option>
+                        <% sections.forEach(s => { %>
+                            <option value="<%= s._id %>"><%= s.class?.className %> – Section <%= s.sectionName %></option>
+                        <% }) %>
+                    </select>
+                </div>
+            </div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="startDate">Start Date <span class="required">*</span></label>
+                    <input type="date" id="startDate" name="startDate" class="form-control" required />
+                </div>
+                <div class="form-group">
+                    <label for="endDate">End Date <span class="required">*</span></label>
+                    <input type="date" id="endDate" name="endDate" class="form-control" required />
+                </div>
+                <div class="form-group">
+                    <label for="publishDate">Result Publish Date <span class="required">*</span></label>
+                    <input type="date" id="publishDate" name="publishDate" class="form-control" required />
+                </div>
+            </div>
+        </div>
+
+        <div class="form-section">
+            <div class="section-header-row">
+                <h3>Subjects & Marks</h3>
+                <button type="button" class="btn btn-secondary btn-sm" id="loadSubjectsBtn" disabled>Load Subjects from Section</button>
+            </div>
+            <p class="text-muted text-sm">Select a section above, then load its subjects. Marks config is editable per subject.</p>
+
+            <div id="subjectsContainer">
+                <div class="empty-state-sm">
+                    <p>Select a section and click "Load Subjects from Section"</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="form-actions">
+            <button type="submit" class="btn btn-primary" id="submitBtn" disabled>Create Exam</button>
+            <a href="/admin/results/exams" class="btn btn-ghost">Cancel</a>
+        </div>
+    </form>
+</div>
+
+<script>
+const sectionSelect = document.getElementById('sectionId');
+const loadBtn       = document.getElementById('loadSubjectsBtn');
+const submitBtn     = document.getElementById('submitBtn');
+const container     = document.getElementById('subjectsContainer');
+
+sectionSelect.addEventListener('change', () => {
+    loadBtn.disabled = !sectionSelect.value;
+    container.innerHTML = '<div class="empty-state-sm"><p>Click "Load Subjects" to fetch section subjects</p></div>';
+    submitBtn.disabled = true;
+});
+
+loadBtn.addEventListener('click', async () => {
+    const sectionId = sectionSelect.value;
+    if (!sectionId) return;
+    loadBtn.disabled = true;
+    loadBtn.textContent = 'Loading…';
+
+    const res  = await fetch(`/admin/api/results/sections/${sectionId}/subjects`);
+    const data = await res.json();
+    loadBtn.disabled = false;
+    loadBtn.textContent = 'Load Subjects from Section';
+
+    if (!data.length) {
+        container.innerHTML = '<div class="alert alert-warning">No subjects assigned to this section yet. Assign subject teachers first.</div>';
+        submitBtn.disabled = true;
+        return;
+    }
+
+    container.innerHTML = `
+        <div class="table-wrapper">
+        <table>
+            <thead><tr><th>#</th><th>Subject</th><th>Teacher</th><th>Max Marks</th><th>Passing Marks</th></tr></thead>
+            <tbody>
+            ${data.map((s, i) => `
+                <tr>
+                    <td>${i+1}</td>
+                    <td class="fw-semibold">${s.subjectName}
+                        <input type="hidden" name="subjects[${i}][subjectId]" value="${s.subjectId}" />
+                    </td>
+                    <td>${s.teacherName}</td>
+                    <td><input type="number" name="subjects[${i}][maxMarks]" class="form-control form-control-sm" value="100" min="1" required /></td>
+                    <td><input type="number" name="subjects[${i}][passingMarks]" class="form-control form-control-sm" value="35" min="0" required /></td>
+                </tr>
+            `).join('')}
+            </tbody>
+        </table>
+        </div>`;
+    submitBtn.disabled = false;
+});
+</script>

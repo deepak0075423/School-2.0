@@ -1,0 +1,266 @@
+<div class="page-header">
+    <div>
+        <h1>📋 Questions — <%= exam.title %></h1>
+        <p>
+            <%= exam.section?.class?.className %> – <%= exam.section?.sectionName %>
+            <% if (exam.subject) { %> · <%= exam.subject.subjectName %><% } %>
+            · <%= new Date(exam.examDate).toLocaleDateString('en-IN') %> <%= exam.startTime %>
+        </p>
+    </div>
+    <div style="display:flex; gap:8px; flex-wrap:wrap;">
+        <a href="/teacher/exams" class="btn btn-secondary">← Back</a>
+        <% if (editable) { %>
+        <a href="/teacher/exams/<%= exam._id %>/edit" class="btn btn-secondary">✏️ Edit Config</a>
+        <form action="/teacher/exams/<%= exam._id %>/publish" method="POST" style="display:inline;"
+            onsubmit="return confirm('Publish this exam? Students will be able to attempt it during the scheduled window.');">
+            <%
+                const canPublish = questions.length === exam.totalQuestions &&
+                                   sumMarks === exam.totalMarks;
+            %>
+            <button type="submit" class="btn btn-primary" <%= !canPublish ? 'disabled' : '' %>
+                title="<%= !canPublish ? 'Fix question count and marks totals first' : 'Publish exam' %>">
+                🚀 <%= exam.status === 'published' ? 'Re-publish' : 'Publish Exam' %>
+            </button>
+        </form>
+        <% if (exam.status === 'draft') { %>
+        <form action="/teacher/exams/<%= exam._id %>/delete" method="POST" style="display:inline;"
+            onsubmit="return confirm('Delete this exam permanently?');">
+            <button type="submit" class="btn btn-secondary" style="color:#ef4444;">🗑 Delete</button>
+        </form>
+        <% } %>
+        <% } %>
+        <% if (exam.status === 'published' || exam.status === 'completed') { %>
+        <a href="/teacher/exams/<%= exam._id %>/submissions" class="btn btn-secondary">📊 Submissions</a>
+        <a href="/teacher/exams/<%= exam._id %>/analytics" class="btn btn-secondary">📈 Analytics</a>
+        <% } %>
+    </div>
+</div>
+
+<!-- Status summary -->
+<div class="card" style="margin-bottom:16px;">
+    <div class="card-body" style="display:flex; gap:24px; flex-wrap:wrap; align-items:center;">
+        <div>
+            <span style="font-size:12px; color:var(--text-muted);">Questions Added</span>
+            <div style="font-size:22px; font-weight:700; color:<%= questions.length >= exam.totalQuestions ? '#22c55e' : '#f59e0b' %>">
+                <%= questions.length %> / <%= exam.totalQuestions %>
+            </div>
+        </div>
+        <div>
+            <span style="font-size:12px; color:var(--text-muted);">Marks Sum / Required</span>
+            <div style="font-size:22px; font-weight:700; color:<%= sumMarks === exam.totalMarks ? '#22c55e' : '#ef4444' %>;">
+                <%= sumMarks %> / <%= exam.totalMarks %>
+            </div>
+        </div>
+        <div>
+            <span style="font-size:12px; color:var(--text-muted);">Status</span>
+            <div><span class="badge badge-<%= exam.status === 'published' ? 'blue' : exam.status === 'draft' ? 'yellow' : 'green' %>"><%= exam.status %></span></div>
+        </div>
+        <% if (editable && questions.length < exam.totalQuestions) { %>
+        <div style="font-size:13px; color:#f59e0b; background:rgba(245,158,11,.08); border:1px solid rgba(245,158,11,.2); border-radius:8px; padding:8px 14px;">
+            ⚠️ Add <%= exam.totalQuestions - questions.length %> more question(s) to enable publishing.
+        </div>
+        <% } %>
+        <% if (editable && sumMarks !== exam.totalMarks && questions.length > 0) { %>
+        <div style="font-size:13px; color:#ef4444; background:rgba(239,68,68,.08); border:1px solid rgba(239,68,68,.2); border-radius:8px; padding:8px 14px;">
+            ❌ Marks mismatch: questions total <strong><%= sumMarks %></strong> but exam requires <strong><%= exam.totalMarks %></strong>.
+            <a href="/teacher/exams/<%= exam._id %>/edit" style="color:#3b82f6; margin-left:6px;">Fix in Edit Config →</a>
+        </div>
+        <% } %>
+    </div>
+</div>
+
+<div style="display:grid; grid-template-columns:1fr 380px; gap:20px; align-items:start;">
+
+    <!-- Question list -->
+    <div>
+        <% if (questions.length === 0) { %>
+        <div class="card">
+            <div class="empty-state" style="padding:30px;">
+                <div class="empty-icon">❓</div>
+                <h3>No Questions Yet</h3>
+                <p>Add questions using the form on the right.</p>
+            </div>
+        </div>
+        <% } else { %>
+        <div style="display:flex; flex-direction:column; gap:12px;">
+            <% questions.forEach((q, i) => {
+                const typeLabels = { mcq_single: 'MCQ Single', mcq_multiple: 'MCQ Multiple', true_false: 'True / False' };
+            %>
+            <div class="card" style="border-left: 3px solid #3b82f6;">
+                <div class="card-body" style="padding:16px;">
+                    <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:12px;">
+                        <div style="flex:1;">
+                            <div style="display:flex; gap:8px; align-items:center; margin-bottom:8px;">
+                                <span style="font-size:12px; color:var(--text-muted);">Q<%= i+1 %></span>
+                                <span class="badge" style="background:rgba(139,92,246,.15); color:#a78bfa; border:1px solid rgba(139,92,246,.3); font-size:11px; padding:2px 8px; border-radius:99px;"><%= typeLabels[q.questionType] || q.questionType %></span>
+                                <span style="font-size:12px; color:#22c55e; font-weight:600;"><%= q.marks %> mark<%= q.marks !== 1 ? 's' : '' %></span>
+                            </div>
+                            <p style="margin:0 0 10px; font-size:14px; font-weight:600;"><%= q.questionText %></p>
+                            <div style="display:flex; flex-direction:column; gap:4px;">
+                                <% (q.options || []).forEach(opt => { %>
+                                <div style="font-size:13px; color:<%= q.correctAnswers.includes(opt.optionId) ? '#22c55e' : 'var(--text-muted)' %>; display:flex; align-items:center; gap:6px;">
+                                    <span style="width:18px; height:18px; border-radius:50%; background:<%= q.correctAnswers.includes(opt.optionId) ? '#22c55e22' : 'transparent' %>; border:1px solid <%= q.correctAnswers.includes(opt.optionId) ? '#22c55e' : 'var(--border)' %>; display:flex; align-items:center; justify-content:center; font-size:10px; flex-shrink:0;"><%= opt.optionId.charAt(0).toUpperCase() %></span>
+                                    <%= opt.text %>
+                                    <% if (q.correctAnswers.includes(opt.optionId)) { %><span style="font-size:11px; color:#22c55e;">✓ correct</span><% } %>
+                                </div>
+                                <% }) %>
+                            </div>
+                        </div>
+                        <% if (editable) { %>
+                        <div style="display:flex; flex-direction:column; gap:6px; flex-shrink:0;">
+                            <a href="/teacher/exams/<%= exam._id %>/questions/<%= q._id %>/edit"
+                                class="btn btn-secondary" style="padding:4px 10px; font-size:12px;">✏️ Edit</a>
+                            <form action="/teacher/exams/<%= exam._id %>/questions/<%= q._id %>/delete" method="POST"
+                                onsubmit="return confirm('Delete this question?');">
+                                <button type="submit" class="btn btn-secondary" style="padding:4px 10px; font-size:12px; color:#ef4444; width:100%;">🗑</button>
+                            </form>
+                        </div>
+                        <% } %>
+                    </div>
+                </div>
+            </div>
+            <% }) %>
+        </div>
+        <% } %>
+    </div>
+
+    <!-- Add / Edit question form (only when editable) -->
+    <% if (editable) {
+        const isEditing  = typeof editQuestion !== 'undefined' && editQuestion;
+        // Determine source data: editing an existing question OR recovering from a validation error OR blank
+        const fd = (errors && errors.length > 0 && formData && formData.questionType)
+                     ? formData
+                     : (isEditing ? {
+                           questionType:    editQuestion.questionType,
+                           questionText:    editQuestion.questionText,
+                           marks:           editQuestion.marks,
+                           optionText:      (editQuestion.options || []).map(o => o.text),
+                           optionId:        (editQuestion.options || []).map(o => o.optionId),
+                           isCorrect:       editQuestion.correctAnswers || [],
+                           correctTrueFalse: editQuestion.questionType === 'true_false' ? (editQuestion.correctAnswers[0] || '') : '',
+                       } : {});
+        const formAction = isEditing
+            ? `/teacher/exams/${exam._id}/questions/${editQuestion._id}/edit`
+            : `/teacher/exams/${exam._id}/questions`;
+    %>
+    <div class="card" style="position:sticky; top:80px; border-color: <%= isEditing ? 'rgba(59,130,246,.4)' : 'var(--border)' %>;">
+        <div class="card-header" style="display:flex; justify-content:space-between; align-items:center;">
+            <div class="card-title"><%= isEditing ? '✏️ Edit Question' : '➕ Add Question' %></div>
+            <% if (isEditing) { %>
+            <a href="/teacher/exams/<%= exam._id %>/questions" class="btn btn-secondary" style="padding:3px 10px; font-size:12px;">✕ Cancel</a>
+            <% } %>
+        </div>
+        <div class="card-body">
+            <% if (errors && errors.length > 0) { %>
+            <div style="background:rgba(239,68,68,.08); border:1px solid rgba(239,68,68,.2); border-radius:8px; padding:10px; margin-bottom:12px;">
+                <% errors.forEach(e => { %><p style="color:#ef4444; font-size:12px; margin:2px 0;">❌ <%= e %></p><% }) %>
+            </div>
+            <% } %>
+
+            <form action="<%= formAction %>" method="POST" id="addQForm">
+                <div class="form-group">
+                    <label class="form-label">Question Type *</label>
+                    <select name="questionType" id="qType" class="form-control" onchange="updateQuestionForm(this.value)" required>
+                        <option value="">— Select Type —</option>
+                        <option value="mcq_single"   <%= fd.questionType==='mcq_single'   ? 'selected':'' %>>MCQ – Single Correct</option>
+                        <option value="mcq_multiple" <%= fd.questionType==='mcq_multiple' ? 'selected':'' %>>MCQ – Multiple Correct</option>
+                        <option value="true_false"   <%= fd.questionType==='true_false'   ? 'selected':'' %>>True / False</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Question Text *</label>
+                    <textarea name="questionText" class="form-control" rows="3" placeholder="Enter the question…" required><%= fd.questionText || '' %></textarea>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Marks *</label>
+                    <input type="number" name="marks" class="form-control" min="0.5" step="0.5" placeholder="1" value="<%= fd.marks !== undefined ? fd.marks : 1 %>" required>
+                </div>
+
+                <!-- MCQ options (shown for mcq_single / mcq_multiple) -->
+                <div id="mcqSection" style="display:none;">
+                    <label class="form-label">Options (mark ✓ for correct)</label>
+                    <div id="optionsList">
+                        <%
+                           const savedOpts = Array.isArray(fd.optionText) ? fd.optionText : (fd.optionText ? [fd.optionText] : ['','','','']);
+                           const savedIds  = Array.isArray(fd.optionId)   ? fd.optionId   : (fd.optionId   ? [fd.optionId]   : ['a','b','c','d']);
+                           const savedCorr = Array.isArray(fd.isCorrect)  ? fd.isCorrect  : (fd.isCorrect  ? [fd.isCorrect]  : []);
+                           // Ensure at least 4 rows
+                           const rowCount = Math.max(4, savedOpts.length);
+                           const allIds   = savedIds.length >= rowCount ? savedIds : [...savedIds, ...'abcdefgh'.split('').filter(c => !savedIds.includes(c))].slice(0, rowCount);
+                           allIds.forEach((id, i) => {
+                        %>
+                        <div class="option-row" style="display:flex; align-items:center; gap:8px; margin-bottom:8px;">
+                            <input type="hidden" name="optionId" value="<%= id %>">
+                            <span style="width:22px; height:22px; border-radius:50%; background:rgba(59,130,246,.15); color:#3b82f6; font-size:11px; font-weight:700; display:flex; align-items:center; justify-content:center; flex-shrink:0;"><%= id.toUpperCase() %></span>
+                            <input type="text" name="optionText" class="form-control" style="flex:1;" placeholder="Option <%= id.toUpperCase() %>" value="<%= savedOpts[i] || '' %>">
+                            <label style="display:flex; align-items:center; gap:4px; font-size:12px; white-space:nowrap; cursor:pointer;">
+                                <input type="checkbox" name="isCorrect" value="<%= id %>" style="cursor:pointer;" <%= savedCorr.includes(id) ? 'checked' : '' %>> Correct
+                            </label>
+                        </div>
+                        <% }) %>
+                    </div>
+                    <button type="button" onclick="addOption()" class="btn btn-secondary" style="font-size:12px; padding:4px 10px; margin-top:4px;">+ Add Option</button>
+                </div>
+
+                <!-- True/False (shown for true_false) -->
+                <div id="tfSection" style="display:none;">
+                    <label class="form-label">Correct Answer</label>
+                    <div style="display:flex; gap:16px; margin-top:4px;">
+                        <label style="display:flex; align-items:center; gap:6px; cursor:pointer;">
+                            <input type="radio" name="correctTrueFalse" value="true" <%= fd.correctTrueFalse==='true' ? 'checked':'' %>> True
+                        </label>
+                        <label style="display:flex; align-items:center; gap:6px; cursor:pointer;">
+                            <input type="radio" name="correctTrueFalse" value="false" <%= fd.correctTrueFalse==='false' ? 'checked':'' %>> False
+                        </label>
+                    </div>
+                </div>
+
+                <div style="margin-top:16px;">
+                    <button type="submit" class="btn btn-primary" style="width:100%;"><%= isEditing ? '💾 Save Changes' : '➕ Add Question' %></button>
+                </div>
+            </form>
+        </div>
+    </div>
+    <% } %>
+</div>
+
+<script>
+let optionCount = document.querySelectorAll('#optionsList .option-row').length || 4;
+
+function updateQuestionForm(type) {
+    document.getElementById('mcqSection').style.display = (type === 'mcq_single' || type === 'mcq_multiple') ? 'block' : 'none';
+    document.getElementById('tfSection').style.display  = (type === 'true_false') ? 'block' : 'none';
+
+    // For MCQ single: make checkboxes behave like radio
+    const checkboxes = document.querySelectorAll('#optionsList input[name="isCorrect"]');
+    checkboxes.forEach(cb => {
+        cb.type = (type === 'mcq_single') ? 'radio' : 'checkbox';
+        cb.name = (type === 'mcq_single') ? 'isCorrect' : 'isCorrect';
+    });
+}
+
+function addOption() {
+    optionCount++;
+    const id   = String.fromCharCode(96 + optionCount); // e, f, g...
+    const list = document.getElementById('optionsList');
+    const row  = document.createElement('div');
+    row.className = 'option-row';
+    row.style.cssText = 'display:flex; align-items:center; gap:8px; margin-bottom:8px;';
+    row.innerHTML = `
+        <input type="hidden" name="optionId" value="${id}">
+        <span style="width:22px;height:22px;border-radius:50%;background:rgba(59,130,246,.15);color:#3b82f6;font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0;">${id.toUpperCase()}</span>
+        <input type="text" name="optionText" class="form-control" style="flex:1;" placeholder="Option ${id.toUpperCase()}">
+        <label style="display:flex;align-items:center;gap:4px;font-size:12px;white-space:nowrap;cursor:pointer;">
+            <input type="checkbox" name="isCorrect" value="${id}" style="cursor:pointer;"> Correct
+        </label>`;
+    list.appendChild(row);
+}
+
+// Restore form state on page load
+(function() {
+    const type = document.getElementById('qType').value;
+    if (type) updateQuestionForm(type);
+})();
+</script>

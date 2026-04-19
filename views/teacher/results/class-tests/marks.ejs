@@ -1,0 +1,92 @@
+
+<div class="page-header">
+    <div>
+        <h1>✏️ Enter Marks: <%= test.title %></h1>
+        <p><%= test.subject?.subjectName %> — <%= test.section?.class?.className %> Section <%= test.section?.sectionName %></p>
+        <p class="text-muted text-sm">Max Marks: <%= test.maxMarks %> | Passing: <%= test.passingMarks %></p>
+    </div>
+    <a href="/teacher/results/class-tests" class="btn btn-ghost">← Back</a>
+</div>
+
+<div class="card">
+    <form method="POST" action="/teacher/results/class-tests/<%= test._id %>/marks/save" id="marksForm">
+        <div class="table-wrapper">
+            <table>
+                <thead>
+                    <tr>
+                        <th>#</th>
+                        <th>Student Name</th>
+                        <th>Marks (max <%= test.maxMarks %>)</th>
+                        <th>Absent</th>
+                        <th>Remarks</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <% entries.forEach((entry, i) => { %>
+                    <tr>
+                        <td class="text-muted"><%= i + 1 %></td>
+                        <td class="fw-semibold">
+                            <%= entry.studentName %>
+                            <input type="hidden" name="entries[<%= i %>][studentId]" value="<%= entry.studentId %>" />
+                        </td>
+                        <td>
+                            <input
+                                type="number"
+                                name="entries[<%= i %>][marks]"
+                                class="form-control form-control-sm marks-input"
+                                value="<%= entry.marksObtained ?? '' %>"
+                                min="0" max="<%= test.maxMarks %>"
+                                step="0.5"
+                                data-max="<%= test.maxMarks %>"
+                                data-row="<%= i %>"
+                                <%= entry.isAbsent ? 'disabled' : '' %>
+                            />
+                        </td>
+                        <td class="text-center">
+                            <input
+                                type="checkbox"
+                                name="entries[<%= i %>][isAbsent]"
+                                class="absent-cb"
+                                data-row="<%= i %>"
+                                <%= entry.isAbsent ? 'checked' : '' %>
+                            />
+                        </td>
+                        <td>
+                            <input type="text" name="entries[<%= i %>][remarks]" class="form-control form-control-sm" value="<%= entry.remarks || '' %>" placeholder="Optional" />
+                        </td>
+                    </tr>
+                    <% }) %>
+                </tbody>
+            </table>
+        </div>
+
+        <div class="form-actions mt-4">
+            <input type="hidden" name="submit" id="submitFlag" value="0" />
+            <button type="button" class="btn btn-secondary" onclick="saveMarks(0)">Save Draft</button>
+            <button type="button" class="btn btn-primary" onclick="saveMarks(1)">Submit for Class Teacher Approval</button>
+            <a href="/teacher/results/class-tests" class="btn btn-ghost">Cancel</a>
+        </div>
+    </form>
+</div>
+
+<script>
+document.querySelectorAll('.absent-cb').forEach(cb => {
+    cb.addEventListener('change', function() {
+        const inp = document.querySelector(`[data-row="${this.dataset.row}"].marks-input`);
+        inp.disabled = this.checked;
+        if (this.checked) inp.value = '';
+    });
+});
+
+document.querySelectorAll('.marks-input').forEach(inp => {
+    inp.addEventListener('input', function() {
+        const max = parseFloat(this.dataset.max);
+        if (parseFloat(this.value) > max) this.value = max;
+    });
+});
+
+function saveMarks(submit) {
+    document.getElementById('submitFlag').value = submit;
+    document.getElementById('marksForm').submit();
+}
+</script>

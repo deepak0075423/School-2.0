@@ -1,0 +1,53 @@
+
+<div class="page-header">
+    <div>
+        <h1>✅ Class Test Validation</h1>
+        <p>Approve or reject class tests submitted by subject teachers in your section.</p>
+    </div>
+</div>
+
+<% if (!tests || tests.length === 0) { %>
+<div class="card">
+    <div class="empty-state">
+        <div class="empty-icon">✅</div>
+        <h3>Nothing to Validate</h3>
+        <p>No class tests are pending your approval.</p>
+    </div>
+</div>
+<% } else { %>
+<div class="card">
+    <div class="table-wrapper">
+        <table>
+            <thead>
+                <tr>
+                    <th>Test Title</th>
+                    <th>Subject</th>
+                    <th>Section</th>
+                    <th>Teacher</th>
+                    <th>Date</th>
+                    <th>Max Marks</th>
+                    <th>Status</th>
+                    <th>Action</th>
+                </tr>
+            </thead>
+            <tbody>
+                <% const statusBadge = { SUBMITTED:'badge-blue', REJECTED:'badge-red', REOPENED:'badge-orange' }; %>
+                <% tests.forEach(test => { %>
+                <tr>
+                    <td class="fw-semibold"><%= test.title %></td>
+                    <td><%= test.subject?.subjectName %></td>
+                    <td><%= test.section?.class?.className %> – <%= test.section?.sectionName %></td>
+                    <td><%= test.createdBy?.name %></td>
+                    <td class="text-sm"><%= new Date(test.testDate).toLocaleDateString('en-IN') %></td>
+                    <td class="text-center"><%= test.maxMarks %></td>
+                    <td><span class="badge <%= statusBadge[test.status] || 'badge-yellow' %>"><%= test.status %></span></td>
+                    <td>
+                        <a href="/teacher/results/class-test-validation/<%= test._id %>" class="btn btn-sm btn-primary">Review</a>
+                    </td>
+                </tr>
+                <% }) %>
+            </tbody>
+        </table>
+    </div>
+</div>
+<% } %>

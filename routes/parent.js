@@ -15,5 +15,18 @@ router.get('/child-class', guard, classCtrl.getChildClass);
 // ── Child Attendance Calendar ─────────────────────────────────
 router.get('/child-attendance', attendanceGuard, attendanceCtrl.getParentChildAttendance);
 
+// ── Aptitude Exam Results ─────────────────────────────────────
+const examCtrl  = require('../controllers/aptitudeExamController');
+const examGuard = [...guard, requireModule('aptitudeExam')];
+router.get('/exams', examGuard, examCtrl.getParentExamResults);
+
+// ── Result & Assessment Management ────────────────────────────
+const formalExamCtrl = require('../controllers/formalExamController');
+const classTestCtrl  = require('../controllers/classTestController');
+const resultGuard    = [...guard, requireModule('result')];
+router.get('/results',                  resultGuard, formalExamCtrl.parentGetResults);
+router.get('/results/class-tests',      resultGuard, classTestCtrl.parentGetClassTests);
+router.get('/results/:resultId',        resultGuard, formalExamCtrl.parentGetResultDetail);
+
 module.exports = router;
 

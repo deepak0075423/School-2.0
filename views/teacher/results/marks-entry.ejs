@@ -1,0 +1,65 @@
+
+<div class="page-header">
+    <div>
+        <h1>✏️ Marks Entry</h1>
+        <p>Enter marks for exams assigned to your subjects.</p>
+    </div>
+</div>
+
+<% if (!enrichedExams || enrichedExams.length === 0) { %>
+<div class="card">
+    <div class="empty-state">
+        <div class="empty-icon">✏️</div>
+        <h3>No Exams Pending</h3>
+        <p>There are no exams awaiting your marks entry at this time.</p>
+    </div>
+</div>
+<% } else { %>
+<% const statusBadge = { MARKS_PENDING:'badge-yellow', SUBMITTED:'badge-blue', REJECTED:'badge-red', REOPENED:'badge-orange' }; %>
+
+<% enrichedExams.forEach(({ exam, mySubjects }) => { %>
+<div class="card mb-4">
+    <div class="card-header-row">
+        <div>
+            <h3 class="card-title mb-0"><%= exam.title %></h3>
+            <p class="text-muted text-sm mt-1">
+                <%= exam.section?.class?.className %> – Section <%= exam.section?.sectionName %> &nbsp;|&nbsp; <%= exam.academicYear?.yearName %>
+                &nbsp;|&nbsp; <%= new Date(exam.startDate).toLocaleDateString('en-IN') %> – <%= new Date(exam.endDate).toLocaleDateString('en-IN') %>
+            </p>
+        </div>
+        <span class="badge badge-lg <%= statusBadge[exam.status] || 'badge-yellow' %>"><%= exam.status.replace(/_/g,' ') %></span>
+    </div>
+
+    <div class="table-wrapper">
+        <table>
+            <thead>
+                <tr><th>Subject</th><th>Max Marks</th><th>Passing Marks</th><th>Marks Status</th><th>Action</th></tr>
+            </thead>
+            <tbody>
+                <% mySubjects.forEach(sc => { %>
+                <tr>
+                    <td class="fw-semibold"><%= sc.subject?.subjectName %></td>
+                    <td class="text-center"><%= sc.maxMarks %></td>
+                    <td class="text-center"><%= sc.passingMarks %></td>
+                    <td>
+                        <% if (exam.status === 'SUBMITTED') { %>
+                            <span class="badge badge-green">SUBMITTED</span>
+                        <% } else { %>
+                            <span class="badge badge-yellow">PENDING</span>
+                        <% } %>
+                    </td>
+                    <td>
+                        <% if (['MARKS_PENDING', 'REJECTED', 'REOPENED'].includes(exam.status)) { %>
+                            <a href="/teacher/results/marks-entry/<%= exam._id %>/<%= sc.subject?._id || sc.subject %>" class="btn btn-sm btn-primary">Enter Marks</a>
+                        <% } else { %>
+                            <a href="/teacher/results/marks-entry/<%= exam._id %>/<%= sc.subject?._id || sc.subject %>" class="btn btn-sm btn-ghost">View</a>
+                        <% } %>
+                    </td>
+                </tr>
+                <% }) %>
+            </tbody>
+        </table>
+    </div>
+</div>
+<% }) %>
+<% } %>
