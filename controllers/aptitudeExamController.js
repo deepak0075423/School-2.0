@@ -1079,13 +1079,14 @@ const getStudentExams = async (req, res) => {
             });
         }
 
+        // Show published exams (upcoming/active) AND completed exams (ended, may have results)
         const exams = await AptitudeExam.find({
             school:  req.session.schoolId,
             section: enrolledSection._id,
-            status:  'published',
+            status:  { $in: ['published', 'completed'] },
         })
             .populate('subject', 'subjectName')
-            .sort({ examDate: 1 })
+            .sort({ examDate: -1 })
             .lean();
 
         // Get student's attempts for these exams
