@@ -39,9 +39,8 @@ const ExamMarksSheetSchema = new mongoose.Schema({
 
 ExamMarksSheetSchema.index({ exam: 1, subject: 1 }, { unique: true });
 
-ExamMarksSheetSchema.pre('save', function (next) {
+ExamMarksSheetSchema.pre('save', async function () {
     this.updatedAt = new Date();
-    next();
 });
 
 module.exports = mongoose.model('ExamMarksSheet', ExamMarksSheetSchema);

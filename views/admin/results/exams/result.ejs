@@ -1,94 +1,114 @@
-
 <div class="page-header">
     <div>
         <h1>📊 Results: <%= exam.title %></h1>
         <p><%= exam.section?.class?.className %> – Section <%= exam.section?.sectionName %> &nbsp;|&nbsp; <%= exam.academicYear?.yearName %></p>
     </div>
-    <a href="/admin/results/exams/<%= exam._id %>" class="btn btn-ghost">← Back</a>
+    <a href="/admin/results/exams/<%= exam._id %>" class="btn btn-secondary">← Back</a>
 </div>
 
-<!-- Class Stats -->
 <% if (results && results.length > 0) {
     const passed = results.filter(r => r.isPassed).length;
     const avg = results.reduce((a,b) => a + b.percentage, 0) / results.length;
     const topper = results[0];
 %>
-<div class="stats-grid mb-4">
+<div class="stats-grid" style="grid-template-columns:repeat(auto-fit,minmax(155px,1fr)); margin-bottom:20px;">
     <div class="stat-card">
-        <div class="stat-value"><%= results.length %></div>
-        <div class="stat-label">Total Students</div>
-    </div>
-    <div class="stat-card stat-card-green">
-        <div class="stat-value"><%= passed %></div>
-        <div class="stat-label">Passed</div>
-    </div>
-    <div class="stat-card stat-card-red">
-        <div class="stat-value"><%= results.length - passed %></div>
-        <div class="stat-label">Failed</div>
+        <div class="stat-icon blue">👥</div>
+        <div class="stat-info">
+            <div class="stat-value"><%= results.length %></div>
+            <div class="stat-label">Total Students</div>
+        </div>
     </div>
     <div class="stat-card">
-        <div class="stat-value"><%= avg.toFixed(1) %>%</div>
-        <div class="stat-label">Class Average</div>
-    </div>
-    <div class="stat-card stat-card-blue">
-        <div class="stat-value"><%= topper?.student?.name %></div>
-        <div class="stat-label">Class Topper (<%= topper?.percentage %>%)</div>
+        <div class="stat-icon green">✅</div>
+        <div class="stat-info">
+            <div class="stat-value"><%= passed %></div>
+            <div class="stat-label">Passed</div>
+        </div>
     </div>
     <div class="stat-card">
-        <div class="stat-value"><%= Math.round((passed / results.length) * 100) %>%</div>
-        <div class="stat-label">Pass Percentage</div>
+        <div class="stat-icon red">❌</div>
+        <div class="stat-info">
+            <div class="stat-value"><%= results.length - passed %></div>
+            <div class="stat-label">Failed</div>
+        </div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-icon purple">📈</div>
+        <div class="stat-info">
+            <div class="stat-value"><%= avg.toFixed(1) %>%</div>
+            <div class="stat-label">Class Average</div>
+        </div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-icon orange">🏆</div>
+        <div class="stat-info">
+            <div class="stat-value" style="font-size:13px; letter-spacing:0;"><%= topper?.student?.name %></div>
+            <div class="stat-label">Class Topper (<%= topper?.percentage %>%)</div>
+        </div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-icon cyan">📊</div>
+        <div class="stat-info">
+            <div class="stat-value"><%= Math.round((passed / results.length) * 100) %>%</div>
+            <div class="stat-label">Pass %</div>
+        </div>
     </div>
 </div>
 <% } %>
 
-<!-- Results Table -->
 <div class="card">
-    <h3 class="card-title">Student Results</h3>
+    <div class="card-header">
+        <div class="card-title">Student Results</div>
+    </div>
     <% if (!results || results.length === 0) { %>
-        <div class="empty-state"><p>No results generated yet.</p></div>
+        <div class="empty-state">
+            <div class="empty-icon">📊</div>
+            <p>No results generated yet.</p>
+        </div>
     <% } else { %>
     <div class="table-wrapper">
         <table>
             <thead>
                 <tr>
-                    <th>Rank</th>
+                    <th style="text-align:center;">Rank</th>
                     <th>Student</th>
                     <% exam.subjects.forEach(sc => { %>
-                        <th class="text-center"><%= sc.subject?.subjectName %> (<%= sc.maxMarks %>)</th>
+                        <th style="text-align:center;"><%= sc.subject?.subjectName %> (<%= sc.maxMarks %>)</th>
                     <% }) %>
-                    <th class="text-center">Total</th>
-                    <th class="text-center">%</th>
-                    <th class="text-center">Grade</th>
-                    <th class="text-center">Attendance</th>
-                    <th class="text-center">Result</th>
+                    <th style="text-align:center;">Total</th>
+                    <th style="text-align:center;">%</th>
+                    <th style="text-align:center;">Grade</th>
+                    <th style="text-align:center;">Attendance</th>
+                    <th style="text-align:center;">Result</th>
                 </tr>
             </thead>
             <tbody>
                 <% results.forEach(r => { %>
-                <tr class="<%= r.isPassed ? '' : 'row-fail' %>">
-                    <td class="text-center fw-semibold">#<%= r.rank %></td>
+                <tr style="<%= r.isPassed ? '' : 'background:#fff5f5;' %>">
+                    <td style="text-align:center; font-weight:700; color:var(--primary);">#<%= r.rank %></td>
                     <td class="fw-semibold"><%= r.student?.name %></td>
                     <% exam.subjects.forEach(sc => {
                         const sr = r.subjects.find(s => String(s.subject?._id || s.subject) === String(sc.subject?._id));
                     %>
-                        <td class="text-center">
+                        <td style="text-align:center;">
                             <% if (!sr) { %>—
                             <% } else if (sr.isAbsent) { %><span class="badge badge-orange">AB</span>
-                            <% } else { %><%= sr.marksObtained %> <span class="text-muted text-xs">(<%= sr.grade %>)</span>
+                            <% } else { %><%= sr.marksObtained %> <span style="color:var(--text-muted); font-size:11px;">(<%= sr.grade %>)</span>
                             <% } %>
                         </td>
                     <% }) %>
-                    <td class="text-center fw-semibold"><%= r.totalMarks %>/<%= r.totalMaxMarks %></td>
-                    <td class="text-center"><%= r.percentage %>%</td>
-                    <td class="text-center">
+                    <td style="text-align:center; font-weight:600;"><%= r.totalMarks %>/<%= r.totalMaxMarks %></td>
+                    <td style="text-align:center;"><%= r.percentage %>%</td>
+                    <td style="text-align:center;">
                         <span class="badge <%= r.grade === 'F' ? 'badge-red' : r.grade.startsWith('A') ? 'badge-green' : 'badge-blue' %>">
                             <%= r.grade %>
                         </span>
                     </td>
-                    <td class="text-center text-sm">
+                    <td style="text-align:center; font-size:13px;">
                         <%= r.attendancePercentage !== null ? r.attendancePercentage + '%' : '—' %>
                     </td>
-                    <td class="text-center">
+                    <td style="text-align:center;">
                         <span class="badge <%= r.isPassed ? 'badge-green' : 'badge-red' %>">
                             <%= r.isPassed ? 'PASS' : 'FAIL' %>
                         </span>
@@ -100,8 +120,3 @@
     </div>
     <% } %>
 </div>
-
-<style>
-.row-fail { background: #fff5f5; }
-.text-xs { font-size: 0.75rem; }
-</style>

@@ -1,4 +1,3 @@
-
 <div class="page-header">
     <div>
         <h1>📝 Class Test Results</h1>
@@ -17,38 +16,49 @@
 </div>
 <% } else { %>
 
-<!-- Continuous Assessment Summary -->
 <%
 const bySubject = {};
 myTests.forEach(t => {
     const sub = t.test.subject?.subjectName || 'Unknown';
-    if (!bySubject[sub]) bySubject[sub] = { total: 0, count: 0, max: 0 };
+    if (!bySubject[sub]) bySubject[sub] = { total: 0, count: 0 };
     if (!t.isAbsent && t.marks !== null) {
         const pct = (t.marks / t.test.maxMarks) * 100;
         bySubject[sub].total += pct;
         bySubject[sub].count++;
     }
 });
+const subjectEntries = Object.entries(bySubject);
 %>
-<% if (Object.keys(bySubject).length > 0) { %>
-<div class="card mb-4">
-    <h3 class="card-title">Continuous Assessment (Internal) Score</h3>
-    <p class="text-muted text-sm">Average performance across all approved class tests per subject.</p>
-    <div class="stats-row">
-        <% Object.entries(bySubject).forEach(([sub, data]) => { %>
-        <div class="stat-item">
-            <div class="stat-label"><%= sub %></div>
-            <div class="stat-value <%= data.count === 0 ? 'text-muted' : '' %>">
-                <%= data.count > 0 ? (data.total / data.count).toFixed(1) + '%' : '—' %>
+
+<% if (subjectEntries.length > 0) { %>
+<div class="card" style="margin-bottom:20px;">
+    <div class="card-header">
+        <div class="card-title">Continuous Assessment (Internal) Score</div>
+    </div>
+    <div class="card-body">
+        <p style="color:var(--text-muted); font-size:13px; margin-bottom:16px;">Average performance across all approved class tests per subject.</p>
+        <div class="stats-grid" style="grid-template-columns:repeat(auto-fit,minmax(150px,1fr));">
+            <% subjectEntries.forEach(([sub, data]) => { %>
+            <div class="stat-card">
+                <div class="stat-icon blue">📚</div>
+                <div class="stat-info">
+                    <div class="stat-value" style="font-size:18px;">
+                        <%= data.count > 0 ? (data.total / data.count).toFixed(1) + '%' : '—' %>
+                    </div>
+                    <div class="stat-label"><%= sub %></div>
+                    <div style="font-size:11px; color:var(--text-muted); margin-top:2px;"><%= data.count %> test<%= data.count !== 1 ? 's' : '' %></div>
+                </div>
             </div>
-            <div class="text-muted text-xs"><%= data.count %> test<%= data.count !== 1 ? 's' : '' %></div>
+            <% }) %>
         </div>
-        <% }) %>
     </div>
 </div>
 <% } %>
 
 <div class="card">
+    <div class="card-header">
+        <div class="card-title">All Class Tests</div>
+    </div>
     <div class="table-wrapper">
         <table>
             <thead>
@@ -56,27 +66,30 @@ myTests.forEach(t => {
                     <th>Test Title</th>
                     <th>Subject</th>
                     <th>Date</th>
-                    <th>Marks</th>
-                    <th>Percentage</th>
-                    <th>Grade</th>
+                    <th style="text-align:center;">Marks</th>
+                    <th style="text-align:center;">Percentage</th>
+                    <th style="text-align:center;">Grade</th>
                 </tr>
             </thead>
             <tbody>
                 <% myTests.forEach(t => { %>
                 <tr>
-                    <td class="fw-semibold"><%= t.test.title %><% if (t.test.topic) { %><br><span class="text-muted text-xs"><%= t.test.topic %></span><% } %></td>
+                    <td class="fw-semibold">
+                        <%= t.test.title %>
+                        <% if (t.test.topic) { %><br><span style="color:var(--text-muted); font-size:11px;"><%= t.test.topic %></span><% } %>
+                    </td>
                     <td><%= t.test.subject?.subjectName %></td>
-                    <td class="text-sm"><%= new Date(t.test.testDate).toLocaleDateString('en-IN') %></td>
-                    <td class="text-center">
+                    <td style="font-size:13px; color:var(--text-muted);"><%= new Date(t.test.testDate).toLocaleDateString('en-IN') %></td>
+                    <td style="text-align:center;">
                         <% if (t.isAbsent) { %><span class="badge badge-orange">Absent</span>
                         <% } else if (t.marks === null) { %><span class="text-muted">—</span>
                         <% } else { %><strong><%= t.marks %></strong>/<%= t.test.maxMarks %>
                         <% } %>
                     </td>
-                    <td class="text-center"><%= t.percentage !== null ? t.percentage + '%' : '—' %></td>
-                    <td class="text-center">
+                    <td style="text-align:center;"><%= t.percentage !== null ? t.percentage + '%' : '—' %></td>
+                    <td style="text-align:center;">
                         <% const g = t.grade || '—'; %>
-                        <span class="badge <%= g==='F'||g==='AB' ? 'badge-red' : g.startsWith('A') ? 'badge-green' : g==='—' ? '' : 'badge-blue' %>"><%= g %></span>
+                        <span class="badge <%= g==='F'||g==='AB' ? 'badge-red' : g.startsWith('A') ? 'badge-green' : g==='—' ? 'badge-gray' : 'badge-blue' %>"><%= g %></span>
                     </td>
                 </tr>
                 <% }) %>
@@ -85,5 +98,3 @@ myTests.forEach(t => {
     </div>
 </div>
 <% } %>
-
-<style>.text-xs { font-size: 0.75rem; }</style>

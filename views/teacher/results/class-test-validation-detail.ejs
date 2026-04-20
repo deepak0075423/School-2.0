@@ -1,42 +1,54 @@
-
 <div class="page-header">
     <div>
         <h1>🔍 Review: <%= test.title %></h1>
         <p><%= test.subject?.subjectName %> — <%= test.section?.class?.className %> Section <%= test.section?.sectionName %></p>
-        <p class="text-muted text-sm">Max: <%= test.maxMarks %> | Passing: <%= test.passingMarks %> | Date: <%= new Date(test.testDate).toLocaleDateString('en-IN') %></p>
+        <p style="color:var(--text-muted); font-size:13px;">Max: <%= test.maxMarks %> | Passing: <%= test.passingMarks %> | Date: <%= new Date(test.testDate).toLocaleDateString('en-IN') %></p>
     </div>
-    <a href="/teacher/results/class-test-validation" class="btn btn-ghost">← Back</a>
+    <a href="/teacher/results/class-test-validation" class="btn btn-secondary">← Back</a>
 </div>
 
 <% if (test.topic) { %>
-<div class="alert alert-info mb-4">Topic: <strong><%= test.topic %></strong><% if (test.description) { %> — <%= test.description %><% } %></div>
+<div class="card" style="margin-bottom:20px; background:#f0f9ff; border:1px solid #bae6fd;">
+    <div class="card-body">
+        <strong>Topic:</strong> <%= test.topic %><% if (test.description) { %> — <span style="color:var(--text-muted);"><%= test.description %></span><% } %>
+    </div>
+</div>
 <% } %>
 
-<div class="card mb-4">
-    <h3 class="card-title">Student Marks</h3>
+<div class="card" style="margin-bottom:20px;">
+    <div class="card-header">
+        <div class="card-title">Student Marks</div>
+    </div>
     <div class="table-wrapper">
         <table>
             <thead>
-                <tr><th>#</th><th>Student</th><th>Marks</th><th>Absent</th><th>Grade</th><th>Remarks</th></tr>
+                <tr>
+                    <th>#</th>
+                    <th>Student</th>
+                    <th style="text-align:center;">Marks</th>
+                    <th style="text-align:center;">Absent</th>
+                    <th style="text-align:center;">Grade</th>
+                    <th>Remarks</th>
+                </tr>
             </thead>
             <tbody>
                 <% test.marks.forEach((m, i) => { %>
                 <tr>
-                    <td class="text-muted"><%= i + 1 %></td>
+                    <td style="color:var(--text-muted);"><%= i + 1 %></td>
                     <td class="fw-semibold"><%= m.student?.name || '—' %></td>
-                    <td class="text-center">
+                    <td style="text-align:center;">
                         <% if (m.isAbsent) { %><span class="text-muted">AB</span>
                         <% } else if (m.marksObtained === null || m.marksObtained === undefined) { %>
                             <span class="badge badge-red">MISSING</span>
                         <% } else { %><strong><%= m.marksObtained %></strong>/<%= test.maxMarks %>
                         <% } %>
                     </td>
-                    <td class="text-center"><%= m.isAbsent ? '✅' : '—' %></td>
-                    <td class="text-center">
+                    <td style="text-align:center;"><%= m.isAbsent ? '✅' : '—' %></td>
+                    <td style="text-align:center;">
                         <% const g = m.grade || '—'; %>
-                        <span class="badge <%= g==='F'||g==='AB' ? 'badge-red' : g.startsWith('A') ? 'badge-green' : g==='—' ? '' : 'badge-blue' %>"><%= g %></span>
+                        <span class="badge <%= g==='F'||g==='AB' ? 'badge-red' : g.startsWith('A') ? 'badge-green' : g==='—' ? 'badge-gray' : 'badge-blue' %>"><%= g %></span>
                     </td>
-                    <td class="text-sm text-muted"><%= m.remarks || '—' %></td>
+                    <td style="color:var(--text-muted); font-size:13px;"><%= m.remarks || '—' %></td>
                 </tr>
                 <% }) %>
             </tbody>
@@ -44,28 +56,33 @@
     </div>
 </div>
 
-<!-- Actions -->
 <% if (test.status === 'SUBMITTED' || test.status === 'REOPENED') { %>
 <div class="card">
-    <h3 class="card-title">Validation Actions</h3>
-    <div class="action-btns">
-        <form method="POST" action="/teacher/results/class-test-validation/<%= test._id %>/approve" style="display:inline">
-            <button type="submit" class="btn btn-primary" onclick="return confirm('Approve this class test? Results will be generated.')">
-                Approve Test
-            </button>
-        </form>
-        <button class="btn btn-danger" onclick="document.getElementById('rejectPanel').style.display='block'">Reject</button>
+    <div class="card-header">
+        <div class="card-title">Validation Actions</div>
     </div>
+    <div class="card-body">
+        <div style="display:flex; gap:10px; margin-bottom:16px;">
+            <form method="POST" action="/teacher/results/class-test-validation/<%= test._id %>/approve" style="display:inline;">
+                <button type="submit" class="btn btn-primary" onclick="return confirm('Approve this class test? Results will be generated.')">
+                    Approve Test
+                </button>
+            </form>
+            <button class="btn btn-danger" onclick="document.getElementById('rejectPanel').style.display='block'">Reject</button>
+        </div>
 
-    <div id="rejectPanel" style="display:none; margin-top:1rem;">
-        <form method="POST" action="/teacher/results/class-test-validation/<%= test._id %>/reject">
-            <div class="form-group">
-                <label>Rejection Reason <span class="required">*</span></label>
-                <textarea name="reason" class="form-control" rows="3" required placeholder="Explain what needs to be corrected…"></textarea>
-            </div>
-            <button type="submit" class="btn btn-danger">Confirm Reject</button>
-            <button type="button" class="btn btn-ghost" onclick="document.getElementById('rejectPanel').style.display='none'">Cancel</button>
-        </form>
+        <div id="rejectPanel" style="display:none; background:#fff5f5; border:1px solid #fca5a5; border-radius:10px; padding:16px;">
+            <form method="POST" action="/teacher/results/class-test-validation/<%= test._id %>/reject">
+                <div class="form-group">
+                    <label class="form-label">Rejection Reason *</label>
+                    <textarea name="reason" class="form-control" rows="3" required placeholder="Explain what needs to be corrected…"></textarea>
+                </div>
+                <div style="display:flex; gap:8px;">
+                    <button type="submit" class="btn btn-danger">Confirm Reject</button>
+                    <button type="button" class="btn btn-secondary" onclick="document.getElementById('rejectPanel').style.display='none'">Cancel</button>
+                </div>
+            </form>
+        </div>
     </div>
 </div>
 <% } %>

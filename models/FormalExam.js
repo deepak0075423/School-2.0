@@ -12,6 +12,10 @@ const subjectConfigSchema = new mongoose.Schema({
     maxMarks:       { type: Number, required: true, min: 1 },
     passingMarks:   { type: Number, required: true, min: 0 },
     assignedTeacher:{ type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
+    examDate:       { type: Date,   default: null },
+    startTime:      { type: String, default: '' },
+    endTime:        { type: String, default: '' },
+    order:          { type: Number, default: 0 },
 }, { _id: false });
 
 const FormalExamSchema = new mongoose.Schema({
@@ -26,7 +30,7 @@ const FormalExamSchema = new mongoose.Schema({
 
     startDate:   { type: Date, required: true },
     endDate:     { type: Date, required: true },
-    publishDate: { type: Date, required: true },
+    publishDate: { type: Date, default: null },
 
     // DRAFT → MARKS_PENDING → SUBMITTED → CLASS_APPROVED → FINAL_APPROVED | REJECTED | REOPENED
     status: {
@@ -51,9 +55,8 @@ const FormalExamSchema = new mongoose.Schema({
     updatedAt: { type: Date, default: Date.now },
 });
 
-FormalExamSchema.pre('save', function (next) {
+FormalExamSchema.pre('save', async function () {
     this.updatedAt = new Date();
-    next();
 });
 
 module.exports = mongoose.model('FormalExam', FormalExamSchema);

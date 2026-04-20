@@ -164,17 +164,17 @@ exports.adminGetExams = async (req, res) => {
 exports.adminGetCreateExam = async (req, res) => {
     try {
         const school = req.user.school._id;
-        const [academicYears, sections, subjects] = await Promise.all([
+        const [academicYears, sections] = await Promise.all([
             AcademicYear.find({ school, status: 'active' }).sort({ createdAt: -1 }),
             ClassSection.find({ school, status: 'active' })
                 .populate('class', 'className classNumber')
                 .sort({ sectionName: 1 }),
-            Subject.find({ school }).sort({ subjectName: 1 }),
         ]);
+        const currentAcademicYear = academicYears[0] || null;
         res.render('admin/results/exams/create', {
             title: 'Create Formal Exam',
             layout: 'layouts/main',
-            academicYears, sections, subjects,
+            academicYears, sections, currentAcademicYear,
         });
     } catch (err) {
         console.error(err);
@@ -189,19 +189,81 @@ exports.adminPostCreateExam = async (req, res) => {
         const school = req.user.school._id;
         const { title, examType, academicYearId, sectionId, startDate, endDate, publishDate, subjects } = req.body;
 
-        // subjects arrives as array of {subjectId, maxMarks, passingMarks}
-        const subjectArr = Array.isArray(subjects) ? subjects : [subjects];
+        // Backend date validations
+        const today = new Date(); today.setHours(0, 0, 0, 0);
+        const start = new Date(startDate);
+        const end   = new Date(endDate);
+        if (start < today) {
+            req.flash('error', 'Exam start date cannot be in the past.');
+            return res.redirect('/admin/results/exams/create');
+        }
+        if (end < start) {
+            req.flash('error', 'Exam end date must be on or after the start date.');
+            return res.redirect('/admin/results/exams/create');
+        }
+        if (publishDate) {
+            const pub = new Date(publishDate);
+            if (pub <= end) {
+                req.flash('error', 'Publish date must be after the exam end date.');
+                return res.redirect('/admin/results/exams/create');
+            }
+        }
+
+        // subjects arrives as array of {subjectId, maxMarks, passingMarks, examDate, startTime, endTime, order}
+        // body-parser may produce an object with numeric keys when only 1 item is sent
+        let subjectArr = subjects;
+        if (!subjectArr) {
+            subjectArr = [];
+        } else if (!Array.isArray(subjectArr)) {
+            subjectArr = Object.values(subjectArr);
+        }
+        subjectArr = subjectArr.filter(Boolean);
+
+        if (subjectArr.length === 0) {
+            req.flash('error', 'Please select at least one subject.');
+            return res.redirect('/admin/results/exams/create');
+        }
+
+        // Backend per-subject date & time validation
+        for (const s of subjectArr) {
+            if (s.examDate) {
+                const sDate = new Date(s.examDate);
+                if (sDate < start) {
+                    req.flash('error', 'A subject exam date cannot be before the exam start date.');
+                    return res.redirect('/admin/results/exams/create');
+                }
+                if (sDate > end) {
+                    req.flash('error', 'A subject exam date cannot be after the exam end date.');
+                    return res.redirect('/admin/results/exams/create');
+                }
+            }
+            if (!s.startTime || !s.endTime) {
+                req.flash('error', 'Start time and end time are required for every subject.');
+                return res.redirect('/admin/results/exams/create');
+            }
+            if (s.endTime <= s.startTime) {
+                req.flash('error', 'End time must be after start time for each subject.');
+                return res.redirect('/admin/results/exams/create');
+            }
+        }
 
         // Resolve assigned teachers from SectionSubjectTeacher
-        const subjectConfigs = await Promise.all(subjectArr.map(async (s) => {
+        const subjectConfigs = await Promise.all(subjectArr.map(async (s, idx) => {
             const sst = await SectionSubjectTeacher.findOne({ section: sectionId, subject: s.subjectId });
             return {
                 subject:         s.subjectId,
                 maxMarks:        parseInt(s.maxMarks),
                 passingMarks:    parseInt(s.passingMarks),
                 assignedTeacher: sst ? sst.teacher : null,
+                examDate:        s.examDate ? new Date(s.examDate) : null,
+                startTime:       s.startTime || '',
+                endTime:         s.endTime   || '',
+                order:           parseInt(s.order ?? idx),
             };
         }));
+
+        // Sort by order
+        subjectConfigs.sort((a, b) => a.order - b.order);
 
         const exam = new FormalExam({
             school,
@@ -210,9 +272,9 @@ exports.adminPostCreateExam = async (req, res) => {
             title,
             examType,
             subjects:     subjectConfigs,
-            startDate:    new Date(startDate),
-            endDate:      new Date(endDate),
-            publishDate:  new Date(publishDate),
+            startDate:    start,
+            endDate:      end,
+            publishDate:  publishDate ? new Date(publishDate) : null,
             status:       'MARKS_PENDING',
             createdBy:    req.user._id,
             auditLog: [{ action: 'CREATED', by: req.user._id, notes: `Exam created` }],
@@ -239,6 +301,134 @@ exports.adminPostCreateExam = async (req, res) => {
         console.error(err);
         req.flash('error', 'Failed to create exam: ' + err.message);
         res.redirect('/admin/results/exams/create');
+    }
+};
+
+// GET /admin/results/exams/:id/edit
+exports.adminGetEditExam = async (req, res) => {
+    try {
+        const school = req.user.school._id;
+        const exam = await FormalExam.findOne({ _id: req.params.id, school })
+            .populate('section', 'sectionName class')
+            .populate({ path: 'section', populate: { path: 'class', select: 'className' } })
+            .populate('academicYear', 'yearName')
+            .populate('subjects.subject', 'subjectName');
+
+        if (!exam) { req.flash('error', 'Exam not found.'); return res.redirect('/admin/results/exams'); }
+
+        const now = new Date(); now.setHours(0, 0, 0, 0);
+        if (new Date(exam.startDate) <= now) {
+            req.flash('error', 'Exam has already started and cannot be edited.');
+            return res.redirect(`/admin/results/exams/${exam._id}`);
+        }
+
+        const [allSubjects, currentAcademicYear] = await Promise.all([
+            Subject.find({ school }).sort({ subjectName: 1 }),
+            AcademicYear.findById(exam.academicYear),
+        ]);
+
+        res.render('admin/results/exams/edit', {
+            title: `Edit Exam — ${exam.title}`,
+            layout: 'layouts/main',
+            exam, allSubjects, currentAcademicYear,
+        });
+    } catch (err) {
+        console.error(err);
+        req.flash('error', 'Failed to load exam.');
+        res.redirect('/admin/results/exams');
+    }
+};
+
+// POST /admin/results/exams/:id/edit
+exports.adminPostEditExam = async (req, res) => {
+    const redirectEdit = `/admin/results/exams/${req.params.id}/edit`;
+    try {
+        const school = req.user.school._id;
+        const exam = await FormalExam.findOne({ _id: req.params.id, school });
+        if (!exam) { req.flash('error', 'Exam not found.'); return res.redirect('/admin/results/exams'); }
+
+        const now = new Date(); now.setHours(0, 0, 0, 0);
+        if (new Date(exam.startDate) <= now) {
+            req.flash('error', 'Exam has already started and cannot be edited.');
+            return res.redirect(`/admin/results/exams/${exam._id}`);
+        }
+
+        const { title, examType, startDate, endDate, publishDate, subjects } = req.body;
+
+        const start = new Date(startDate);
+        const end   = new Date(endDate);
+        if (start < now)      { req.flash('error', 'Start date cannot be in the past.'); return res.redirect(redirectEdit); }
+        if (end < start)      { req.flash('error', 'End date must be on or after start date.'); return res.redirect(redirectEdit); }
+        if (publishDate) {
+            const pub = new Date(publishDate);
+            if (pub <= end)   { req.flash('error', 'Publish date must be after exam end date.'); return res.redirect(redirectEdit); }
+        }
+
+        let subjectArr = subjects;
+        if (!subjectArr)                    { subjectArr = []; }
+        else if (!Array.isArray(subjectArr)){ subjectArr = Object.values(subjectArr); }
+        subjectArr = subjectArr.filter(Boolean);
+
+        if (subjectArr.length === 0) { req.flash('error', 'Please select at least one subject.'); return res.redirect(redirectEdit); }
+
+        for (const s of subjectArr) {
+            if (s.examDate) {
+                const d = new Date(s.examDate);
+                if (d < start || d > end) { req.flash('error', 'A subject exam date must be within the exam start and end dates.'); return res.redirect(redirectEdit); }
+            }
+            if (!s.startTime || !s.endTime) { req.flash('error', 'Start time and end time are required for every subject.'); return res.redirect(redirectEdit); }
+            if (s.endTime <= s.startTime)   { req.flash('error', 'End time must be after start time for each subject.'); return res.redirect(redirectEdit); }
+        }
+
+        const subjectConfigs = await Promise.all(subjectArr.map(async (s, idx) => {
+            const sst = await SectionSubjectTeacher.findOne({ section: exam.section, subject: s.subjectId });
+            return {
+                subject:         s.subjectId,
+                maxMarks:        parseInt(s.maxMarks),
+                passingMarks:    parseInt(s.passingMarks),
+                assignedTeacher: sst ? sst.teacher : null,
+                examDate:        s.examDate ? new Date(s.examDate) : null,
+                startTime:       s.startTime || '',
+                endTime:         s.endTime   || '',
+                order:           parseInt(s.order ?? idx),
+            };
+        }));
+        subjectConfigs.sort((a, b) => a.order - b.order);
+
+        // Sync marks sheets: add missing, remove dropped
+        const newSubjectIds  = subjectConfigs.map(s => String(s.subject));
+        const existingSheets = await ExamMarksSheet.find({ exam: exam._id });
+        const existingIds    = existingSheets.map(s => String(s.subject));
+
+        // Delete sheets for removed subjects
+        const toRemove = existingIds.filter(id => !newSubjectIds.includes(id));
+        if (toRemove.length) await ExamMarksSheet.deleteMany({ exam: exam._id, subject: { $in: toRemove } });
+
+        // Create sheets for new subjects
+        const section    = await ClassSection.findById(exam.section);
+        const studentIds = section.enrolledStudents || [];
+        for (const sc of subjectConfigs) {
+            if (!existingIds.includes(String(sc.subject))) {
+                const entries = studentIds.map(sid => ({ student: sid, marksObtained: null, isAbsent: false, remarks: '' }));
+                await ExamMarksSheet.create({ exam: exam._id, subject: sc.subject, section: exam.section, entries });
+            }
+        }
+
+        exam.title       = title;
+        exam.examType    = examType;
+        exam.startDate   = start;
+        exam.endDate     = end;
+        exam.publishDate = publishDate ? new Date(publishDate) : null;
+        exam.subjects    = subjectConfigs;
+        exam.auditLog.push({ action: 'EDITED', by: req.user._id, notes: 'Exam details updated by admin' });
+        await exam.save();
+
+        req.flash('success', 'Exam updated successfully.');
+        res.redirect(`/admin/results/exams/${exam._id}`);
+    } catch (err) {
+        console.error(err);
+        req.flash('error', 'Failed to update exam: ' + err.message);
+        res.redirect(redirectEdit);
     }
 };
 
@@ -473,14 +663,23 @@ exports.adminGetResult = async (req, res) => {
 exports.adminApiSectionSubjects = async (req, res) => {
     try {
         const { sectionId } = req.params;
-        const ssts = await SectionSubjectTeacher.find({ section: sectionId })
-            .populate('subject', 'subjectName subjectCode')
-            .populate('teacher', 'name');
-        res.json(ssts.map(s => ({
-            subjectId: s.subject._id,
-            subjectName: s.subject.subjectName,
-            teacherName: s.teacher ? s.teacher.name : '—',
-        })));
+        const school = req.user.school._id;
+
+        const [allSubjects, ssts] = await Promise.all([
+            Subject.find({ school }).sort({ subjectName: 1 }),
+            SectionSubjectTeacher.find({ section: sectionId }).populate('subject', '_id').populate('teacher', 'name'),
+        ]);
+
+        const teacherMap = {};
+        ssts.forEach(s => { teacherMap[String(s.subject._id)] = s.teacher ? s.teacher.name : null; });
+
+        const result = allSubjects.map(sub => ({
+            subjectId:   sub._id,
+            subjectName: sub.subjectName,
+            teacherName: teacherMap[String(sub._id)] || '—',
+        }));
+
+        res.json(result);
     } catch (err) {
         res.status(500).json({ error: err.message });
     }

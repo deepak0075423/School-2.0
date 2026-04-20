@@ -115,7 +115,7 @@
 
                     <% if (_hasAptitudeExam) { %>
                     <div class="nav-section-label">Exams</div>
-                    <a href="/admin/exams" class="nav-item <%= _path.includes('Exam') ? 'active' : '' %>">
+                    <a href="/admin/exams" class="nav-item <%= _path.includes('Exam') && !_path.includes('Formal') ? 'active' : '' %>">
                         <span class="nav-icon">📝</span> Aptitude Exams
                     </a>
                     <% } %>
@@ -174,7 +174,7 @@
 
                     <% if (_hasAptitudeExam) { %>
                     <div class="nav-section-label">Exams</div>
-                    <a href="/teacher/exams" class="nav-item <%= _path.includes('Exam') ? 'active' : '' %>">
+                    <a href="/teacher/exams" class="nav-item <%= _path.includes('Exam') && !_path.includes('Formal') ? 'active' : '' %>">
                         <span class="nav-icon">📝</span> My Exams
                     </a>
                     <% } %>
@@ -236,7 +236,7 @@
 
                     <% if (_hasAptitudeExam) { %>
                     <div class="nav-section-label">Exams</div>
-                    <a href="/student/exams" class="nav-item <%= _path.includes('Exam') ? 'active' : '' %>">
+                    <a href="/student/exams" class="nav-item <%= _path.includes('Exam') && !_path.includes('Formal') ? 'active' : '' %>">
                         <span class="nav-icon">📝</span> My Exams
                     </a>
                     <% } %>
@@ -276,7 +276,7 @@
 
                     <% if (_hasAptitudeExam) { %>
                     <div class="nav-section-label">Exams</div>
-                    <a href="/parent/exams" class="nav-item <%= _path.includes('Exam') ? 'active' : '' %>">
+                    <a href="/parent/exams" class="nav-item <%= _path.includes('Exam') && !_path.includes('Formal') ? 'active' : '' %>">
                         <span class="nav-icon">📊</span> Exam Results
                     </a>
                     <% } %>

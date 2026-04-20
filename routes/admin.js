@@ -112,6 +112,8 @@ const resultGuard    = [...guard, requireModule('result')];
 router.get('/results/exams',                              resultGuard, formalExamCtrl.adminGetExams);
 router.get('/results/exams/create',                       resultGuard, formalExamCtrl.adminGetCreateExam);
 router.post('/results/exams/create',                      resultGuard, formalExamCtrl.adminPostCreateExam);
+router.get('/results/exams/:id/edit',                     resultGuard, formalExamCtrl.adminGetEditExam);
+router.post('/results/exams/:id/edit',                    resultGuard, formalExamCtrl.adminPostEditExam);
 router.get('/results/exams/:id',                          resultGuard, formalExamCtrl.adminGetExamDetail);
 router.get('/results/exams/:id/marks-review',             resultGuard, formalExamCtrl.adminGetMarksReview);
 router.post('/results/exams/:id/approve',                 resultGuard, formalExamCtrl.adminPostApproveExam);

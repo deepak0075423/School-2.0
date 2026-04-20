@@ -1,11 +1,10 @@
-
 <div class="page-header">
     <div>
         <h1>✏️ Enter Marks</h1>
         <p><strong><%= subConf.subject?.subjectName %></strong> — <%= exam.title %></p>
-        <p class="text-muted text-sm">Max Marks: <%= subConf.maxMarks %> &nbsp;|&nbsp; Passing Marks: <%= subConf.passingMarks %></p>
+        <p style="color:var(--text-muted); font-size:13px;">Max Marks: <%= subConf.maxMarks %> &nbsp;|&nbsp; Passing Marks: <%= subConf.passingMarks %></p>
     </div>
-    <a href="/teacher/results/marks-entry" class="btn btn-ghost">← Back</a>
+    <a href="/teacher/results/marks-entry" class="btn btn-secondary">← Back</a>
 </div>
 
 <div class="card">
@@ -17,14 +16,14 @@
                         <th>#</th>
                         <th>Student Name</th>
                         <th>Marks Obtained (max <%= subConf.maxMarks %>)</th>
-                        <th>Absent</th>
+                        <th style="text-align:center;">Absent</th>
                         <th>Remarks</th>
                     </tr>
                 </thead>
                 <tbody>
                     <% entries.forEach((entry, i) => { %>
                     <tr id="row-<%= i %>">
-                        <td class="text-muted"><%= i + 1 %></td>
+                        <td style="color:var(--text-muted);"><%= i + 1 %></td>
                         <td class="fw-semibold">
                             <%= entry.studentName %>
                             <input type="hidden" name="entries[<%= i %>][studentId]" value="<%= entry.studentId %>" />
@@ -33,7 +32,8 @@
                             <input
                                 type="number"
                                 name="entries[<%= i %>][marks]"
-                                class="form-control form-control-sm marks-input"
+                                class="form-control marks-input"
+                                style="max-width:110px;"
                                 value="<%= entry.marksObtained ?? '' %>"
                                 min="0" max="<%= subConf.maxMarks %>"
                                 step="0.5"
@@ -42,7 +42,7 @@
                                 <%= entry.isAbsent ? 'disabled' : '' %>
                             />
                         </td>
-                        <td class="text-center">
+                        <td style="text-align:center;">
                             <input
                                 type="checkbox"
                                 name="entries[<%= i %>][isAbsent]"
@@ -52,7 +52,7 @@
                             />
                         </td>
                         <td>
-                            <input type="text" name="entries[<%= i %>][remarks]" class="form-control form-control-sm" value="<%= entry.remarks || '' %>" placeholder="Optional" />
+                            <input type="text" name="entries[<%= i %>][remarks]" class="form-control" style="max-width:180px;" value="<%= entry.remarks || '' %>" placeholder="Optional" />
                         </td>
                     </tr>
                     <% }) %>
@@ -60,17 +60,16 @@
             </table>
         </div>
 
-        <div class="form-actions mt-4">
+        <div style="display:flex; gap:10px; margin-top:20px; padding:0 16px 16px;">
             <input type="hidden" name="submit" id="submitFlag" value="0" />
             <button type="button" class="btn btn-secondary" onclick="saveMarks(0)">Save Draft</button>
             <button type="button" class="btn btn-primary" onclick="saveMarks(1)">Submit for Validation</button>
-            <a href="/teacher/results/marks-entry" class="btn btn-ghost">Cancel</a>
+            <a href="/teacher/results/marks-entry" class="btn btn-secondary">Cancel</a>
         </div>
     </form>
 </div>
 
 <script>
-// Toggle absent checkbox
 document.querySelectorAll('.absent-cb').forEach(cb => {
     cb.addEventListener('change', function() {
         const row  = this.dataset.row;
@@ -84,7 +83,6 @@ document.querySelectorAll('.absent-cb').forEach(cb => {
     });
 });
 
-// Validate marks don't exceed max
 document.querySelectorAll('.marks-input').forEach(inp => {
     inp.addEventListener('input', function() {
         const max = parseFloat(this.dataset.max);

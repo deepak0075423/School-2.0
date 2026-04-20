@@ -1,4 +1,3 @@
-
 <% const typeLabel = { MID_TERM: 'Mid Term', FINAL: 'Final', UNIT_TEST: 'Unit Test' }; %>
 
 <div class="page-header">
@@ -6,53 +5,71 @@
         <h1>📊 <%= result.exam?.title %></h1>
         <p><%= typeLabel[result.exam?.examType] %> — <%= result.section?.class?.className %></p>
     </div>
-    <a href="/student/results" class="btn btn-ghost">← Back</a>
+    <a href="/student/results" class="btn btn-secondary">← Back</a>
 </div>
 
-<!-- Summary Cards -->
-<div class="stats-grid mb-4">
-    <div class="stat-card <%= result.isPassed ? 'stat-card-green' : 'stat-card-red' %>">
-        <div class="stat-value"><%= result.isPassed ? 'PASS' : 'FAIL' %></div>
-        <div class="stat-label">Overall Result</div>
+<div class="stats-grid" style="grid-template-columns:repeat(auto-fit,minmax(145px,1fr)); margin-bottom:20px;">
+    <div class="stat-card">
+        <div class="stat-icon <%= result.isPassed ? 'green' : 'red' %>"><%= result.isPassed ? '✅' : '❌' %></div>
+        <div class="stat-info">
+            <div class="stat-value" style="font-size:15px; font-weight:700;"><%= result.isPassed ? 'PASS' : 'FAIL' %></div>
+            <div class="stat-label">Overall Result</div>
+        </div>
     </div>
     <div class="stat-card">
-        <div class="stat-value"><%= result.totalMarks %>/<%= result.totalMaxMarks %></div>
-        <div class="stat-label">Total Marks</div>
+        <div class="stat-icon blue">📝</div>
+        <div class="stat-info">
+            <div class="stat-value"><%= result.totalMarks %>/<%= result.totalMaxMarks %></div>
+            <div class="stat-label">Total Marks</div>
+        </div>
     </div>
     <div class="stat-card">
-        <div class="stat-value"><%= result.percentage %>%</div>
-        <div class="stat-label">Percentage</div>
-    </div>
-    <div class="stat-card <%= result.grade === 'F' ? 'stat-card-red' : result.grade.startsWith('A') ? 'stat-card-green' : '' %>">
-        <div class="stat-value"><%= result.grade %></div>
-        <div class="stat-label">Overall Grade</div>
+        <div class="stat-icon purple">📈</div>
+        <div class="stat-info">
+            <div class="stat-value"><%= result.percentage %>%</div>
+            <div class="stat-label">Percentage</div>
+        </div>
     </div>
     <div class="stat-card">
-        <div class="stat-value">#<%= result.rank %></div>
-        <div class="stat-label">Class Rank</div>
+        <div class="stat-icon <%= result.grade === 'F' ? 'red' : result.grade.startsWith('A') ? 'green' : 'orange' %>">🎓</div>
+        <div class="stat-info">
+            <div class="stat-value"><%= result.grade %></div>
+            <div class="stat-label">Overall Grade</div>
+        </div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-icon cyan">🏅</div>
+        <div class="stat-info">
+            <div class="stat-value">#<%= result.rank %></div>
+            <div class="stat-label">Class Rank</div>
+        </div>
     </div>
     <% if (result.attendancePercentage !== null && result.attendancePercentage !== undefined) { %>
     <div class="stat-card">
-        <div class="stat-value"><%= result.attendancePercentage %>%</div>
-        <div class="stat-label">Attendance</div>
+        <div class="stat-icon orange">📅</div>
+        <div class="stat-info">
+            <div class="stat-value"><%= result.attendancePercentage %>%</div>
+            <div class="stat-label">Attendance</div>
+        </div>
     </div>
     <% } %>
 </div>
 
-<!-- Subject-wise Breakdown -->
-<div class="card">
-    <h3 class="card-title">Subject-wise Marks</h3>
+<div class="card" style="margin-bottom:20px;">
+    <div class="card-header">
+        <div class="card-title">Subject-wise Marks</div>
+    </div>
     <div class="table-wrapper">
         <table>
             <thead>
                 <tr>
                     <th>Subject</th>
-                    <th class="text-center">Marks Obtained</th>
-                    <th class="text-center">Max Marks</th>
-                    <th class="text-center">Passing Marks</th>
-                    <th class="text-center">Percentage</th>
-                    <th class="text-center">Grade</th>
-                    <th class="text-center">Status</th>
+                    <th style="text-align:center;">Marks Obtained</th>
+                    <th style="text-align:center;">Max Marks</th>
+                    <th style="text-align:center;">Passing Marks</th>
+                    <th style="text-align:center;">Percentage</th>
+                    <th style="text-align:center;">Grade</th>
+                    <th style="text-align:center;">Status</th>
                 </tr>
             </thead>
             <tbody>
@@ -61,19 +78,19 @@
                 %>
                 <tr>
                     <td class="fw-semibold"><%= sr.subject?.subjectName || '—' %></td>
-                    <td class="text-center">
+                    <td style="text-align:center;">
                         <% if (sr.isAbsent) { %><span class="badge badge-orange">Absent</span>
                         <% } else { %><strong><%= sr.marksObtained %></strong><% } %>
                     </td>
-                    <td class="text-center"><%= sr.maxMarks %></td>
-                    <td class="text-center"><%= sr.passingMarks %></td>
-                    <td class="text-center"><%= sr.isAbsent ? '—' : pct + '%' %></td>
-                    <td class="text-center">
+                    <td style="text-align:center;"><%= sr.maxMarks %></td>
+                    <td style="text-align:center;"><%= sr.passingMarks %></td>
+                    <td style="text-align:center;"><%= sr.isAbsent ? '—' : pct + '%' %></td>
+                    <td style="text-align:center;">
                         <span class="badge <%= sr.grade==='F'||sr.grade==='AB' ? 'badge-red' : sr.grade.startsWith('A') ? 'badge-green' : 'badge-blue' %>">
                             <%= sr.grade %>
                         </span>
                     </td>
-                    <td class="text-center">
+                    <td style="text-align:center;">
                         <% if (sr.isAbsent) { %>
                             <span class="badge badge-orange">Absent</span>
                         <% } else { %>
@@ -89,21 +106,19 @@
     </div>
 </div>
 
-<!-- Grade Scale Reference -->
-<div class="card mt-4">
-    <h3 class="card-title">Grade Scale</h3>
-    <div class="grade-scale">
-        <span class="grade-item"><span class="badge badge-green">A+</span> ≥ 90%</span>
-        <span class="grade-item"><span class="badge badge-green">A</span> ≥ 80%</span>
-        <span class="grade-item"><span class="badge badge-blue">B+</span> ≥ 70%</span>
-        <span class="grade-item"><span class="badge badge-blue">B</span> ≥ 60%</span>
-        <span class="grade-item"><span class="badge badge-yellow">C</span> ≥ 50%</span>
-        <span class="grade-item"><span class="badge badge-yellow">D</span> ≥ 40%</span>
-        <span class="grade-item"><span class="badge badge-red">F</span> < 40%</span>
+<div class="card">
+    <div class="card-header">
+        <div class="card-title">Grade Scale</div>
+    </div>
+    <div class="card-body">
+        <div style="display:flex; gap:20px; flex-wrap:wrap;">
+            <div style="display:flex; align-items:center; gap:6px; font-size:13px;"><span class="badge badge-green">A+</span> ≥ 90%</div>
+            <div style="display:flex; align-items:center; gap:6px; font-size:13px;"><span class="badge badge-green">A</span> ≥ 80%</div>
+            <div style="display:flex; align-items:center; gap:6px; font-size:13px;"><span class="badge badge-blue">B+</span> ≥ 70%</div>
+            <div style="display:flex; align-items:center; gap:6px; font-size:13px;"><span class="badge badge-blue">B</span> ≥ 60%</div>
+            <div style="display:flex; align-items:center; gap:6px; font-size:13px;"><span class="badge badge-orange">C</span> ≥ 50%</div>
+            <div style="display:flex; align-items:center; gap:6px; font-size:13px;"><span class="badge badge-orange">D</span> ≥ 40%</div>
+            <div style="display:flex; align-items:center; gap:6px; font-size:13px;"><span class="badge badge-red">F</span> &lt; 40%</div>
+        </div>
     </div>
 </div>
-
-<style>
-.grade-scale { display:flex; gap:1.5rem; flex-wrap:wrap; padding:0.5rem 0; }
-.grade-item  { display:flex; align-items:center; gap:0.5rem; font-size:0.875rem; }
-</style>

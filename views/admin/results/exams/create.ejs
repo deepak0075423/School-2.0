@@ -1,136 +1,411 @@
-
 <div class="page-header">
     <div>
         <h1>📋 Create Formal Exam</h1>
-        <p>Configure an exam for a class section. Subject teachers will be auto-assigned from section assignments.</p>
+        <p>Set up a new exam with per-subject schedules.</p>
     </div>
-    <a href="/admin/results/exams" class="btn btn-ghost">← Back</a>
+    <a href="/admin/results/exams" class="btn btn-secondary">← Back</a>
 </div>
 
-<div class="card">
-    <form method="POST" action="/admin/results/exams/create" id="examForm">
-        <div class="form-section">
+<form method="POST" action="/admin/results/exams/create" id="examForm">
+
+    <!-- Step 1: Basic Info -->
+    <div class="form-section">
+        <div class="form-section-header">
             <h3>Exam Details</h3>
-            <div class="form-row">
+            <span class="section-badge">Step 1</span>
+        </div>
+        <div class="form-section-body">
+            <div class="form-grid">
                 <div class="form-group">
-                    <label for="title">Exam Title <span class="required">*</span></label>
-                    <input type="text" id="title" name="title" class="form-control" required placeholder="e.g. Mid Term Examination 2024-25" />
+                    <label class="form-label">Exam Title *</label>
+                    <input type="text" name="title" class="form-control" required placeholder="e.g. Mid Term Examination 2024-25" />
                 </div>
                 <div class="form-group">
-                    <label for="examType">Exam Type <span class="required">*</span></label>
-                    <select id="examType" name="examType" class="form-control" required>
-                        <option value="">Select Type</option>
+                    <label class="form-label">Exam Type *</label>
+                    <select name="examType" class="form-control" required>
+                        <option value="">— Select Type —</option>
                         <option value="MID_TERM">Mid Term</option>
                         <option value="FINAL">Final Exam</option>
                         <option value="UNIT_TEST">Unit Test</option>
                     </select>
                 </div>
-            </div>
-            <div class="form-row">
                 <div class="form-group">
-                    <label for="academicYearId">Academic Year <span class="required">*</span></label>
-                    <select id="academicYearId" name="academicYearId" class="form-control" required>
-                        <option value="">Select Year</option>
-                        <% academicYears.forEach(y => { %>
-                            <option value="<%= y._id %>"><%= y.yearName %></option>
-                        <% }) %>
-                    </select>
+                    <label class="form-label">Academic Year</label>
+                    <input type="text" class="form-control" value="<%= currentAcademicYear ? currentAcademicYear.yearName : 'No active academic year' %>" disabled style="background:#f3f4f6; cursor:not-allowed;" />
+                    <input type="hidden" name="academicYearId" value="<%= currentAcademicYear ? currentAcademicYear._id : '' %>" />
+                    <% if (!currentAcademicYear) { %>
+                    <p style="color:var(--danger); font-size:12px; margin-top:4px;">⚠ No active academic year. Please create one first.</p>
+                    <% } %>
                 </div>
                 <div class="form-group">
-                    <label for="sectionId">Class & Section <span class="required">*</span></label>
+                    <label class="form-label">Class & Section *</label>
                     <select id="sectionId" name="sectionId" class="form-control" required>
-                        <option value="">Select Section</option>
+                        <option value="">— Select Section —</option>
                         <% sections.forEach(s => { %>
                             <option value="<%= s._id %>"><%= s.class?.className %> – Section <%= s.sectionName %></option>
                         <% }) %>
                     </select>
                 </div>
             </div>
-            <div class="form-row">
+            <div class="form-grid-3">
                 <div class="form-group">
-                    <label for="startDate">Start Date <span class="required">*</span></label>
+                    <label class="form-label">Exam Start Date *</label>
                     <input type="date" id="startDate" name="startDate" class="form-control" required />
                 </div>
                 <div class="form-group">
-                    <label for="endDate">End Date <span class="required">*</span></label>
+                    <label class="form-label">Exam End Date *</label>
                     <input type="date" id="endDate" name="endDate" class="form-control" required />
                 </div>
                 <div class="form-group">
-                    <label for="publishDate">Result Publish Date <span class="required">*</span></label>
-                    <input type="date" id="publishDate" name="publishDate" class="form-control" required />
+                    <label class="form-label">Result Publish Date <span style="color:var(--text-muted); font-weight:400;">(optional)</span></label>
+                    <input type="date" id="publishDate" name="publishDate" class="form-control" />
+                    <p style="font-size:12px; color:var(--text-muted); margin-top:4px;">Must be after exam end date if specified.</p>
+                </div>
+            </div>
+            <div id="dateError" class="alert alert-error" style="display:none; margin-top:8px;"></div>
+        </div>
+    </div>
+
+    <!-- Step 2: Subject Selection -->
+    <div class="form-section">
+        <div class="form-section-header">
+            <h3>Select Subjects</h3>
+            <span class="section-badge">Step 2</span>
+        </div>
+        <div class="form-section-body">
+            <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:14px;">
+                <p style="color:var(--text-muted); font-size:13px;">Select a section above, then load subjects. Check the subjects to include in this exam.</p>
+                <button type="button" class="btn btn-secondary btn-sm" id="loadSubjectsBtn" disabled>Load Subjects</button>
+            </div>
+            <div id="subjectPickerContainer">
+                <div class="empty-state" style="padding:24px;">
+                    <div class="empty-icon">📚</div>
+                    <p>Select a section and click "Load Subjects"</p>
                 </div>
             </div>
         </div>
+    </div>
 
-        <div class="form-section">
-            <div class="section-header-row">
-                <h3>Subjects & Marks</h3>
-                <button type="button" class="btn btn-secondary btn-sm" id="loadSubjectsBtn" disabled>Load Subjects from Section</button>
-            </div>
-            <p class="text-muted text-sm">Select a section above, then load its subjects. Marks config is editable per subject.</p>
-
-            <div id="subjectsContainer">
-                <div class="empty-state-sm">
-                    <p>Select a section and click "Load Subjects from Section"</p>
-                </div>
-            </div>
+    <!-- Step 3: Subject Schedule & Marks -->
+    <div class="form-section" id="scheduleSection" style="display:none;">
+        <div class="form-section-header">
+            <h3>Subject Schedule & Marks</h3>
+            <span class="section-badge">Step 3</span>
         </div>
-
-        <div class="form-actions">
-            <button type="submit" class="btn btn-primary" id="submitBtn" disabled>Create Exam</button>
-            <a href="/admin/results/exams" class="btn btn-ghost">Cancel</a>
+        <div class="form-section-body">
+            <p style="color:var(--text-muted); font-size:13px; margin-bottom:16px;">
+                Set max marks, passing marks, exam date and time for each subject. Use ↑ ↓ to reorder.
+            </p>
+            <div id="scheduleContainer"></div>
         </div>
-    </form>
-</div>
+    </div>
+
+    <div style="display:flex; gap:12px; margin-top:4px;">
+        <button type="submit" class="btn btn-primary" id="submitBtn" disabled>Create Exam</button>
+        <a href="/admin/results/exams" class="btn btn-secondary">Cancel</a>
+    </div>
+</form>
+
+<style>
+.subject-schedule-row {
+    display: grid;
+    grid-template-columns: 32px 1fr 90px 90px 140px 110px 110px;
+    gap: 10px;
+    align-items: center;
+    padding: 10px 12px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    margin-bottom: 8px;
+    background: #fff;
+}
+.subject-schedule-row:hover { background: #f9fafb; }
+.drag-handle { display:flex; flex-direction:column; gap:3px; cursor:pointer; align-items:center; }
+.drag-handle span { display:block; width:16px; height:2px; background:var(--text-muted); border-radius:2px; }
+.order-btns { display:flex; flex-direction:column; gap:2px; }
+.order-btn { background:var(--border); border:none; border-radius:4px; width:24px; height:20px; cursor:pointer; font-size:11px; display:flex; align-items:center; justify-content:center; }
+.order-btn:hover { background:var(--primary); color:#fff; }
+.subject-label { font-weight:600; font-size:14px; }
+.subject-teacher { font-size:12px; color:var(--text-muted); }
+</style>
 
 <script>
-const sectionSelect = document.getElementById('sectionId');
+const today = new Date(); today.setHours(0,0,0,0);
+const todayStr = today.toISOString().split('T')[0];
+
+const startDateEl   = document.getElementById('startDate');
+const endDateEl     = document.getElementById('endDate');
+const publishDateEl = document.getElementById('publishDate');
+const dateError     = document.getElementById('dateError');
+const sectionSel    = document.getElementById('sectionId');
 const loadBtn       = document.getElementById('loadSubjectsBtn');
 const submitBtn     = document.getElementById('submitBtn');
-const container     = document.getElementById('subjectsContainer');
 
-sectionSelect.addEventListener('change', () => {
-    loadBtn.disabled = !sectionSelect.value;
-    container.innerHTML = '<div class="empty-state-sm"><p>Click "Load Subjects" to fetch section subjects</p></div>';
+startDateEl.min = todayStr;
+
+// ── Date validation ────────────────────────────────────────────
+function showDateError(msg) { dateError.textContent = msg; dateError.style.display = 'block'; }
+function clearDateError()   { dateError.textContent = ''; dateError.style.display = 'none'; }
+
+function validateDates() {
+    clearDateError();
+    const start = startDateEl.value ? new Date(startDateEl.value) : null;
+    const end   = endDateEl.value   ? new Date(endDateEl.value)   : null;
+    const pub   = publishDateEl.value ? new Date(publishDateEl.value) : null;
+    if (start && start < today)       { showDateError('Exam start date cannot be in the past.'); return false; }
+    if (start && end && end < start)  { showDateError('Exam end date must be on or after the start date.'); return false; }
+    if (pub && end && pub <= end)     { showDateError('Publish date must be after the exam end date.'); return false; }
+    // Validate per-subject exam dates
+    if (start && end) {
+        const rows = document.querySelectorAll('.sub-exam-date');
+        for (const inp of rows) {
+            if (!inp.value) continue;
+            const d = new Date(inp.value);
+            if (d < start || d > end) {
+                showDateError(`Subject "${inp.dataset.subjectName}" exam date must be between ${startDateEl.value} and ${endDateEl.value}.`);
+                return false;
+            }
+        }
+    }
+    return true;
+}
+
+startDateEl.addEventListener('change', () => {
+    endDateEl.min = startDateEl.value || todayStr;
+    if (endDateEl.value && endDateEl.value < startDateEl.value) endDateEl.value = '';
+    // Update min on all subject date inputs
+    document.querySelectorAll('.sub-exam-date').forEach(inp => {
+        inp.min = startDateEl.value || todayStr;
+        if (inp.value && inp.value < startDateEl.value) inp.value = '';
+    });
+    validateDates();
+});
+
+endDateEl.addEventListener('change', () => {
+    if (endDateEl.value) {
+        const next = new Date(endDateEl.value); next.setDate(next.getDate()+1);
+        publishDateEl.min = next.toISOString().split('T')[0];
+        if (publishDateEl.value && publishDateEl.value <= endDateEl.value) publishDateEl.value = '';
+    }
+    // Update max on all subject date inputs
+    document.querySelectorAll('.sub-exam-date').forEach(inp => {
+        inp.max = endDateEl.value || '';
+        if (inp.value && inp.value > endDateEl.value) inp.value = '';
+    });
+    validateDates();
+});
+publishDateEl.addEventListener('change', validateDates);
+
+document.getElementById('examForm').addEventListener('submit', function(e) {
+    if (!validateDates()) { e.preventDefault(); return; }
+    if (selectedSubjects.length === 0) { e.preventDefault(); showDateError('Please select at least one subject.'); return; }
+});
+
+// ── Subject picker logic ───────────────────────────────────────
+let allSubjects = [];    // [{subjectId, subjectName, teacherName}]
+let selectedSubjects = []; // ordered array of subjectIds
+
+sectionSel.addEventListener('change', () => {
+    loadBtn.disabled = !sectionSel.value;
+    allSubjects = []; selectedSubjects = [];
+    document.getElementById('subjectPickerContainer').innerHTML = '<div class="empty-state" style="padding:24px;"><p>Click "Load Subjects" to continue</p></div>';
+    document.getElementById('scheduleSection').style.display = 'none';
     submitBtn.disabled = true;
 });
 
 loadBtn.addEventListener('click', async () => {
-    const sectionId = sectionSelect.value;
-    if (!sectionId) return;
-    loadBtn.disabled = true;
-    loadBtn.textContent = 'Loading…';
+    const sid = sectionSel.value;
+    if (!sid) return;
+    loadBtn.disabled = true; loadBtn.textContent = 'Loading…';
+    try {
+        const res  = await fetch(`/admin/api/results/sections/${sid}/subjects`);
+        allSubjects = await res.json();
+        selectedSubjects = [];
+        renderPicker();
+        renderSchedule();
+    } catch(e) {
+        document.getElementById('subjectPickerContainer').innerHTML = '<div class="alert alert-error" style="margin:0;">Failed to load subjects. Please try again.</div>';
+    }
+    loadBtn.disabled = false; loadBtn.textContent = 'Load Subjects';
+});
 
-    const res  = await fetch(`/admin/api/results/sections/${sectionId}/subjects`);
-    const data = await res.json();
-    loadBtn.disabled = false;
-    loadBtn.textContent = 'Load Subjects from Section';
+function renderPicker() {
+    const cont = document.getElementById('subjectPickerContainer');
+    if (!allSubjects.length) {
+        cont.innerHTML = '<div class="alert alert-error" style="margin:0;">No subjects found. Please create subjects first.</div>';
+        return;
+    }
+    cont.innerHTML = `
+        <div style="display:grid; grid-template-columns:repeat(auto-fill,minmax(220px,1fr)); gap:10px;">
+            ${allSubjects.map(s => `
+                <label style="display:flex; align-items:center; gap:10px; padding:10px 14px; border:1px solid var(--border); border-radius:8px; cursor:pointer; background:#fff; transition:border-color .15s;"
+                       onmouseover="this.style.borderColor='var(--primary)'" onmouseout="updateCardBorder(this,'${s.subjectId}')">
+                    <input type="checkbox" class="sub-check" data-id="${s.subjectId}" data-name="${s.subjectName}" data-teacher="${s.teacherName}"
+                           onchange="onSubjectToggle(this)" style="width:16px;height:16px;accent-color:var(--primary);flex-shrink:0;" />
+                    <div>
+                        <div style="font-weight:600; font-size:14px;">${s.subjectName}</div>
+                        <div style="font-size:12px; color:var(--text-muted);">Teacher: ${s.teacherName}</div>
+                    </div>
+                </label>
+            `).join('')}
+        </div>
+        <div style="margin-top:12px; display:flex; gap:10px;">
+            <button type="button" class="btn btn-secondary btn-sm" onclick="selectAll()">Select All</button>
+            <button type="button" class="btn btn-secondary btn-sm" onclick="clearAll()">Clear All</button>
+        </div>`;
+}
 
-    if (!data.length) {
-        container.innerHTML = '<div class="alert alert-warning">No subjects assigned to this section yet. Assign subject teachers first.</div>';
+function updateCardBorder(el, subjectId) {
+    const cb = el.querySelector('input[type=checkbox]');
+    el.style.borderColor = cb && cb.checked ? 'var(--primary)' : 'var(--border)';
+}
+
+function onSubjectToggle(cb) {
+    const id = cb.dataset.id;
+    const label = cb.closest('label');
+    if (cb.checked) {
+        if (!selectedSubjects.includes(id)) selectedSubjects.push(id);
+        if (label) { label.style.borderColor = 'var(--primary)'; label.style.background = '#f0f4ff'; }
+    } else {
+        selectedSubjects = selectedSubjects.filter(x => x !== id);
+        if (label) { label.style.borderColor = 'var(--border)'; label.style.background = '#fff'; }
+    }
+    renderSchedule();
+}
+
+function selectAll() {
+    selectedSubjects = allSubjects.map(s => String(s.subjectId));
+    document.querySelectorAll('.sub-check').forEach(cb => {
+        cb.checked = true;
+        const label = cb.closest('label');
+        if (label) { label.style.borderColor = 'var(--primary)'; label.style.background = '#f0f4ff'; }
+    });
+    renderSchedule();
+}
+
+function clearAll() {
+    selectedSubjects = [];
+    document.querySelectorAll('.sub-check').forEach(cb => {
+        cb.checked = false;
+        const label = cb.closest('label');
+        if (label) { label.style.borderColor = 'var(--border)'; label.style.background = '#fff'; }
+    });
+    renderSchedule();
+}
+
+// ── Schedule table ─────────────────────────────────────────────
+function renderSchedule() {
+    const section = document.getElementById('scheduleSection');
+    const cont    = document.getElementById('scheduleContainer');
+
+    if (selectedSubjects.length === 0) {
+        section.style.display = 'none';
         submitBtn.disabled = true;
         return;
     }
-
-    container.innerHTML = `
-        <div class="table-wrapper">
-        <table>
-            <thead><tr><th>#</th><th>Subject</th><th>Teacher</th><th>Max Marks</th><th>Passing Marks</th></tr></thead>
-            <tbody>
-            ${data.map((s, i) => `
-                <tr>
-                    <td>${i+1}</td>
-                    <td class="fw-semibold">${s.subjectName}
-                        <input type="hidden" name="subjects[${i}][subjectId]" value="${s.subjectId}" />
-                    </td>
-                    <td>${s.teacherName}</td>
-                    <td><input type="number" name="subjects[${i}][maxMarks]" class="form-control form-control-sm" value="100" min="1" required /></td>
-                    <td><input type="number" name="subjects[${i}][passingMarks]" class="form-control form-control-sm" value="35" min="0" required /></td>
-                </tr>
-            `).join('')}
-            </tbody>
-        </table>
-        </div>`;
+    section.style.display = 'block';
     submitBtn.disabled = false;
+
+    // Preserve existing field values before re-render
+    const saved = {};
+    document.querySelectorAll('.schedule-row').forEach(row => {
+        const id = row.dataset.subjectId;
+        saved[id] = {
+            maxMarks:    row.querySelector('.sub-max')?.value    || '100',
+            passMarks:   row.querySelector('.sub-pass')?.value   || '35',
+            examDate:    row.querySelector('.sub-exam-date')?.value || '',
+            startTime:   row.querySelector('.sub-start-time')?.value || '',
+            endTime:     row.querySelector('.sub-end-time')?.value   || '',
+        };
+    });
+
+    const startMin = startDateEl.value || todayStr;
+    const endMax   = endDateEl.value   || '';
+
+    cont.innerHTML = selectedSubjects.map((id, idx) => {
+        const sub = allSubjects.find(s => String(s.subjectId) === String(id));
+        if (!sub) return '';
+        const v = saved[id] || {};
+        return `
+        <div class="subject-schedule-row schedule-row" data-subject-id="${id}">
+            <div class="order-btns">
+                <button type="button" class="order-btn" onclick="moveUp(${idx})" title="Move Up">↑</button>
+                <button type="button" class="order-btn" onclick="moveDown(${idx})" title="Move Down">↓</button>
+            </div>
+            <div>
+                <div class="subject-label">${sub.subjectName}</div>
+                <div class="subject-teacher">Teacher: ${sub.teacherName}</div>
+                <input type="hidden" name="subjects[${idx}][subjectId]" value="${id}" />
+                <input type="hidden" name="subjects[${idx}][order]"     value="${idx}" />
+            </div>
+            <div>
+                <label style="font-size:11px; color:var(--text-muted); display:block; margin-bottom:3px;">Max Marks *</label>
+                <input type="number" name="subjects[${idx}][maxMarks]" class="form-control sub-max" value="${v.maxMarks || 100}" min="1" required style="padding:5px 8px;" />
+            </div>
+            <div>
+                <label style="font-size:11px; color:var(--text-muted); display:block; margin-bottom:3px;">Passing *</label>
+                <input type="number" name="subjects[${idx}][passingMarks]" class="form-control sub-pass" value="${v.passMarks || 35}" min="0" required style="padding:5px 8px;" />
+            </div>
+            <div>
+                <label style="font-size:11px; color:var(--text-muted); display:block; margin-bottom:3px;">Exam Date *</label>
+                <input type="date" name="subjects[${idx}][examDate]" class="form-control sub-exam-date"
+                       data-subject-name="${sub.subjectName}"
+                       value="${v.examDate || ''}"
+                       min="${startMin}" max="${endMax}" required
+                       style="padding:5px 8px;" onchange="validateDates()" />
+            </div>
+            <div>
+                <label style="font-size:11px; color:var(--text-muted); display:block; margin-bottom:3px;">Start Time *</label>
+                <input type="time" name="subjects[${idx}][startTime]" class="form-control sub-start-time" value="${v.startTime || ''}" style="padding:5px 8px;" required />
+            </div>
+            <div>
+                <label style="font-size:11px; color:var(--text-muted); display:block; margin-bottom:3px;">End Time *</label>
+                <input type="time" name="subjects[${idx}][endTime]" class="form-control sub-end-time" value="${v.endTime || ''}" style="padding:5px 8px;" required />
+            </div>
+        </div>`;
+    }).join('');
+}
+
+function moveUp(idx) {
+    if (idx === 0) return;
+    [selectedSubjects[idx-1], selectedSubjects[idx]] = [selectedSubjects[idx], selectedSubjects[idx-1]];
+    renderSchedule();
+}
+function moveDown(idx) {
+    if (idx === selectedSubjects.length - 1) return;
+    [selectedSubjects[idx], selectedSubjects[idx+1]] = [selectedSubjects[idx+1], selectedSubjects[idx]];
+    renderSchedule();
+}
+
+function validateTimeForRow(row) {
+    const start = row.querySelector('.sub-start-time')?.value;
+    const end   = row.querySelector('.sub-end-time')?.value;
+    const endInp = row.querySelector('.sub-end-time');
+    if (start && end && end <= start) {
+        endInp.setCustomValidity('End time must be after start time.');
+        endInp.style.borderColor = 'var(--danger)';
+        showDateError('End time must be after start time for each subject.');
+        return false;
+    }
+    if (endInp) { endInp.setCustomValidity(''); endInp.style.borderColor = ''; }
+    return true;
+}
+
+// delegate time change events (rows are dynamic)
+document.getElementById('scheduleContainer').addEventListener('change', function(e) {
+    if (e.target.classList.contains('sub-start-time') || e.target.classList.contains('sub-end-time')) {
+        const row = e.target.closest('.schedule-row');
+        if (row) { validateTimeForRow(row); }
+    }
 });
+
+// extend validateDates to also check times
+const _origValidate = validateDates;
+validateDates = function() {
+    const ok = _origValidate();
+    if (!ok) return false;
+    for (const row of document.querySelectorAll('.schedule-row')) {
+        if (!validateTimeForRow(row)) return false;
+    }
+    return true;
+};
 </script>

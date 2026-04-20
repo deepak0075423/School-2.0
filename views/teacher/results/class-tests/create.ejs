@@ -1,70 +1,73 @@
-
 <div class="page-header">
     <div>
         <h1>📝 Create Class Test</h1>
         <p>Create a new class test for one of your assigned subjects.</p>
     </div>
-    <a href="/teacher/results/class-tests" class="btn btn-ghost">← Back</a>
+    <a href="/teacher/results/class-tests" class="btn btn-secondary">← Back</a>
 </div>
 
-<div class="card">
-    <form method="POST" action="/teacher/results/class-tests/create">
-        <div class="form-row">
-            <div class="form-group">
-                <label for="title">Test Title <span class="required">*</span></label>
-                <input type="text" id="title" name="title" class="form-control" required placeholder="e.g. Unit 3 — Algebra Test" />
-            </div>
+<form method="POST" action="/teacher/results/class-tests/create">
+    <div class="form-section">
+        <div class="form-section-header">
+            <h3>Test Details</h3>
+            <span class="section-badge">Step 1</span>
         </div>
+        <div class="form-section-body">
+            <div class="form-group">
+                <label class="form-label">Test Title *</label>
+                <input type="text" name="title" class="form-control" required placeholder="e.g. Unit 3 — Algebra Test" />
+            </div>
 
-        <div class="form-row">
-            <div class="form-group">
-                <label for="sectionSubject">Section & Subject <span class="required">*</span></label>
-                <select id="sectionSubject" class="form-control" required>
-                    <option value="">Select Section & Subject</option>
-                    <% ssts.forEach(sst => { %>
-                        <option value="<%= sst.section._id %>|<%= sst.subject._id %>">
-                            <%= sst.section.class?.className %> – <%= sst.section.sectionName %> | <%= sst.subject.subjectName %>
-                        </option>
-                    <% }) %>
-                </select>
-                <input type="hidden" name="sectionId" id="sectionId" />
-                <input type="hidden" name="subjectId" id="subjectId" />
+            <div class="form-grid">
+                <div class="form-group">
+                    <label class="form-label">Section & Subject *</label>
+                    <select id="sectionSubject" class="form-control" required>
+                        <option value="">Select Section & Subject</option>
+                        <% ssts.forEach(sst => { %>
+                            <option value="<%= sst.section._id %>|<%= sst.subject._id %>">
+                                <%= sst.section.class?.className %> – <%= sst.section.sectionName %> | <%= sst.subject.subjectName %>
+                            </option>
+                        <% }) %>
+                    </select>
+                    <input type="hidden" name="sectionId" id="sectionId" />
+                    <input type="hidden" name="subjectId" id="subjectId" />
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Test Date *</label>
+                    <input type="date" name="testDate" class="form-control" required />
+                </div>
             </div>
-            <div class="form-group">
-                <label for="testDate">Test Date <span class="required">*</span></label>
-                <input type="date" id="testDate" name="testDate" class="form-control" required />
-            </div>
-        </div>
 
-        <div class="form-row">
-            <div class="form-group">
-                <label for="maxMarks">Max Marks <span class="required">*</span></label>
-                <input type="number" id="maxMarks" name="maxMarks" class="form-control" required min="1" value="25" />
+            <div class="form-grid">
+                <div class="form-group">
+                    <label class="form-label">Max Marks *</label>
+                    <input type="number" name="maxMarks" class="form-control" required min="1" value="25" />
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Passing Marks *</label>
+                    <input type="number" name="passingMarks" class="form-control" required min="0" value="10" />
+                </div>
             </div>
+
+            <div class="form-grid">
+                <div class="form-group">
+                    <label class="form-label">Topic / Chapter <span style="color:var(--text-muted); font-weight:400;">(optional)</span></label>
+                    <input type="text" name="topic" class="form-control" placeholder="e.g. Chapter 5 – Quadratic Equations" />
+                </div>
+            </div>
+
             <div class="form-group">
-                <label for="passingMarks">Passing Marks <span class="required">*</span></label>
-                <input type="number" id="passingMarks" name="passingMarks" class="form-control" required min="0" value="10" />
+                <label class="form-label">Description <span style="color:var(--text-muted); font-weight:400;">(optional)</span></label>
+                <textarea name="description" class="form-control" rows="3" placeholder="Additional notes about this test…"></textarea>
             </div>
         </div>
+    </div>
 
-        <div class="form-row">
-            <div class="form-group">
-                <label for="topic">Topic / Chapter <span class="text-muted">(optional)</span></label>
-                <input type="text" id="topic" name="topic" class="form-control" placeholder="e.g. Chapter 5 – Quadratic Equations" />
-            </div>
-        </div>
-
-        <div class="form-group">
-            <label for="description">Description <span class="text-muted">(optional)</span></label>
-            <textarea id="description" name="description" class="form-control" rows="3" placeholder="Additional notes about this test…"></textarea>
-        </div>
-
-        <div class="form-actions">
-            <button type="submit" class="btn btn-primary">Create Test & Enter Marks</button>
-            <a href="/teacher/results/class-tests" class="btn btn-ghost">Cancel</a>
-        </div>
-    </form>
-</div>
+    <div style="display:flex; gap:12px; margin-top:4px;">
+        <button type="submit" class="btn btn-primary">Create Test & Enter Marks</button>
+        <a href="/teacher/results/class-tests" class="btn btn-secondary">Cancel</a>
+    </div>
+</form>
 
 <script>
 document.getElementById('sectionSubject').addEventListener('change', function() {

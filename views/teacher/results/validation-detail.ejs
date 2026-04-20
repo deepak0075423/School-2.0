@@ -1,28 +1,33 @@
-
 <div class="page-header">
     <div>
         <h1>🔍 Validate: <%= exam.title %></h1>
         <p><%= exam.section?.class?.className %> – Section <%= exam.section?.sectionName %></p>
     </div>
-    <a href="/teacher/results/validation" class="btn btn-ghost">← Back</a>
+    <a href="/teacher/results/validation" class="btn btn-secondary">← Back</a>
 </div>
 
 <% sheets.forEach(sheet => {
     const sc = exam.subjects.find(s => String(s.subject?._id || s.subject) === String(sheet.subject?._id));
 %>
-<div class="card mb-4">
-    <div class="card-header-row">
+<div class="card" style="margin-bottom:20px;">
+    <div class="card-header">
         <div>
-            <h3 class="card-title mb-0"><%= sheet.subject?.subjectName %></h3>
-            <% if (sc) { %><p class="text-muted text-sm">Max: <%= sc.maxMarks %> | Passing: <%= sc.passingMarks %></p><% } %>
+            <div class="card-title" style="margin-bottom:4px;"><%= sheet.subject?.subjectName %></div>
+            <% if (sc) { %><div style="color:var(--text-muted); font-size:13px;">Max: <%= sc.maxMarks %> | Passing: <%= sc.passingMarks %></div><% } %>
         </div>
-        <span class="badge <%= sheet.status === 'SUBMITTED' ? 'badge-green' : 'badge-yellow' %>"><%= sheet.status %></span>
+        <span class="badge <%= sheet.status === 'SUBMITTED' ? 'badge-green' : 'badge-orange' %>"><%= sheet.status %></span>
     </div>
 
     <div class="table-wrapper">
         <table>
             <thead>
-                <tr><th>Student</th><th>Marks</th><th>Absent</th><th>Grade</th><th>Remarks</th></tr>
+                <tr>
+                    <th>Student</th>
+                    <th style="text-align:center;">Marks</th>
+                    <th style="text-align:center;">Absent</th>
+                    <th style="text-align:center;">Grade</th>
+                    <th>Remarks</th>
+                </tr>
             </thead>
             <tbody>
                 <% sheet.entries.forEach(entry => {
@@ -38,17 +43,17 @@
                 %>
                 <tr>
                     <td class="fw-semibold"><%= stud?.name || entry.student?.name || '—' %></td>
-                    <td class="text-center">
+                    <td style="text-align:center;">
                         <% if (entry.isAbsent) { %><span class="text-muted">AB</span>
                         <% } else if (entry.marksObtained === null || entry.marksObtained === undefined) { %>
                             <span class="badge badge-red">MISSING</span>
                         <% } else { %><strong><%= entry.marksObtained %></strong>/<%= maxM %><% } %>
                     </td>
-                    <td class="text-center"><%= entry.isAbsent ? '✅' : '—' %></td>
-                    <td class="text-center">
+                    <td style="text-align:center;"><%= entry.isAbsent ? '✅' : '—' %></td>
+                    <td style="text-align:center;">
                         <span class="badge <%= grade==='F'||grade==='AB' ? 'badge-red' : grade.startsWith('A') ? 'badge-green' : 'badge-blue' %>"><%= grade %></span>
                     </td>
-                    <td class="text-sm text-muted"><%= entry.remarks || '—' %></td>
+                    <td style="color:var(--text-muted); font-size:13px;"><%= entry.remarks || '—' %></td>
                 </tr>
                 <% }) %>
             </tbody>
@@ -57,32 +62,34 @@
 </div>
 <% }) %>
 
-<!-- Actions -->
 <% if (exam.status === 'SUBMITTED') { %>
 <div class="card">
-    <h3 class="card-title">Validation Actions</h3>
-    <div class="action-btns">
-        <form method="POST" action="/teacher/results/validation/<%= exam._id %>/approve" style="display:inline">
-            <div class="form-group mb-2">
-                <input type="text" name="notes" class="form-control" placeholder="Approval notes (optional)" />
-            </div>
-            <button type="submit" class="btn btn-primary" onclick="return confirm('Approve all marks and send for Admin final approval?')">
-                Approve Marks
-            </button>
-        </form>
-
-        <button class="btn btn-danger" onclick="document.getElementById('rejectPanel').style.display='block'">Reject & Return</button>
+    <div class="card-header">
+        <div class="card-title">Validation Actions</div>
     </div>
+    <div class="card-body">
+        <div style="display:flex; gap:10px; margin-bottom:16px;">
+            <form method="POST" action="/teacher/results/validation/<%= exam._id %>/approve" style="display:inline;">
+                <input type="text" name="notes" class="form-control" style="display:inline-block; width:260px; margin-right:8px;" placeholder="Approval notes (optional)" />
+                <button type="submit" class="btn btn-primary" onclick="return confirm('Approve all marks and send for Admin final approval?')">
+                    Approve Marks
+                </button>
+            </form>
+            <button class="btn btn-danger" onclick="document.getElementById('rejectPanel').style.display='block'">Reject & Return</button>
+        </div>
 
-    <div id="rejectPanel" style="display:none; margin-top:1rem;">
-        <form method="POST" action="/teacher/results/validation/<%= exam._id %>/reject">
-            <div class="form-group">
-                <label>Rejection Reason <span class="required">*</span></label>
-                <textarea name="reason" class="form-control" rows="3" required placeholder="Specify what needs to be corrected…"></textarea>
-            </div>
-            <button type="submit" class="btn btn-danger">Confirm Reject</button>
-            <button type="button" class="btn btn-ghost" onclick="document.getElementById('rejectPanel').style.display='none'">Cancel</button>
-        </form>
+        <div id="rejectPanel" style="display:none; background:#fff5f5; border:1px solid #fca5a5; border-radius:10px; padding:16px;">
+            <form method="POST" action="/teacher/results/validation/<%= exam._id %>/reject">
+                <div class="form-group">
+                    <label class="form-label">Rejection Reason *</label>
+                    <textarea name="reason" class="form-control" rows="3" required placeholder="Specify what needs to be corrected…"></textarea>
+                </div>
+                <div style="display:flex; gap:8px;">
+                    <button type="submit" class="btn btn-danger">Confirm Reject</button>
+                    <button type="button" class="btn btn-secondary" onclick="document.getElementById('rejectPanel').style.display='none'">Cancel</button>
+                </div>
+            </form>
+        </div>
     </div>
 </div>
 <% } %>

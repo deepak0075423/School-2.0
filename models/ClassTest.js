@@ -55,9 +55,8 @@ const ClassTestSchema = new mongoose.Schema({
     updatedAt: { type: Date, default: Date.now },
 });
 
-ClassTestSchema.pre('save', function (next) {
+ClassTestSchema.pre('save', async function () {
     this.updatedAt = new Date();
-    next();
 });
 
 module.exports = mongoose.model('ClassTest', ClassTestSchema);

@@ -1,4 +1,3 @@
-
 <div class="page-header">
     <div>
         <h1>📊 My Results</h1>
@@ -18,17 +17,20 @@
 <% } else { %>
 <% const typeLabel = { MID_TERM: 'Mid Term', FINAL: 'Final', UNIT_TEST: 'Unit Test' }; %>
 <div class="card">
+    <div class="card-header">
+        <div class="card-title">Exam Results (<%= results.length %>)</div>
+    </div>
     <div class="table-wrapper">
         <table>
             <thead>
                 <tr>
                     <th>Exam</th>
                     <th>Type</th>
-                    <th>Total Marks</th>
-                    <th>Percentage</th>
-                    <th>Grade</th>
-                    <th>Rank</th>
-                    <th>Result</th>
+                    <th style="text-align:center;">Total Marks</th>
+                    <th style="text-align:center;">Percentage</th>
+                    <th style="text-align:center;">Grade</th>
+                    <th style="text-align:center;">Rank</th>
+                    <th style="text-align:center;">Result</th>
                     <th>Details</th>
                 </tr>
             </thead>
@@ -37,15 +39,15 @@
                 <tr>
                     <td class="fw-semibold"><%= r.exam?.title %></td>
                     <td><span class="badge badge-blue"><%= typeLabel[r.exam?.examType] || r.exam?.examType %></span></td>
-                    <td class="text-center"><%= r.totalMarks %>/<%= r.totalMaxMarks %></td>
-                    <td class="text-center fw-semibold"><%= r.percentage %>%</td>
-                    <td class="text-center">
+                    <td style="text-align:center;"><%= r.totalMarks %>/<%= r.totalMaxMarks %></td>
+                    <td style="text-align:center; font-weight:600;"><%= r.percentage %>%</td>
+                    <td style="text-align:center;">
                         <span class="badge <%= r.grade==='F' ? 'badge-red' : r.grade.startsWith('A') ? 'badge-green' : 'badge-blue' %>">
                             <%= r.grade %>
                         </span>
                     </td>
-                    <td class="text-center">#<%= r.rank %></td>
-                    <td class="text-center">
+                    <td style="text-align:center;">#<%= r.rank %></td>
+                    <td style="text-align:center;">
                         <span class="badge <%= r.isPassed ? 'badge-green' : 'badge-red' %>">
                             <%= r.isPassed ? 'PASS' : 'FAIL' %>
                         </span>

@@ -1,4 +1,3 @@
-
 <div class="page-header">
     <div>
         <h1>📝 Child Class Test Results</h1>
@@ -17,10 +16,12 @@
 </div>
 <% } else { %>
 <% allTests.forEach(({ child, tests }) => { %>
-<div class="card mb-4">
-    <h3 class="card-title">👦 <%= child.name %></h3>
+<div class="card" style="margin-bottom:20px;">
+    <div class="card-header">
+        <div class="card-title">👦 <%= child.name %></div>
+    </div>
     <% if (!tests || tests.length === 0) { %>
-        <p class="text-muted p-3">No approved class tests yet.</p>
+        <div class="card-body" style="color:var(--text-muted);">No approved class tests yet.</div>
     <% } else { %>
     <div class="table-wrapper">
         <table>
@@ -29,8 +30,8 @@
                     <th>Test</th>
                     <th>Subject</th>
                     <th>Date</th>
-                    <th>Marks</th>
-                    <th>Grade</th>
+                    <th style="text-align:center;">Marks</th>
+                    <th style="text-align:center;">Grade</th>
                 </tr>
             </thead>
             <tbody>
@@ -38,16 +39,16 @@
                 <tr>
                     <td class="fw-semibold"><%= t.test.title %></td>
                     <td><%= t.test.subject?.subjectName %></td>
-                    <td class="text-sm"><%= new Date(t.test.testDate).toLocaleDateString('en-IN') %></td>
-                    <td class="text-center">
+                    <td style="font-size:13px; color:var(--text-muted);"><%= new Date(t.test.testDate).toLocaleDateString('en-IN') %></td>
+                    <td style="text-align:center;">
                         <% if (t.isAbsent) { %><span class="badge badge-orange">Absent</span>
                         <% } else if (t.marks === null) { %><span class="text-muted">—</span>
                         <% } else { %><strong><%= t.marks %></strong>/<%= t.test.maxMarks %>
                         <% } %>
                     </td>
-                    <td class="text-center">
+                    <td style="text-align:center;">
                         <% const g = t.grade || '—'; %>
-                        <span class="badge <%= g==='F'||g==='AB' ? 'badge-red' : g.startsWith('A') ? 'badge-green' : g==='—' ? '' : 'badge-blue' %>"><%= g %></span>
+                        <span class="badge <%= g==='F'||g==='AB' ? 'badge-red' : g.startsWith('A') ? 'badge-green' : g==='—' ? 'badge-gray' : 'badge-blue' %>"><%= g %></span>
                     </td>
                 </tr>
                 <% }) %>
