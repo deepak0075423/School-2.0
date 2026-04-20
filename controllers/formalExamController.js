@@ -11,6 +11,19 @@ const User            = require('../models/User');
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
+// Fills assignedTeachers array for legacy exam docs that only have assignedTeacher (single)
+async function enrichExamTeachers(exam) {
+    const sectionId = exam.section._id || exam.section;
+    for (const sc of exam.subjects) {
+        if (!sc.assignedTeachers || sc.assignedTeachers.length === 0) {
+            const subjectId = sc.subject._id || sc.subject;
+            const ssts = await SectionSubjectTeacher.find({ section: sectionId, subject: subjectId })
+                .populate('teacher', 'name').lean();
+            sc.assignedTeachers = ssts.map(s => s.teacher).filter(Boolean);
+        }
+    }
+}
+
 function calcGrade(percentage) {
     if (percentage >= 90) return 'A+';
     if (percentage >= 80) return 'A';
@@ -133,18 +146,20 @@ exports.adminGetExams = async (req, res) => {
         if (academicYearId) filter.academicYear = academicYearId;
         if (sectionId)      filter.section = sectionId;
 
-        const [exams, academicYears, sections] = await Promise.all([
-            FormalExam.find(filter)
-                .populate('section', 'sectionName class')
-                .populate({ path: 'section', populate: { path: 'class', select: 'className classNumber' } })
-                .populate('academicYear', 'yearName')
-                .populate('createdBy', 'name')
-                .sort({ createdAt: -1 }),
-            AcademicYear.find({ school }).sort({ createdAt: -1 }),
-            ClassSection.find({ school, status: 'active' })
-                .populate('class', 'className classNumber')
-                .sort({ sectionName: 1 }),
-        ]);
+        const academicYears = await AcademicYear.find({ school }).sort({ createdAt: -1 });
+        const currentAY = academicYears.find(y => y.status === 'active') || academicYears[0];
+
+        // Sections filter dropdown: only current academic year, sorted Class 1-A style
+        let sections = await ClassSection.find({ school, status: 'active', ...(currentAY ? { academicYear: currentAY._id } : {}) })
+            .populate('class', 'className classNumber')
+            .lean();
+        sections.sort((a, b) => (a.class?.classNumber - b.class?.classNumber) || a.sectionName.localeCompare(b.sectionName));
+
+        const exams = await FormalExam.find(filter)
+            .populate({ path: 'section', populate: { path: 'class', select: 'className classNumber' } })
+            .populate('academicYear', 'yearName')
+            .populate('createdBy', 'name')
+            .sort({ createdAt: -1 });
 
         res.render('admin/results/exams/index', {
             title: 'Formal Exams',
@@ -164,13 +179,17 @@ exports.adminGetExams = async (req, res) => {
 exports.adminGetCreateExam = async (req, res) => {
     try {
         const school = req.user.school._id;
-        const [academicYears, sections] = await Promise.all([
-            AcademicYear.find({ school, status: 'active' }).sort({ createdAt: -1 }),
-            ClassSection.find({ school, status: 'active' })
-                .populate('class', 'className classNumber')
-                .sort({ sectionName: 1 }),
-        ]);
+        const academicYears = await AcademicYear.find({ school, status: 'active' }).sort({ createdAt: -1 });
         const currentAcademicYear = academicYears[0] || null;
+
+        let sections = [];
+        if (currentAcademicYear) {
+            sections = await ClassSection.find({ school, status: 'active', academicYear: currentAcademicYear._id })
+                .populate('class', 'className classNumber')
+                .lean();
+            sections.sort((a, b) => (a.class?.classNumber - b.class?.classNumber) || a.sectionName.localeCompare(b.sectionName));
+        }
+
         res.render('admin/results/exams/create', {
             title: 'Create Formal Exam',
             layout: 'layouts/main',
@@ -249,16 +268,16 @@ exports.adminPostCreateExam = async (req, res) => {
 
         // Resolve assigned teachers from SectionSubjectTeacher
         const subjectConfigs = await Promise.all(subjectArr.map(async (s, idx) => {
-            const sst = await SectionSubjectTeacher.findOne({ section: sectionId, subject: s.subjectId });
+            const ssts = await SectionSubjectTeacher.find({ section: sectionId, subject: s.subjectId });
             return {
-                subject:         s.subjectId,
-                maxMarks:        parseInt(s.maxMarks),
-                passingMarks:    parseInt(s.passingMarks),
-                assignedTeacher: sst ? sst.teacher : null,
-                examDate:        s.examDate ? new Date(s.examDate) : null,
-                startTime:       s.startTime || '',
-                endTime:         s.endTime   || '',
-                order:           parseInt(s.order ?? idx),
+                subject:          s.subjectId,
+                maxMarks:         parseInt(s.maxMarks),
+                passingMarks:     parseInt(s.passingMarks),
+                assignedTeachers: ssts.map(t => t.teacher).filter(Boolean),
+                examDate:         s.examDate ? new Date(s.examDate) : null,
+                startTime:        s.startTime || '',
+                endTime:          s.endTime   || '',
+                order:            parseInt(s.order ?? idx),
             };
         }));
 
@@ -304,6 +323,28 @@ exports.adminPostCreateExam = async (req, res) => {
     }
 };
 
+// POST /admin/results/exams/:id/delete
+exports.adminDeleteExam = async (req, res) => {
+    try {
+        const school = req.user.school._id;
+        const exam = await FormalExam.findOne({ _id: req.params.id, school });
+        if (!exam) { req.flash('error', 'Exam not found.'); return res.redirect('/admin/results/exams'); }
+
+        await Promise.all([
+            ExamMarksSheet.deleteMany({ exam: exam._id }),
+            FormalResult.deleteMany({ exam: exam._id }),
+            FormalExam.deleteOne({ _id: exam._id }),
+        ]);
+
+        req.flash('success', `Exam "${exam.title}" deleted successfully.`);
+        res.redirect('/admin/results/exams');
+    } catch (err) {
+        console.error(err);
+        req.flash('error', 'Failed to delete exam: ' + err.message);
+        res.redirect('/admin/results/exams');
+    }
+};
+
 // GET /admin/results/exams/:id/edit
 exports.adminGetEditExam = async (req, res) => {
     try {
@@ -322,15 +363,29 @@ exports.adminGetEditExam = async (req, res) => {
             return res.redirect(`/admin/results/exams/${exam._id}`);
         }
 
-        const [allSubjects, currentAcademicYear] = await Promise.all([
-            Subject.find({ school }).sort({ subjectName: 1 }),
+        const [ssts, currentAcademicYear] = await Promise.all([
+            SectionSubjectTeacher.find({ section: exam.section })
+                .populate('subject', 'subjectName')
+                .populate('teacher', 'name')
+                .lean(),
             AcademicYear.findById(exam.academicYear),
         ]);
+
+        // Group by subject — one entry per subject with all teachers
+        const subjectMap = {};
+        for (const s of ssts) {
+            if (!s.subject) continue;
+            const id = String(s.subject._id);
+            if (!subjectMap[id]) subjectMap[id] = { subjectId: s.subject._id, subjectName: s.subject.subjectName, teachers: [] };
+            if (s.teacher) subjectMap[id].teachers.push(s.teacher.name);
+        }
+        const sectionSubjects = Object.values(subjectMap)
+            .sort((a, b) => a.subjectName.localeCompare(b.subjectName));
 
         res.render('admin/results/exams/edit', {
             title: `Edit Exam — ${exam.title}`,
             layout: 'layouts/main',
-            exam, allSubjects, currentAcademicYear,
+            exam, sectionSubjects, currentAcademicYear,
         });
     } catch (err) {
         console.error(err);
@@ -381,16 +436,16 @@ exports.adminPostEditExam = async (req, res) => {
         }
 
         const subjectConfigs = await Promise.all(subjectArr.map(async (s, idx) => {
-            const sst = await SectionSubjectTeacher.findOne({ section: exam.section, subject: s.subjectId });
+            const ssts = await SectionSubjectTeacher.find({ section: exam.section, subject: s.subjectId });
             return {
-                subject:         s.subjectId,
-                maxMarks:        parseInt(s.maxMarks),
-                passingMarks:    parseInt(s.passingMarks),
-                assignedTeacher: sst ? sst.teacher : null,
-                examDate:        s.examDate ? new Date(s.examDate) : null,
-                startTime:       s.startTime || '',
-                endTime:         s.endTime   || '',
-                order:           parseInt(s.order ?? idx),
+                subject:          s.subjectId,
+                maxMarks:         parseInt(s.maxMarks),
+                passingMarks:     parseInt(s.passingMarks),
+                assignedTeachers: ssts.map(t => t.teacher).filter(Boolean),
+                examDate:         s.examDate ? new Date(s.examDate) : null,
+                startTime:        s.startTime || '',
+                endTime:          s.endTime   || '',
+                order:            parseInt(s.order ?? idx),
             };
         }));
         subjectConfigs.sort((a, b) => a.order - b.order);
@@ -440,7 +495,7 @@ exports.adminGetExamDetail = async (req, res) => {
             .populate({ path: 'section', populate: { path: 'class', select: 'className classNumber' } })
             .populate('academicYear', 'yearName')
             .populate('subjects.subject', 'subjectName subjectCode')
-            .populate('subjects.assignedTeacher', 'name')
+            .populate('subjects.assignedTeachers', 'name')
             .populate('createdBy', 'name')
             .populate('classApprovedBy', 'name')
             .populate('finalApprovedBy', 'name');
@@ -449,6 +504,8 @@ exports.adminGetExamDetail = async (req, res) => {
             req.flash('error', 'Exam not found.');
             return res.redirect('/admin/results/exams');
         }
+
+        await enrichExamTeachers(exam);
 
         const sheets = await ExamMarksSheet.find({ exam: exam._id })
             .populate('submittedBy', 'name')
@@ -476,7 +533,7 @@ exports.adminGetMarksReview = async (req, res) => {
     try {
         const exam = await FormalExam.findById(req.params.id)
             .populate('subjects.subject', 'subjectName subjectCode')
-            .populate('subjects.assignedTeacher', 'name');
+            .populate('subjects.assignedTeachers', 'name');
 
         if (!exam || String(exam.school) !== String(req.user.school._id)) {
             req.flash('error', 'Exam not found.');
@@ -663,21 +720,29 @@ exports.adminGetResult = async (req, res) => {
 exports.adminApiSectionSubjects = async (req, res) => {
     try {
         const { sectionId } = req.params;
-        const school = req.user.school._id;
+        const ssts = await SectionSubjectTeacher.find({ section: sectionId })
+            .populate('subject', 'subjectName')
+            .populate('teacher', 'name')
+            .lean();
 
-        const [allSubjects, ssts] = await Promise.all([
-            Subject.find({ school }).sort({ subjectName: 1 }),
-            SectionSubjectTeacher.find({ section: sectionId }).populate('subject', '_id').populate('teacher', 'name'),
-        ]);
+        // Group by subject — one entry per subject, all teachers combined
+        const map = {};
+        for (const s of ssts) {
+            if (!s.subject) continue;
+            const id = String(s.subject._id);
+            if (!map[id]) {
+                map[id] = { subjectId: s.subject._id, subjectName: s.subject.subjectName, teachers: [] };
+            }
+            if (s.teacher) map[id].teachers.push(s.teacher.name);
+        }
 
-        const teacherMap = {};
-        ssts.forEach(s => { teacherMap[String(s.subject._id)] = s.teacher ? s.teacher.name : null; });
-
-        const result = allSubjects.map(sub => ({
-            subjectId:   sub._id,
-            subjectName: sub.subjectName,
-            teacherName: teacherMap[String(sub._id)] || '—',
-        }));
+        const result = Object.values(map)
+            .map(s => ({
+                subjectId:   s.subjectId,
+                subjectName: s.subjectName,
+                teacherName: s.teachers.length ? s.teachers.join(', ') : '—',
+            }))
+            .sort((a, b) => a.subjectName.localeCompare(b.subjectName));
 
         res.json(result);
     } catch (err) {
@@ -707,9 +772,23 @@ exports.teacherGetMarksEntry = async (req, res) => {
             .populate('subjects.subject', 'subjectName')
             .sort({ createdAt: -1 });
 
-        // Annotate with subject this teacher can fill
+        // Enrich teachers for legacy docs
+        for (const exam of exams) await enrichExamTeachers(exam);
+
+        // Load all sheets for these exams to get per-subject status
+        const examIds = exams.map(e => e._id);
+        const allSheets = await ExamMarksSheet.find({ exam: { $in: examIds } }).lean();
+
         const enrichedExams = exams.map(exam => {
-            const mySubjects = exam.subjects.filter(sc => String(sc.assignedTeacher) === String(teacherId));
+            const mySubjects = exam.subjects
+                .filter(sc => sc.assignedTeachers?.some(t => String(t?._id || t) === String(teacherId)))
+                .map(sc => {
+                    const subId = String(sc.subject?._id || sc.subject);
+                    const sheet = allSheets.find(s => String(s.exam) === String(exam._id) && String(s.subject) === subId);
+                    const scObj = sc.toObject ? sc.toObject() : { ...sc };
+                    scObj.sheetStatus = sheet ? sheet.status : 'DRAFT';
+                    return scObj;
+                });
             return { exam, mySubjects };
         }).filter(e => e.mySubjects.length > 0);
 
@@ -733,6 +812,7 @@ exports.teacherGetMarksForm = async (req, res) => {
 
         const exam = await FormalExam.findById(examId)
             .populate('subjects.subject', 'subjectName subjectCode')
+            .populate('subjects.assignedTeachers', 'name')
             .populate('section');
 
         if (!exam || exam.status === 'FINAL_APPROVED') {
@@ -740,7 +820,8 @@ exports.teacherGetMarksForm = async (req, res) => {
             return res.redirect('/teacher/results/marks-entry');
         }
 
-        const subConf = exam.subjects.find(s => String(s.subject._id) === String(subjectId) && String(s.assignedTeacher) === String(teacherId));
+        await enrichExamTeachers(exam);
+        const subConf = exam.subjects.find(s => String(s.subject._id) === String(subjectId) && s.assignedTeachers?.some(t => String(t?._id || t) === String(teacherId)));
         if (!subConf) {
             req.flash('error', 'Not authorized for this subject.');
             return res.redirect('/teacher/results/marks-entry');
@@ -761,10 +842,12 @@ exports.teacherGetMarksForm = async (req, res) => {
             };
         });
 
+        const isReadOnly = sheet && sheet.status === 'SUBMITTED';
+
         res.render('teacher/results/marks-form', {
             title: `Enter Marks: ${subConf.subject.subjectName}`,
             layout: 'layouts/main',
-            exam, subConf, sheet, entries,
+            exam, subConf, sheet, entries, isReadOnly,
         });
     } catch (err) {
         console.error(err);
@@ -778,7 +861,7 @@ exports.teacherPostSaveMarks = async (req, res) => {
     try {
         const { examId, subjectId } = req.params;
         const teacherId = req.user._id;
-        const { entries, submit } = req.body;
+        const { entries, submitFlag: submit } = req.body;
 
         const exam = await FormalExam.findById(examId);
         if (!exam || exam.status === 'FINAL_APPROVED') {
@@ -786,7 +869,8 @@ exports.teacherPostSaveMarks = async (req, res) => {
             return res.redirect('/teacher/results/marks-entry');
         }
 
-        const subConf = exam.subjects.find(s => String(s.subject) === String(subjectId) && String(s.assignedTeacher) === String(teacherId));
+        await enrichExamTeachers(exam);
+        const subConf = exam.subjects.find(s => String(s.subject) === String(subjectId) && s.assignedTeachers?.some(t => String(t?._id || t) === String(teacherId)));
         if (!subConf) {
             req.flash('error', 'Not authorized.');
             return res.redirect('/teacher/results/marks-entry');
@@ -798,7 +882,28 @@ exports.teacherPostSaveMarks = async (req, res) => {
             return res.redirect('/teacher/results/marks-entry');
         }
 
+        if (sheet.status === 'SUBMITTED') {
+            req.flash('error', 'Marks already submitted. Contact class teacher to reject if corrections are needed.');
+            return res.redirect('/teacher/results/marks-entry');
+        }
+
         const entryArr = Array.isArray(entries) ? entries : [entries];
+
+        // Validate marks don't exceed max
+        for (const e of entryArr) {
+            if (e.isAbsent !== 'on') {
+                const m = parseFloat(e.marks);
+                if (!isNaN(m) && m > subConf.maxMarks) {
+                    req.flash('error', `Marks cannot exceed the maximum (${subConf.maxMarks}).`);
+                    return res.redirect(`/teacher/results/marks-entry/${examId}/${subjectId}`);
+                }
+                if (!isNaN(m) && m < 0) {
+                    req.flash('error', 'Marks cannot be negative.');
+                    return res.redirect(`/teacher/results/marks-entry/${examId}/${subjectId}`);
+                }
+            }
+        }
+
         sheet.entries = entryArr.map(e => ({
             student:       e.studentId,
             marksObtained: e.isAbsent === 'on' ? null : parseFloat(e.marks),
@@ -847,7 +952,7 @@ exports.teacherGetValidation = async (req, res) => {
 
         const exams = await FormalExam.find({
             section: { $in: sectionIds },
-            status: { $in: ['SUBMITTED', 'REJECTED'] },
+            status: { $in: ['MARKS_PENDING', 'SUBMITTED', 'REJECTED', 'REOPENED'] },
         })
             .populate('section')
             .populate({ path: 'section', populate: { path: 'class', select: 'className' } })
@@ -873,7 +978,7 @@ exports.teacherGetValidationDetail = async (req, res) => {
         const teacherId = req.user._id;
         const exam = await FormalExam.findById(req.params.examId)
             .populate('subjects.subject', 'subjectName subjectCode')
-            .populate('subjects.assignedTeacher', 'name')
+            .populate('subjects.assignedTeachers', 'name')
             .populate('section');
 
         const section = await ClassSection.findById(exam.section._id);

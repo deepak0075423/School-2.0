@@ -7,6 +7,18 @@
     <a href="/teacher/results/marks-entry" class="btn btn-secondary">← Back</a>
 </div>
 
+<% if (isReadOnly) { %>
+<div class="card" style="margin-bottom:16px;">
+    <div style="padding:14px 18px; background:#f0fdf4; border-radius:10px; display:flex; align-items:center; gap:10px;">
+        <span style="font-size:20px;">✅</span>
+        <div>
+            <strong>Marks Submitted</strong>
+            <div style="color:var(--text-muted); font-size:13px;">These marks have been submitted for class teacher validation. No further edits are allowed.</div>
+        </div>
+    </div>
+</div>
+<% } %>
+
 <div class="card">
     <form method="POST" action="/teacher/results/marks-entry/<%= exam._id %>/<%= subConf.subject?._id || subConf.subject %>/save" id="marksForm">
         <div class="table-wrapper">
@@ -39,7 +51,7 @@
                                 step="0.5"
                                 data-max="<%= subConf.maxMarks %>"
                                 data-row="<%= i %>"
-                                <%= entry.isAbsent ? 'disabled' : '' %>
+                                <%= (entry.isAbsent || isReadOnly) ? 'disabled' : '' %>
                             />
                         </td>
                         <td style="text-align:center;">
@@ -49,6 +61,7 @@
                                 class="absent-cb"
                                 data-row="<%= i %>"
                                 <%= entry.isAbsent ? 'checked' : '' %>
+                                <%= isReadOnly ? 'disabled' : '' %>
                             />
                         </td>
                         <td>
@@ -61,10 +74,12 @@
         </div>
 
         <div style="display:flex; gap:10px; margin-top:20px; padding:0 16px 16px;">
-            <input type="hidden" name="submit" id="submitFlag" value="0" />
+            <% if (!isReadOnly) { %>
+            <input type="hidden" name="submitFlag" id="submitFlag" value="0" />
             <button type="button" class="btn btn-secondary" onclick="saveMarks(0)">Save Draft</button>
             <button type="button" class="btn btn-primary" onclick="saveMarks(1)">Submit for Validation</button>
-            <a href="/teacher/results/marks-entry" class="btn btn-secondary">Cancel</a>
+            <% } %>
+            <a href="/teacher/results/marks-entry" class="btn btn-secondary"><%= isReadOnly ? '← Back' : 'Cancel' %></a>
         </div>
     </form>
 </div>
@@ -96,6 +111,21 @@ document.querySelectorAll('.marks-input').forEach(inp => {
 });
 
 function saveMarks(submit) {
+    let valid = true;
+    document.querySelectorAll('.marks-input:not([disabled])').forEach(inp => {
+        const val = parseFloat(inp.value);
+        const max = parseFloat(inp.dataset.max);
+        if (inp.value !== '' && (val < 0 || val > max)) {
+            inp.style.borderColor = 'var(--danger)';
+            valid = false;
+        } else {
+            inp.style.borderColor = '';
+        }
+    });
+    if (!valid) {
+        alert('Some marks exceed the maximum allowed. Please correct them before saving.');
+        return;
+    }
     document.getElementById('submitFlag').value = submit;
     document.getElementById('marksForm').submit();
 }

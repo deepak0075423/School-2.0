@@ -5,7 +5,7 @@ const fmtDate = d => d ? new Date(d).toISOString().split('T')[0] : '';
 <div class="page-header">
     <div>
         <h1>✏️ Edit Exam</h1>
-        <p><%= exam.section?.class?.className %> – Section <%= exam.section?.sectionName %> &nbsp;|&nbsp; <%= exam.academicYear?.yearName %></p>
+        <p>Class <%= exam.section?.class?.classNumber %> - <%= exam.section?.sectionName %> &nbsp;|&nbsp; <%= exam.academicYear?.yearName %></p>
     </div>
     <a href="/admin/results/exams/<%= exam._id %>" class="btn btn-secondary">← Back</a>
 </div>
@@ -38,7 +38,7 @@ const fmtDate = d => d ? new Date(d).toISOString().split('T')[0] : '';
                 </div>
                 <div class="form-group">
                     <label class="form-label">Class & Section</label>
-                    <input type="text" class="form-control" value="<%= exam.section?.class?.className %> – Section <%= exam.section?.sectionName %>" disabled style="background:#f3f4f6; cursor:not-allowed;" />
+                    <input type="text" class="form-control" value="Class <%= exam.section?.class?.classNumber %> - <%= exam.section?.sectionName %>" disabled style="background:#f3f4f6; cursor:not-allowed;" />
                 </div>
             </div>
             <div class="form-grid-3">
@@ -68,17 +68,27 @@ const fmtDate = d => d ? new Date(d).toISOString().split('T')[0] : '';
         </div>
         <div class="form-section-body">
             <p style="color:var(--text-muted); font-size:13px; margin-bottom:14px;">Check subjects to include in this exam.</p>
-            <div style="display:grid; grid-template-columns:repeat(auto-fill,minmax(220px,1fr)); gap:10px;" id="subjectPicker">
-                <% allSubjects.forEach(sub => { %>
-                <label id="card-<%= sub._id %>" style="display:flex; align-items:center; gap:10px; padding:10px 14px; border:1px solid var(--border); border-radius:8px; cursor:pointer; background:#fff; transition:border-color .15s;">
-                    <input type="checkbox" class="sub-check" data-id="<%= sub._id %>" data-name="<%= sub.subjectName %>"
-                           onchange="onSubjectToggle(this)" style="width:16px;height:16px;accent-color:var(--primary);flex-shrink:0;" />
+            <% if (!sectionSubjects || sectionSubjects.length === 0) { %>
+            <div class="alert alert-error" style="margin:0;">No subjects assigned to this section. Please assign subject teachers under Sections → Subject Teachers first.</div>
+            <% } else { %>
+            <div style="display:grid; grid-template-columns:repeat(auto-fill,minmax(240px,1fr)); gap:10px;" id="subjectPicker">
+                <% sectionSubjects.forEach(sub => { %>
+                <label id="card-<%= sub.subjectId %>" style="display:flex; align-items:flex-start; gap:10px; padding:12px 14px; border:1px solid var(--border); border-radius:8px; cursor:pointer; background:#fff; transition:border-color .15s;">
+                    <input type="checkbox" class="sub-check" data-id="<%= sub.subjectId %>" data-name="<%= sub.subjectName %>" data-teacher="<%= sub.teachers.join(', ') %>"
+                           onchange="onSubjectToggle(this)" style="width:16px;height:16px;accent-color:var(--primary);flex-shrink:0;margin-top:2px;" />
                     <div>
                         <div style="font-weight:600; font-size:14px;"><%= sub.subjectName %></div>
+                        <div style="font-size:12px; color:var(--text-muted); margin-top:3px;">
+                            <% sub.teachers.forEach((t, i) => { %>
+                                <span style="display:inline-block;">👤 <%= t %></span><% if (i < sub.teachers.length - 1) { %><br><% } %>
+                            <% }) %>
+                            <% if (!sub.teachers.length) { %><span>No teacher assigned</span><% } %>
+                        </div>
                     </div>
                 </label>
                 <% }) %>
             </div>
+            <% } %>
             <div style="margin-top:12px; display:flex; gap:10px;">
                 <button type="button" class="btn btn-secondary btn-sm" onclick="selectAll()">Select All</button>
                 <button type="button" class="btn btn-secondary btn-sm" onclick="clearAll()">Clear All</button>
@@ -134,7 +144,7 @@ const dateError     = document.getElementById('dateError');
 startDateEl.min = todayStr;
 
 // Pre-existing exam data from server
-const allSubjects = <%- JSON.stringify(allSubjects.map(s => ({ subjectId: s._id, subjectName: s.subjectName }))) %>;
+const allSubjects = <%- JSON.stringify(sectionSubjects.map(s => ({ subjectId: String(s.subjectId), subjectName: s.subjectName, teacherName: s.teachers.join(', ') || '—' }))) %>;
 const existingSubjects = <%- JSON.stringify(exam.subjects.map(s => ({
     subjectId: String(s.subject?._id || s.subject),
     subjectName: s.subject?.subjectName || '',
@@ -161,10 +171,9 @@ existingSubjects.forEach(s => {
     };
 });
 
-// Init checkbox states
+// Init checkbox states — match on string IDs
 document.querySelectorAll('.sub-check').forEach(cb => {
-    const id = cb.dataset.id;
-    if (selectedSubjects.includes(id)) {
+    if (selectedSubjects.includes(String(cb.dataset.id))) {
         cb.checked = true;
         styleCard(cb, true);
     }
@@ -313,6 +322,7 @@ function renderSchedule() {
             </div>
             <div>
                 <div class="sub-label" style="font-weight:600; font-size:14px;">${sub.subjectName}</div>
+                <div style="font-size:12px; color:var(--text-muted); margin-top:2px;">${sub.teacherName || '—'}</div>
                 <input type="hidden" name="subjects[${idx}][subjectId]" value="${id}" />
                 <input type="hidden" name="subjects[${idx}][order]"     value="${idx}" />
             </div>

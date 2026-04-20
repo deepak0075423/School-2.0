@@ -11,7 +11,7 @@ const subjectConfigSchema = new mongoose.Schema({
     subject:        { type: mongoose.Schema.Types.ObjectId, ref: 'Subject', required: true },
     maxMarks:       { type: Number, required: true, min: 1 },
     passingMarks:   { type: Number, required: true, min: 0 },
-    assignedTeacher:{ type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
+    assignedTeachers:[{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
     examDate:       { type: Date,   default: null },
     startTime:      { type: String, default: '' },
     endTime:        { type: String, default: '' },

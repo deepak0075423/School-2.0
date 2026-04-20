@@ -115,6 +115,7 @@ router.get('/results/exams/create',                       resultGuard, formalExa
 router.post('/results/exams/create',                      resultGuard, formalExamCtrl.adminPostCreateExam);
 router.get('/results/exams/:id/edit',                     resultGuard, formalExamCtrl.adminGetEditExam);
 router.post('/results/exams/:id/edit',                    resultGuard, formalExamCtrl.adminPostEditExam);
+router.post('/results/exams/:id/delete',                  resultGuard, formalExamCtrl.adminDeleteExam);
 router.get('/results/exams/:id',                          resultGuard, formalExamCtrl.adminGetExamDetail);
 router.get('/results/exams/:id/marks-review',             resultGuard, formalExamCtrl.adminGetMarksReview);
 router.post('/results/exams/:id/approve',                 resultGuard, formalExamCtrl.adminPostApproveExam);

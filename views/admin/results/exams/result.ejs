@@ -1,7 +1,7 @@
 <div class="page-header">
     <div>
         <h1>📊 Results: <%= exam.title %></h1>
-        <p><%= exam.section?.class?.className %> – Section <%= exam.section?.sectionName %> &nbsp;|&nbsp; <%= exam.academicYear?.yearName %></p>
+        <p>Class <%= exam.section?.class?.classNumber %> - <%= exam.section?.sectionName %> &nbsp;|&nbsp; <%= exam.academicYear?.yearName %></p>
     </div>
     <a href="/admin/results/exams/<%= exam._id %>" class="btn btn-secondary">← Back</a>
 </div>

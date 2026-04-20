@@ -28,7 +28,7 @@
                         <option value="">All Sections</option>
                         <% sections.forEach(s => { %>
                             <option value="<%= s._id %>" <%= selectedSection === String(s._id) ? 'selected' : '' %>>
-                                <%= s.class?.className %> – Section <%= s.sectionName %>
+                                Class <%= s.class?.classNumber %> - <%= s.sectionName %>
                             </option>
                         <% }) %>
                     </select>
@@ -83,7 +83,7 @@ const typeLabel = { MID_TERM:'Mid Term', FINAL:'Final Exam', UNIT_TEST:'Unit Tes
                 <tr>
                     <td class="fw-semibold"><%= exam.title %></td>
                     <td><span class="badge badge-blue"><%= typeLabel[exam.examType] || exam.examType %></span></td>
-                    <td><%= exam.section?.class?.className %> – <%= exam.section?.sectionName %></td>
+                    <td>Class <%= exam.section?.class?.classNumber %> - <%= exam.section?.sectionName %></td>
                     <td><%= exam.academicYear?.yearName %></td>
                     <td style="font-size:12px; color:var(--text-muted);">
                         <%= new Date(exam.startDate).toLocaleDateString('en-IN') %> –
@@ -107,6 +107,12 @@ const typeLabel = { MID_TERM:'Mid Term', FINAL:'Final Exam', UNIT_TEST:'Unit Tes
                             <% if (exam.resultsGenerated) { %>
                                 <a href="/admin/results/exams/<%= exam._id %>/result" class="btn btn-secondary btn-sm">Results</a>
                             <% } %>
+                            <form method="POST" action="/admin/results/exams/<%= exam._id %>/delete" style="display:inline;">
+                                <button type="submit" class="btn btn-danger btn-sm"
+                                    onclick="return confirm('Delete \'<%= exam.title %>\'? All marks and results will be permanently removed.')">
+                                    Delete
+                                </button>
+                            </form>
                         </div>
                     </td>
                 </tr>

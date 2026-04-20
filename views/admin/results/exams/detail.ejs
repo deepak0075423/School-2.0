@@ -12,7 +12,7 @@ const typeLabel = { MID_TERM:'Mid Term', FINAL:'Final Exam', UNIT_TEST:'Unit Tes
         <h1>📋 <%= exam.title %></h1>
         <p>
             <span class="badge badge-blue"><%= typeLabel[exam.examType] %></span>
-            &nbsp; <%= exam.section?.class?.className %> – Section <%= exam.section?.sectionName %>
+            &nbsp; Class <%= exam.section?.class?.classNumber %> - <%= exam.section?.sectionName %>
             &nbsp;·&nbsp; <%= exam.academicYear?.yearName %>
         </p>
     </div>
@@ -27,6 +27,12 @@ const typeLabel = { MID_TERM:'Mid Term', FINAL:'Final Exam', UNIT_TEST:'Unit Tes
         <% if (exam.resultsGenerated) { %>
             <a href="/admin/results/exams/<%= exam._id %>/result" class="btn btn-secondary">View Results</a>
         <% } %>
+        <form method="POST" action="/admin/results/exams/<%= exam._id %>/delete" style="display:inline;">
+            <button type="submit" class="btn btn-danger"
+                onclick="return confirm('Delete \'<%= exam.title %>\'? This will permanently remove all marks sheets and results. This cannot be undone.')">
+                🗑 Delete
+            </button>
+        </form>
     </div>
 </div>
 
@@ -106,7 +112,7 @@ const typeLabel = { MID_TERM:'Mid Term', FINAL:'Final Exam', UNIT_TEST:'Unit Tes
                 %>
                 <tr>
                     <td class="fw-semibold"><%= sc.subject?.subjectName || '—' %></td>
-                    <td><%= sc.assignedTeacher?.name || '—' %></td>
+                    <td><%= sc.assignedTeachers?.length ? sc.assignedTeachers.map(t => t.name).join(', ') : '—' %></td>
                     <td style="text-align:center;"><%= sc.maxMarks %></td>
                     <td style="text-align:center;"><%= sc.passingMarks %></td>
                     <td>

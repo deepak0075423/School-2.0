@@ -42,7 +42,7 @@
                     <select id="sectionId" name="sectionId" class="form-control" required>
                         <option value="">— Select Section —</option>
                         <% sections.forEach(s => { %>
-                            <option value="<%= s._id %>"><%= s.class?.className %> – Section <%= s.sectionName %></option>
+                            <option value="<%= s._id %>">Class <%= s.class?.classNumber %> - <%= s.sectionName %></option>
                         <% }) %>
                     </select>
                 </div>
@@ -231,7 +231,7 @@ loadBtn.addEventListener('click', async () => {
 function renderPicker() {
     const cont = document.getElementById('subjectPickerContainer');
     if (!allSubjects.length) {
-        cont.innerHTML = '<div class="alert alert-error" style="margin:0;">No subjects found. Please create subjects first.</div>';
+        cont.innerHTML = '<div class="alert alert-error" style="margin:0;">No subjects assigned to this section yet. Please assign subject teachers under Sections → Subject Teachers first.</div>';
         return;
     }
     cont.innerHTML = `
