@@ -54,6 +54,7 @@ const statusBadge = {
                                 <a href="/teacher/results/class-tests/<%= test._id %>/marks" class="btn btn-sm btn-primary">Enter Marks</a>
                             <% } %>
                             <% if (test.status === 'FINAL_APPROVED') { %>
+                                <a href="/teacher/results/class-tests/<%= test._id %>/marks" class="btn btn-sm btn-secondary">View Marks</a>
                                 <form method="POST" action="/teacher/results/class-tests/<%= test._id %>/reopen" style="display:inline;">
                                     <button type="submit" class="btn btn-sm btn-warning" onclick="return confirm('Reopen this test for correction?')">Reopen</button>
                                 </form>

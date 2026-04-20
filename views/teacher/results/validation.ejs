@@ -14,11 +14,11 @@
     </div>
 </div>
 <% } else { %>
-<% const statusBadge = { SUBMITTED:'badge-blue', REJECTED:'badge-red' }; %>
+<% const statusBadge = { MARKS_PENDING:'badge-orange', SUBMITTED:'badge-blue', REJECTED:'badge-red', REOPENED:'badge-orange', CLASS_APPROVED:'badge-purple', FINAL_APPROVED:'badge-green' }; %>
 <% const typeLabel = { MID_TERM: 'Mid Term', FINAL: 'Final', UNIT_TEST: 'Unit Test' }; %>
 <div class="card">
     <div class="card-header">
-        <div class="card-title">Pending Validation (<%= exams.length %>)</div>
+        <div class="card-title">Formal Exams (<%= exams.length %>)</div>
     </div>
     <div class="table-wrapper">
         <table>
@@ -39,9 +39,11 @@
                     <td><span class="badge badge-blue"><%= typeLabel[exam.examType] %></span></td>
                     <td><%= exam.section?.class?.className %> – <%= exam.section?.sectionName %></td>
                     <td style="text-align:center;"><%= exam.subjects.length %></td>
-                    <td><span class="badge <%= statusBadge[exam.status] || 'badge-orange' %>"><%= exam.status %></span></td>
+                    <td><span class="badge <%= statusBadge[exam.status] || 'badge-orange' %>"><%= exam.status.replace(/_/g,' ') %></span></td>
                     <td>
-                        <a href="/teacher/results/validation/<%= exam._id %>" class="btn btn-sm btn-primary">Review</a>
+                        <a href="/teacher/results/validation/<%= exam._id %>" class="btn btn-sm <%= ['CLASS_APPROVED','FINAL_APPROVED'].includes(exam.status) ? 'btn-secondary' : 'btn-primary' %>">
+                            <%= ['CLASS_APPROVED','FINAL_APPROVED'].includes(exam.status) ? 'View Results' : 'Review' %>
+                        </a>
                     </td>
                 </tr>
                 <% }) %>

@@ -21,16 +21,24 @@
             <div class="form-grid">
                 <div class="form-group">
                     <label class="form-label">Section & Subject *</label>
+                    <% if (ssts.length === 0) { %>
+                        <div style="padding:12px 14px; background:#fff7ed; border:1px solid #fed7aa; border-radius:8px; color:#c2410c; font-size:13px;">
+                            No subjects assigned to you for the current academic year. Please contact the school admin to set up your subject assignments.
+                        </div>
+                        <input type="hidden" name="sectionId" id="sectionId" />
+                        <input type="hidden" name="subjectId" id="subjectId" />
+                    <% } else { %>
                     <select id="sectionSubject" class="form-control" required>
                         <option value="">Select Section & Subject</option>
                         <% ssts.forEach(sst => { %>
                             <option value="<%= sst.section._id %>|<%= sst.subject._id %>">
-                                <%= sst.section.class?.className %> – <%= sst.section.sectionName %> | <%= sst.subject.subjectName %>
+                                Class <%= sst.section.class?.classNumber %> – <%= sst.section.sectionName %> | <%= sst.subject.subjectName %>
                             </option>
                         <% }) %>
                     </select>
                     <input type="hidden" name="sectionId" id="sectionId" />
                     <input type="hidden" name="subjectId" id="subjectId" />
+                    <% } %>
                 </div>
                 <div class="form-group">
                     <label class="form-label">Test Date *</label>

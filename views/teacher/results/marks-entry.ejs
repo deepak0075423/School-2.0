@@ -14,7 +14,7 @@
     </div>
 </div>
 <% } else { %>
-<% const statusBadge = { MARKS_PENDING:'badge-orange', SUBMITTED:'badge-blue', REJECTED:'badge-red', REOPENED:'badge-orange' }; %>
+<% const statusBadge = { MARKS_PENDING:'badge-orange', SUBMITTED:'badge-blue', REJECTED:'badge-red', REOPENED:'badge-orange', CLASS_APPROVED:'badge-purple', FINAL_APPROVED:'badge-green' }; %>
 <% const typeLabel = { MID_TERM:'Mid Term', FINAL:'Final Exam', UNIT_TEST:'Unit Test' }; %>
 
 <% enrichedExams.forEach(({ exam, mySubjects }) => { %>
@@ -55,12 +55,12 @@
                         <% } %>
                     </td>
                     <td>
-                        <% if (sc.sheetStatus === 'SUBMITTED') { %>
-                            <a href="/teacher/results/marks-entry/<%= exam._id %>/<%= sc.subject?._id || sc.subject %>" class="btn btn-sm btn-secondary">View</a>
+                        <% if (['CLASS_APPROVED', 'FINAL_APPROVED'].includes(exam.status) || sc.sheetStatus === 'SUBMITTED') { %>
+                            <a href="/teacher/results/marks-entry/<%= exam._id %>/<%= sc.subject?._id || sc.subject %>" class="btn btn-sm btn-secondary">View Marks</a>
                         <% } else if (['MARKS_PENDING', 'REJECTED', 'REOPENED'].includes(exam.status)) { %>
                             <a href="/teacher/results/marks-entry/<%= exam._id %>/<%= sc.subject?._id || sc.subject %>" class="btn btn-sm btn-primary">Enter Marks</a>
                         <% } else { %>
-                            <a href="/teacher/results/marks-entry/<%= exam._id %>/<%= sc.subject?._id || sc.subject %>" class="btn btn-sm btn-secondary">View</a>
+                            <a href="/teacher/results/marks-entry/<%= exam._id %>/<%= sc.subject?._id || sc.subject %>" class="btn btn-sm btn-secondary">View Marks</a>
                         <% } %>
                     </td>
                 </tr>

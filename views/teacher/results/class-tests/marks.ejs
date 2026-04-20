@@ -7,6 +7,18 @@
     <a href="/teacher/results/class-tests" class="btn btn-secondary">← Back</a>
 </div>
 
+<% if (isReadOnly) { %>
+<div class="card" style="margin-bottom:16px;">
+    <div style="padding:14px 18px; background:#f0fdf4; border-radius:10px; display:flex; align-items:center; gap:10px;">
+        <span style="font-size:20px;">✅</span>
+        <div>
+            <strong>Test Approved — View Only</strong>
+            <div style="color:var(--text-muted); font-size:13px;">This test has been approved by the class teacher. Marks are locked.</div>
+        </div>
+    </div>
+</div>
+<% } %>
+
 <div class="card">
     <form method="POST" action="/teacher/results/class-tests/<%= test._id %>/marks/save" id="marksForm">
         <div class="table-wrapper">
@@ -39,7 +51,7 @@
                                 step="0.5"
                                 data-max="<%= test.maxMarks %>"
                                 data-row="<%= i %>"
-                                <%= entry.isAbsent ? 'disabled' : '' %>
+                                <%= (entry.isAbsent || isReadOnly) ? 'disabled' : '' %>
                             />
                         </td>
                         <td style="text-align:center;">
@@ -49,6 +61,7 @@
                                 class="absent-cb"
                                 data-row="<%= i %>"
                                 <%= entry.isAbsent ? 'checked' : '' %>
+                                <%= isReadOnly ? 'disabled' : '' %>
                             />
                         </td>
                         <td>
@@ -61,10 +74,12 @@
         </div>
 
         <div style="display:flex; gap:10px; margin-top:20px; padding:0 16px 16px;">
-            <input type="hidden" name="submit" id="submitFlag" value="0" />
+            <% if (!isReadOnly) { %>
+            <input type="hidden" name="submitFlag" id="submitFlag" value="0" />
             <button type="button" class="btn btn-secondary" onclick="saveMarks(0)">Save Draft</button>
             <button type="button" class="btn btn-primary" onclick="saveMarks(1)">Submit for Class Teacher Approval</button>
-            <a href="/teacher/results/class-tests" class="btn btn-secondary">Cancel</a>
+            <% } %>
+            <a href="/teacher/results/class-tests" class="btn btn-secondary"><%= isReadOnly ? '← Back' : 'Cancel' %></a>
         </div>
     </form>
 </div>

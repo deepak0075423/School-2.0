@@ -764,7 +764,7 @@ exports.teacherGetMarksEntry = async (req, res) => {
         const sectionIds = ssts.map(s => s.section._id);
         const exams = await FormalExam.find({
             section: { $in: sectionIds },
-            status: { $in: ['MARKS_PENDING', 'SUBMITTED', 'REJECTED', 'REOPENED'] },
+            status: { $in: ['MARKS_PENDING', 'SUBMITTED', 'REJECTED', 'REOPENED', 'CLASS_APPROVED', 'FINAL_APPROVED'] },
         })
             .populate('section')
             .populate({ path: 'section', populate: { path: 'class', select: 'className classNumber' } })
@@ -815,8 +815,8 @@ exports.teacherGetMarksForm = async (req, res) => {
             .populate('subjects.assignedTeachers', 'name')
             .populate('section');
 
-        if (!exam || exam.status === 'FINAL_APPROVED') {
-            req.flash('error', 'Exam not editable.');
+        if (!exam) {
+            req.flash('error', 'Exam not found.');
             return res.redirect('/teacher/results/marks-entry');
         }
 
@@ -842,7 +842,8 @@ exports.teacherGetMarksForm = async (req, res) => {
             };
         });
 
-        const isReadOnly = sheet && sheet.status === 'SUBMITTED';
+        const isReadOnly = (sheet && sheet.status === 'SUBMITTED') ||
+                           ['CLASS_APPROVED', 'FINAL_APPROVED'].includes(exam.status);
 
         res.render('teacher/results/marks-form', {
             title: `Enter Marks: ${subConf.subject.subjectName}`,
@@ -950,9 +951,13 @@ exports.teacherGetValidation = async (req, res) => {
         const sections = await ClassSection.find({ classTeacher: teacherId }).populate('class', 'className classNumber');
         const sectionIds = sections.map(s => s._id);
 
+        // Include all statuses; also catch exams this teacher class-approved (fallback if classTeacher not set)
         const exams = await FormalExam.find({
-            section: { $in: sectionIds },
-            status: { $in: ['MARKS_PENDING', 'SUBMITTED', 'REJECTED', 'REOPENED'] },
+            $or: [
+                { section: { $in: sectionIds } },
+                { classApprovedBy: teacherId },
+            ],
+            status: { $in: ['MARKS_PENDING', 'SUBMITTED', 'REJECTED', 'REOPENED', 'CLASS_APPROVED', 'FINAL_APPROVED'] },
         })
             .populate('section')
             .populate({ path: 'section', populate: { path: 'class', select: 'className' } })
@@ -982,7 +987,9 @@ exports.teacherGetValidationDetail = async (req, res) => {
             .populate('section');
 
         const section = await ClassSection.findById(exam.section._id);
-        if (String(section.classTeacher) !== String(teacherId)) {
+        const isClassTeacher = String(section.classTeacher) === String(teacherId);
+        const isApprover     = String(exam.classApprovedBy || '') === String(teacherId);
+        if (!isClassTeacher && !isApprover) {
             req.flash('error', 'Not your section.');
             return res.redirect('/teacher/results/validation');
         }
@@ -994,10 +1001,18 @@ exports.teacherGetValidationDetail = async (req, res) => {
 
         const students = await User.find({ _id: { $in: section.enrolledStudents } }, 'name').sort({ name: 1 });
 
+        // Load final results if exam is fully approved
+        const results = ['CLASS_APPROVED', 'FINAL_APPROVED'].includes(exam.status)
+            ? await FormalResult.find({ exam: exam._id })
+                .populate('student', 'name')
+                .populate('subjects.subject', 'subjectName')
+                .sort({ rank: 1 })
+            : [];
+
         res.render('teacher/results/validation-detail', {
             title: `Validate: ${exam.title}`,
             layout: 'layouts/main',
-            exam, sheets, students,
+            exam, sheets, students, results,
         });
     } catch (err) {
         console.error(err);

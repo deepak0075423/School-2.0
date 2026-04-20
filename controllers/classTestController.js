@@ -40,16 +40,8 @@ function computeClassStats(test) {
 exports.teacherGetClassTests = async (req, res) => {
     try {
         const teacherId = req.user._id;
-        const school = req.user.school._id;
 
-        const ssts = await SectionSubjectTeacher.find({ teacher: teacherId })
-            .populate('section', 'sectionName class')
-            .populate({ path: 'section', populate: { path: 'class', select: 'className classNumber' } })
-            .populate('subject', 'subjectName');
-
-        const sectionIds = ssts.map(s => s.section._id);
-
-        const tests = await ClassTest.find({ createdBy: teacherId, section: { $in: sectionIds } })
+        const tests = await ClassTest.find({ createdBy: teacherId })
             .populate('section')
             .populate({ path: 'section', populate: { path: 'class', select: 'className' } })
             .populate('subject', 'subjectName')
@@ -58,7 +50,7 @@ exports.teacherGetClassTests = async (req, res) => {
         res.render('teacher/results/class-tests/index', {
             title: 'Class Tests',
             layout: 'layouts/main',
-            tests, ssts,
+            tests,
         });
     } catch (err) {
         console.error(err);
@@ -71,12 +63,40 @@ exports.teacherGetClassTests = async (req, res) => {
 exports.teacherGetCreateClassTest = async (req, res) => {
     try {
         const teacherId = req.user._id;
-        const ssts = await SectionSubjectTeacher.find({ teacher: teacherId })
-            .populate('section')
-            .populate({ path: 'section', populate: { path: 'class', select: 'className classNumber' } })
-            .populate('subject', 'subjectName subjectCode');
+        const school    = req.user.school._id;
 
-        const activeYear = await AcademicYear.findOne({ school: req.user.school._id, status: 'active' });
+        const activeYear = await AcademicYear.findOne({ school, status: 'active' });
+
+        // Fetch all SST records for this teacher and populate
+        const rawSsts = await SectionSubjectTeacher.find({ teacher: teacherId })
+            .populate({ path: 'section', populate: { path: 'class', select: 'className classNumber' } })
+            .populate('subject', 'subjectName subjectCode')
+            .lean();
+
+        // Keep only records where section & subject populated successfully
+        let ssts = rawSsts.filter(s => s.section && s.subject);
+
+        // If active year exists, restrict to its sections only
+        if (activeYear) {
+            const activeSections = await ClassSection.find({ school, academicYear: activeYear._id }, '_id').lean();
+            const activeIds = new Set(activeSections.map(s => String(s._id)));
+            ssts = ssts.filter(s => activeIds.has(String(s.section._id)));
+        }
+
+        // Deduplicate: one row per section+subject pair (multiple teachers can share a pair)
+        const seen = new Set();
+        ssts = ssts.filter(s => {
+            const key = `${s.section._id}|${s.subject._id}`;
+            if (seen.has(key)) return false;
+            seen.add(key);
+            return true;
+        });
+
+        // Sort: by class number then section name
+        ssts.sort((a, b) =>
+            (a.section.class?.classNumber - b.section.class?.classNumber) ||
+            a.section.sectionName.localeCompare(b.section.sectionName)
+        );
 
         res.render('teacher/results/class-tests/create', {
             title: 'Create Class Test',
@@ -149,10 +169,8 @@ exports.teacherGetTestMarks = async (req, res) => {
             req.flash('error', 'Not authorized.');
             return res.redirect('/teacher/results/class-tests');
         }
-        if (test.status === 'FINAL_APPROVED') {
-            req.flash('error', 'Test is locked.');
-            return res.redirect('/teacher/results/class-tests');
-        }
+
+        const isReadOnly = test.status === 'FINAL_APPROVED';
 
         const students = await User.find({ _id: { $in: (await ClassSection.findById(test.section._id)).enrolledStudents } }, 'name').sort({ name: 1 });
 
@@ -170,7 +188,7 @@ exports.teacherGetTestMarks = async (req, res) => {
         res.render('teacher/results/class-tests/marks', {
             title: `Marks: ${test.title}`,
             layout: 'layouts/main',
-            test, entries,
+            test, entries, isReadOnly,
         });
     } catch (err) {
         console.error(err);
@@ -194,7 +212,7 @@ exports.teacherPostSaveTestMarks = async (req, res) => {
             return res.redirect('/teacher/results/class-tests');
         }
 
-        const { entries, submit } = req.body;
+        const { entries, submitFlag: submit } = req.body;
         const entryArr = Array.isArray(entries) ? entries : [entries];
 
         test.marks = entryArr.map(e => ({
@@ -267,9 +285,13 @@ exports.teacherGetClassTestValidation = async (req, res) => {
         const sections = await ClassSection.find({ classTeacher: teacherId });
         const sectionIds = sections.map(s => s._id);
 
+        // Find tests for sections where this teacher is classTeacher
+        // PLUS any tests this teacher has personally approved (handles missing classTeacher setup)
         const tests = await ClassTest.find({
-            section: { $in: sectionIds },
-            status:  { $in: ['SUBMITTED', 'REJECTED', 'REOPENED'] },
+            $or: [
+                { section: { $in: sectionIds }, status: { $in: ['SUBMITTED', 'REJECTED', 'REOPENED', 'FINAL_APPROVED'] } },
+                { approvedBy: teacherId, status: 'FINAL_APPROVED' },
+            ],
         })
             .populate('section')
             .populate({ path: 'section', populate: { path: 'class', select: 'className' } })
@@ -301,7 +323,9 @@ exports.teacherGetClassTestValidationDetail = async (req, res) => {
             .populate('marks.student', 'name');
 
         const section = await ClassSection.findById(test.section._id);
-        if (String(section.classTeacher) !== String(teacherId)) {
+        const isClassTeacher = String(section.classTeacher) === String(teacherId);
+        const isApprover     = String(test.approvedBy || '') === String(teacherId);
+        if (!isClassTeacher && !isApprover) {
             req.flash('error', 'Not authorized.');
             return res.redirect('/teacher/results/class-test-validation');
         }
@@ -387,12 +411,21 @@ exports.studentGetClassTests = async (req, res) => {
     try {
         const studentId = req.user._id;
         const profile = await require('../models/StudentProfile').findOne({ user: studentId });
-        if (!profile || !profile.currentSection) {
-            return res.render('student/results/class-tests', { title: 'Class Tests', layout: 'layouts/main', tests: [] });
+
+        // Collect all sections this student is enrolled in (current + any year)
+        const enrolledSections = await ClassSection.find({ enrolledStudents: studentId }, '_id').lean();
+        const sectionIds = enrolledSections.map(s => s._id);
+        if (profile?.currentSection) {
+            const already = sectionIds.some(id => String(id) === String(profile.currentSection));
+            if (!already) sectionIds.push(profile.currentSection);
+        }
+
+        if (sectionIds.length === 0) {
+            return res.render('student/results/class-tests', { title: 'Class Tests', layout: 'layouts/main', myTests: [] });
         }
 
         const tests = await ClassTest.find({
-            section: profile.currentSection,
+            section: { $in: sectionIds },
             status:  'FINAL_APPROVED',
         })
             .populate('subject', 'subjectName')

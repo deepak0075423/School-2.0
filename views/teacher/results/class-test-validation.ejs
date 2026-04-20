@@ -9,14 +9,14 @@
 <div class="card">
     <div class="empty-state">
         <div class="empty-icon">✅</div>
-        <h3>Nothing to Validate</h3>
-        <p>No class tests are pending your approval.</p>
+        <h3>No Class Tests Found</h3>
+        <p>No class tests are assigned to your section yet, or none have been submitted for approval.</p>
     </div>
 </div>
 <% } else { %>
 <div class="card">
     <div class="card-header">
-        <div class="card-title">Pending Approval (<%= tests.length %>)</div>
+        <div class="card-title">Class Tests (<%= tests.length %>)</div>
     </div>
     <div class="table-wrapper">
         <table>
@@ -33,7 +33,7 @@
                 </tr>
             </thead>
             <tbody>
-                <% const statusBadge = { SUBMITTED:'badge-blue', REJECTED:'badge-red', REOPENED:'badge-orange' }; %>
+                <% const statusBadge = { SUBMITTED:'badge-blue', REJECTED:'badge-red', REOPENED:'badge-orange', FINAL_APPROVED:'badge-green' }; %>
                 <% tests.forEach(test => { %>
                 <tr>
                     <td class="fw-semibold"><%= test.title %></td>
@@ -42,9 +42,11 @@
                     <td><%= test.createdBy?.name %></td>
                     <td style="font-size:13px; color:var(--text-muted);"><%= new Date(test.testDate).toLocaleDateString('en-IN') %></td>
                     <td style="text-align:center;"><%= test.maxMarks %></td>
-                    <td><span class="badge <%= statusBadge[test.status] || 'badge-orange' %>"><%= test.status %></span></td>
+                    <td><span class="badge <%= statusBadge[test.status] || 'badge-orange' %>"><%= test.status.replace(/_/g,' ') %></span></td>
                     <td>
-                        <a href="/teacher/results/class-test-validation/<%= test._id %>" class="btn btn-sm btn-primary">Review</a>
+                        <a href="/teacher/results/class-test-validation/<%= test._id %>" class="btn btn-sm <%= test.status === 'FINAL_APPROVED' ? 'btn-secondary' : 'btn-primary' %>">
+                            <%= test.status === 'FINAL_APPROVED' ? 'View' : 'Review' %>
+                        </a>
                     </td>
                 </tr>
                 <% }) %>

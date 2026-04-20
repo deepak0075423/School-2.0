@@ -62,6 +62,59 @@
 </div>
 <% }) %>
 
+<% if (['CLASS_APPROVED', 'FINAL_APPROVED'].includes(exam.status) && results && results.length > 0) { %>
+<div class="card" style="margin-bottom:20px;">
+    <div class="card-header">
+        <div class="card-title">
+            <%= exam.status === 'FINAL_APPROVED' ? '📊 Final Results' : '📋 Approved Marks (Pending Admin Approval)' %>
+        </div>
+    </div>
+    <div class="table-wrapper">
+        <table>
+            <thead>
+                <tr>
+                    <th style="text-align:center;">Rank</th>
+                    <th>Student</th>
+                    <% exam.subjects.forEach(sc => { %>
+                        <th style="text-align:center;"><%= sc.subject?.subjectName %> (<%= sc.maxMarks %>)</th>
+                    <% }) %>
+                    <th style="text-align:center;">Total</th>
+                    <th style="text-align:center;">%</th>
+                    <th style="text-align:center;">Grade</th>
+                    <th style="text-align:center;">Result</th>
+                </tr>
+            </thead>
+            <tbody>
+                <% results.forEach(r => { %>
+                <tr style="<%= r.isPassed ? '' : 'background:#fff5f5;' %>">
+                    <td style="text-align:center; font-weight:700; color:var(--primary);">#<%= r.rank %></td>
+                    <td class="fw-semibold"><%= r.student?.name %></td>
+                    <% exam.subjects.forEach(sc => {
+                        const sr = r.subjects.find(s => String(s.subject?._id || s.subject) === String(sc.subject?._id));
+                    %>
+                        <td style="text-align:center;">
+                            <% if (!sr) { %>—
+                            <% } else if (sr.isAbsent) { %><span class="badge badge-orange">AB</span>
+                            <% } else { %><%= sr.marksObtained %> <span style="color:var(--text-muted);font-size:11px;">(<%= sr.grade %>)</span>
+                            <% } %>
+                        </td>
+                    <% }) %>
+                    <td style="text-align:center; font-weight:600;"><%= r.totalMarks %>/<%= r.totalMaxMarks %></td>
+                    <td style="text-align:center;"><%= r.percentage %>%</td>
+                    <td style="text-align:center;">
+                        <span class="badge <%= r.grade === 'F' ? 'badge-red' : r.grade.startsWith('A') ? 'badge-green' : 'badge-blue' %>"><%= r.grade %></span>
+                    </td>
+                    <td style="text-align:center;">
+                        <span class="badge <%= r.isPassed ? 'badge-green' : 'badge-red' %>"><%= r.isPassed ? 'PASS' : 'FAIL' %></span>
+                    </td>
+                </tr>
+                <% }) %>
+            </tbody>
+        </table>
+    </div>
+</div>
+<% } %>
+
 <% if (exam.status === 'SUBMITTED') { %>
 <div class="card">
     <div class="card-header">
