@@ -70,6 +70,7 @@ router.post('/sections/:sectionId/update-capacity', guard, classCtrl.postUpdateS
 router.post('/sections/:sectionId/delete', guard, classCtrl.postDeleteSection);
 router.get('/sections/:sectionId/subjects', guard, subjectCtrl.getSectionSubjectTeachers);
 router.post('/sections/:sectionId/subjects/assign', guard, subjectCtrl.postAssignSubjectTeacher);
+router.post('/sections/:sectionId/subjects/:subjectId/remove', guard, subjectCtrl.postRemoveSectionSubject);
 
 // Timetable
 router.get('/sections/:sectionId/timetable', guard, timetableCtrl.adminManageTimetable);

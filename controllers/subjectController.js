@@ -174,20 +174,25 @@ const getSectionSubjectTeachers = async (req, res) => {
             .populate('class');
         if (!section) { req.flash('error', 'Section not found.'); return res.redirect('/admin/classes'); }
 
-        // Subjects for this class
-        const classSubjects = await ClassSubject.find({ class: section.class._id }).populate('subject');
-        // Already assigned teacher-subject combos
-        const assignments = await SectionSubjectTeacher.find({ section: section._id })
-            .populate('subject').populate('teacher', 'name email');
-        const assignedSubjectIds = assignments.map(a => a.subject._id.toString());
-        const unassigned = classSubjects.filter(cs => !assignedSubjectIds.includes(cs.subject._id.toString()));
+        // Subjects for this class with eligible teachers from subject.teachers
+        const classSubjects = await ClassSubject.find({ class: section.class._id })
+            .populate({ path: 'subject', populate: { path: 'teachers', select: 'name email', match: { isActive: true } } });
 
-        const teachers = await User.find({ role: 'teacher', school: req.session.schoolId, isActive: true })
-            .select('name email');
+        // All current assignments for this section
+        const rawAssignments = await SectionSubjectTeacher.find({ section: section._id })
+            .populate('subject', 'subjectName').populate('teacher', 'name email');
+
+        // Build map: subjectId → [teacher, ...]
+        const assignedMap = {};
+        rawAssignments.forEach(a => {
+            const sid = a.subject._id.toString();
+            if (!assignedMap[sid]) assignedMap[sid] = { subject: a.subject, teachers: [] };
+            if (a.teacher) assignedMap[sid].teachers.push(a.teacher);
+        });
 
         res.render('admin/sections/subjectTeachers', {
             title: `Subject Teachers — Section ${section.sectionName}`, layout: 'layouts/main',
-            section, assignments, unassigned, teachers,
+            section, classSubjects, assignedMap,
         });
     } catch (err) {
         req.flash('error', 'Failed to load subject teachers.'); res.redirect('/admin/classes');
@@ -197,16 +202,32 @@ const getSectionSubjectTeachers = async (req, res) => {
 const postAssignSubjectTeacher = async (req, res) => {
     const { sectionId } = req.params;
     try {
-        const { subjectId, teacherId } = req.body;
-        await SectionSubjectTeacher.findOneAndUpdate(
-            { section: sectionId, subject: subjectId },
-            { teacher: teacherId },
-            { upsert: true, new: true }
-        );
-        req.flash('success', 'Teacher assigned to subject.');
+        const { subjectId, teacherIds } = req.body;
+        const ids = Array.isArray(teacherIds) ? teacherIds : teacherIds ? [teacherIds] : [];
+
+        // Replace all assignments for this section+subject with the new set
+        await SectionSubjectTeacher.deleteMany({ section: sectionId, subject: subjectId });
+        if (ids.length > 0) {
+            await SectionSubjectTeacher.insertMany(
+                ids.map(tid => ({ section: sectionId, subject: subjectId, teacher: tid }))
+            );
+        }
+        req.flash('success', 'Teachers updated for subject.');
         res.redirect(`/admin/sections/${sectionId}/subjects`);
     } catch (err) {
-        req.flash('error', 'Failed to assign teacher: ' + err.message);
+        req.flash('error', 'Failed to assign teachers: ' + err.message);
+        res.redirect(`/admin/sections/${sectionId}/subjects`);
+    }
+};
+
+const postRemoveSectionSubject = async (req, res) => {
+    const { sectionId, subjectId } = req.params;
+    try {
+        await SectionSubjectTeacher.deleteMany({ section: sectionId, subject: subjectId });
+        req.flash('success', 'Subject removed from section.');
+        res.redirect(`/admin/sections/${sectionId}/subjects`);
+    } catch (err) {
+        req.flash('error', 'Failed to remove subject: ' + err.message);
         res.redirect(`/admin/sections/${sectionId}/subjects`);
     }
 };
@@ -214,5 +235,5 @@ const postAssignSubjectTeacher = async (req, res) => {
 module.exports = {
     getSubjects, postCreateSubject, postDeleteSubject, getEditSubject, postEditSubject,
     getClassSubjects, postAssignSubjectToClass, postRemoveSubjectFromClass,
-    getSectionSubjectTeachers, postAssignSubjectTeacher,
+    getSectionSubjectTeachers, postAssignSubjectTeacher, postRemoveSectionSubject,
 };

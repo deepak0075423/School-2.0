@@ -1,81 +1,243 @@
 <div class="page-header">
     <div>
-        <h1>👨‍🏫 Subject Teachers — Section <%= section.sectionName %>
-        </h1>
-        <p>Assign teachers for each subject in this section</p>
+        <h1>👨‍🏫 Subject Teachers — Section <%= section.sectionName %></h1>
+        <p>Select a subject, then assign its teachers for this section</p>
     </div>
     <a href="/admin/sections/<%= section._id %>" class="btn btn-secondary">← Back to Section</a>
 </div>
 
-<div style="display:grid; grid-template-columns:1fr 1fr; gap:20px;">
-    <%# Assign Form %>
-        <div class="card">
-            <div class="card-header">
-                <div class="card-title">➕ Assign Teacher to Subject</div>
-            </div>
-            <div class="card-body">
-                <% if (unassigned.length===0) { %>
-                    <p class="text-muted">All class subjects have teachers assigned.</p>
-                    <% } else { %>
-                        <form action="/admin/sections/<%= section._id %>/subjects/assign" method="POST">
-                            <div class="form-group">
-                                <label class="form-label">Subject</label>
-                                <select name="subjectId" class="form-control" required>
-                                    <option value="">— Select subject —</option>
-                                    <% unassigned.forEach(cs=> { %>
-                                        <option value="<%= cs.subject._id %>">
-                                            <%= cs.subject.subjectName %>
-                                        </option>
-                                        <% }) %>
-                                </select>
-                            </div>
-                            <div class="form-group">
-                                <label class="form-label">Teacher</label>
-                                <select name="teacherId" class="form-control" required>
-                                    <option value="">— Select teacher —</option>
-                                    <% teachers.forEach(t=> { %>
-                                        <option value="<%= t._id %>">
-                                            <%= t.name %>
-                                        </option>
-                                        <% }) %>
-                                </select>
-                            </div>
-                            <button type="submit" class="btn btn-primary">Assign</button>
-                        </form>
-                        <% } %>
-            </div>
-        </div>
+<%
+const subjectDataMap = {};
+classSubjects.forEach(cs => {
+    const sid = cs.subject._id.toString();
+    const entry = assignedMap[sid];
+    subjectDataMap[sid] = {
+        name: cs.subject.subjectName,
+        teachers: (cs.subject.teachers || []).map(t => ({
+            _id: t._id.toString(),
+            name: t.name,
+            assigned: entry ? entry.teachers.some(at => at._id.toString() === t._id.toString()) : false
+        }))
+    };
+});
+const unassignedSubjects = classSubjects.filter(cs => !assignedMap[cs.subject._id.toString()]);
+const assignedSubjects   = classSubjects.filter(cs =>  assignedMap[cs.subject._id.toString()]);
+%>
 
-        <%# Current Assignments %>
-            <div class="card">
-                <div class="card-header">
-                    <div class="card-title">✅ Current Assignments (<%= assignments.length %>)</div>
+<div style="display:grid; grid-template-columns:1fr 1fr; gap:20px;">
+
+    <%# Left — assign panel (only unassigned subjects in dropdown) %>
+    <div class="card">
+        <div class="card-header">
+            <div class="card-title">➕ Assign Teachers to Subject</div>
+        </div>
+        <div class="card-body">
+            <% if (classSubjects.length === 0) { %>
+                <p class="text-muted">No subjects assigned to this class yet.</p>
+            <% } else if (unassignedSubjects.length === 0) { %>
+                <p class="text-muted">All subjects have teachers assigned. Use Edit to make changes.</p>
+            <% } else { %>
+                <div class="form-group">
+                    <label class="form-label">Select Subject</label>
+                    <select id="subjectSelect" class="form-control" onchange="onSubjectChange(this.value)">
+                        <option value="">— Choose a subject —</option>
+                        <% unassignedSubjects.forEach(cs => { %>
+                            <option value="<%= cs.subject._id %>"><%= cs.subject.subjectName %></option>
+                        <% }) %>
+                    </select>
                 </div>
-                <% if (assignments.length===0) { %>
-                    <div class="empty-state" style="padding:20px;">
-                        <p>No assignments yet.</p>
-                    </div>
-                    <% } else { %>
-                        <div class="table-wrapper">
-                            <table>
-                                <thead>
-                                    <tr>
-                                        <th>Subject</th>
-                                        <th>Teacher</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    <% assignments.forEach(a=> { %>
-                                        <tr>
-                                            <td class="text-primary fw-semibold">📚 <%= a.subject.subjectName %>
-                                            </td>
-                                            <td>👨‍🏫 <%= a.teacher?.name %>
-                                            </td>
-                                        </tr>
-                                        <% }) %>
-                                </tbody>
-                            </table>
+
+                <div id="teacherPanel" style="display:none; margin-top:20px;">
+                    <form id="assignForm" action="/admin/sections/<%= section._id %>/subjects/assign" method="POST">
+                        <input type="hidden" name="subjectId" id="hiddenSubjectId">
+                        <label class="form-label" style="margin-bottom:10px; display:block;">Select Teachers</label>
+                        <div id="teacherCheckboxes" style="display:flex; flex-wrap:wrap; gap:10px; margin-bottom:16px;"></div>
+                        <p id="noTeachersMsg" class="text-muted" style="display:none; margin:0 0 16px;">
+                            No teachers added to this subject yet. Go to
+                            <a href="/admin/subjects">Subjects</a> to add teachers first.
+                        </p>
+                        <div id="saveRow" style="display:none;">
+                            <button type="submit" class="btn btn-primary">Assign</button>
                         </div>
-                        <% } %>
+                    </form>
+                </div>
+            <% } %>
+        </div>
+    </div>
+
+    <%# Right — current assignments with Edit button %>
+    <div class="card">
+        <div class="card-header">
+            <div class="card-title">✅ Assigned Subjects (<%= assignedSubjects.length %>)</div>
+        </div>
+        <% if (assignedSubjects.length === 0) { %>
+            <div class="card-body">
+                <p class="text-muted">No assignments yet.</p>
             </div>
+        <% } else { %>
+            <div class="table-wrapper">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Subject</th>
+                            <th>Teachers</th>
+                            <th></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <% assignedSubjects.forEach(cs => {
+                            const sid = cs.subject._id.toString();
+                            const entry = assignedMap[sid];
+                            const eligibleTeachers = cs.subject.teachers || [];
+                            const assignedTeacherIds = entry.teachers.map(t => t._id.toString());
+                        %>
+                            <tr>
+                                <td class="text-primary fw-semibold">📚 <%= cs.subject.subjectName %></td>
+                                <td>
+                                    <% entry.teachers.forEach(t => { %>
+                                        <div style="white-space:nowrap;">👨‍🏫 <%= t.name %></div>
+                                    <% }) %>
+                                </td>
+                                <td>
+                                    <button
+                                        type="button"
+                                        class="btn btn-secondary btn-sm"
+                                        onclick='openEditModal(
+                                            "<%= cs.subject._id %>",
+                                            "<%= cs.subject.subjectName %>",
+                                            <%- JSON.stringify(eligibleTeachers.map(t => ({ _id: t._id.toString(), name: t.name }))) %>,
+                                            <%- JSON.stringify(assignedTeacherIds) %>
+                                        )'
+                                    >✏️ Edit</button>
+                                </td>
+                            </tr>
+                        <% }) %>
+                    </tbody>
+                </table>
+            </div>
+        <% } %>
+    </div>
 </div>
+
+<%# Edit Modal %>
+<div id="editModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); z-index:1000; align-items:center; justify-content:center;">
+    <div class="card" style="width:480px; max-width:92%; max-height:85vh; overflow-y:auto; margin:0; box-shadow:0 8px 24px rgba(0,0,0,0.18);">
+        <div class="card-header" style="display:flex; justify-content:space-between; align-items:center;">
+            <div class="card-title" id="editModalTitle">Edit Subject</div>
+            <button type="button" onclick="closeEditModal()" style="background:none; border:none; font-size:1.5rem; cursor:pointer; color:#64748b; line-height:1;">&times;</button>
+        </div>
+        <div class="card-body">
+            <form id="editForm" action="" method="POST">
+                <label class="form-label" style="margin-bottom:10px; display:block;">Teachers</label>
+                <div id="editTeacherCheckboxes" style="display:flex; flex-wrap:wrap; gap:10px; margin-bottom:20px;"></div>
+                <p id="editNoTeachersMsg" class="text-muted" style="display:none; margin-bottom:20px;">
+                    No teachers added to this subject. Go to
+                    <a href="/admin/subjects">Subjects</a> to add teachers.
+                </p>
+                <div style="display:flex; gap:10px; flex-wrap:wrap; border-top:1px solid #e2e8f0; padding-top:16px; margin-top:4px;">
+                    <button type="submit" class="btn btn-primary">Save Changes</button>
+                    <button type="button" id="removeSubjectBtn" class="btn btn-danger" onclick="confirmRemoveSubject()">🗑 Remove Subject</button>
+                    <button type="button" class="btn btn-secondary" onclick="closeEditModal()">Cancel</button>
+                </div>
+            </form>
+            <form id="removeSubjectForm" action="" method="POST" style="display:none;"></form>
+        </div>
+    </div>
+</div>
+
+<script>
+const subjectDataMap = <%- JSON.stringify(subjectDataMap) %>;
+const sectionId = '<%= section._id %>';
+
+/* ── Assign panel ── */
+function onSubjectChange(subjectId) {
+    const panel         = document.getElementById('teacherPanel');
+    const checkboxes    = document.getElementById('teacherCheckboxes');
+    const noTeachersMsg = document.getElementById('noTeachersMsg');
+    const saveRow       = document.getElementById('saveRow');
+    const hidden        = document.getElementById('hiddenSubjectId');
+
+    if (!subjectId) { panel.style.display = 'none'; return; }
+
+    panel.style.display  = 'block';
+    hidden.value         = subjectId;
+    checkboxes.innerHTML = '';
+
+    const data = subjectDataMap[subjectId];
+    if (!data || data.teachers.length === 0) {
+        noTeachersMsg.style.display = 'block';
+        saveRow.style.display       = 'none';
+        return;
+    }
+    noTeachersMsg.style.display = 'none';
+    saveRow.style.display       = 'block';
+
+    data.teachers.forEach(t => renderCheckbox(checkboxes, t._id, t.name, false));
+}
+
+/* ── Edit modal ── */
+function openEditModal(subjectId, subjectName, eligibleTeachers, assignedIds) {
+    document.getElementById('editModalTitle').textContent = '✏️ Edit — ' + subjectName;
+    document.getElementById('editForm').action = '/admin/sections/' + sectionId + '/subjects/assign';
+
+    const hidden = document.createElement('input');
+    hidden.type  = 'hidden';
+    hidden.name  = 'subjectId';
+    hidden.value = subjectId;
+    const existing = document.getElementById('editForm').querySelector('input[name="subjectId"]');
+    if (existing) existing.remove();
+    document.getElementById('editForm').prepend(hidden);
+
+    document.getElementById('removeSubjectForm').action =
+        '/admin/sections/' + sectionId + '/subjects/' + subjectId + '/remove';
+
+    const checkboxes = document.getElementById('editTeacherCheckboxes');
+    checkboxes.innerHTML = '';
+
+    if (eligibleTeachers.length === 0) {
+        document.getElementById('editNoTeachersMsg').style.display = 'block';
+        checkboxes.style.display = 'none';
+    } else {
+        document.getElementById('editNoTeachersMsg').style.display = 'none';
+        checkboxes.style.display = 'flex';
+        eligibleTeachers.forEach(t => {
+            renderCheckbox(checkboxes, t._id, t.name, assignedIds.includes(t._id));
+        });
+    }
+
+    document.getElementById('editModal').style.display = 'flex';
+}
+
+function closeEditModal() {
+    document.getElementById('editModal').style.display = 'none';
+}
+
+function confirmRemoveSubject() {
+    if (confirm('Remove this subject from the section? All teacher assignments will be deleted.')) {
+        document.getElementById('removeSubjectForm').submit();
+    }
+}
+
+/* ── Shared helper ── */
+function renderCheckbox(container, id, name, checked) {
+    const label = document.createElement('label');
+    label.style.cssText = 'display:flex; align-items:center; gap:6px; padding:8px 14px; border:1px solid #ddd; border-radius:6px; cursor:pointer; background:' + (checked ? '#edf7ed' : '#fff') + '; font-weight:' + (checked ? '600' : 'normal') + ';';
+    const cb = document.createElement('input');
+    cb.type    = 'checkbox';
+    cb.name    = 'teacherIds';
+    cb.value   = id;
+    cb.checked = checked;
+    cb.onchange = function () {
+        label.style.background  = this.checked ? '#edf7ed' : '#fff';
+        label.style.fontWeight  = this.checked ? '600' : 'normal';
+    };
+    label.appendChild(cb);
+    label.appendChild(document.createTextNode(' 👨\u200d🏫 ' + name));
+    container.appendChild(label);
+}
+
+/* ── Close on backdrop click ── */
+window.addEventListener('click', e => {
+    if (e.target === document.getElementById('editModal')) closeEditModal();
+});
+</script>

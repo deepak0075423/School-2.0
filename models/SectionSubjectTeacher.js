@@ -22,7 +22,7 @@ const SectionSubjectTeacherSchema = new mongoose.Schema({
     },
 });
 
-// Only one teacher per subject per section
-SectionSubjectTeacherSchema.index({ section: 1, subject: 1 }, { unique: true });
+// One teacher entry per section+subject+teacher combination
+SectionSubjectTeacherSchema.index({ section: 1, subject: 1, teacher: 1 }, { unique: true });
 
 module.exports = mongoose.model('SectionSubjectTeacher', SectionSubjectTeacherSchema);
