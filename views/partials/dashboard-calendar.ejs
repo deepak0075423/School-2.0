@@ -1,0 +1,194 @@
+<%
+// Provide current month/year as JS boot values only
+const _dc_now   = new Date();
+const _dc_yr    = _dc_now.getFullYear();
+const _dc_mo    = _dc_now.getMonth();
+%>
+
+<div class="card" style="width:260px; flex-shrink:0;">
+
+    <!-- ── Header: nav arrows + month/year + "View All" link ── -->
+    <div style="padding:12px 14px 10px; border-bottom:1px solid var(--border);">
+        <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:<%= hasHoliday ? '8px' : '0' %>;">
+            <button onclick="dcPrev()" title="Previous month"
+                    style="background:none; border:1px solid var(--border); border-radius:6px; width:28px; height:28px; cursor:pointer; font-size:16px; color:var(--text); display:flex; align-items:center; justify-content:center; padding:0; line-height:1; flex-shrink:0;">
+                ‹
+            </button>
+            <span id="dc-month-label" style="font-size:13px; font-weight:700; color:var(--text); text-align:center;"></span>
+            <button onclick="dcNext()" title="Next month"
+                    style="background:none; border:1px solid var(--border); border-radius:6px; width:28px; height:28px; cursor:pointer; font-size:16px; color:var(--text); display:flex; align-items:center; justify-content:center; padding:0; line-height:1; flex-shrink:0;">
+                ›
+            </button>
+        </div>
+        <% if (hasHoliday) { %>
+        <a href="<%= holidayViewUrl %>"
+           style="display:inline-flex; align-items:center; gap:4px; font-size:11px; font-weight:600; color:var(--primary); text-decoration:none; padding:3px 10px; border-radius:6px; background:rgba(99,102,241,0.08); border:1px solid rgba(99,102,241,0.2);">
+            🎉 View All Holidays →
+        </a>
+        <% } %>
+    </div>
+
+    <!-- ── Day-of-week headers ────────────────────── -->
+    <div style="display:grid; grid-template-columns:repeat(7,1fr); padding:8px 10px 0;">
+        <% ['S','M','T','W','T','F','S'].forEach(l => { %>
+        <div style="text-align:center; font-size:10px; font-weight:700; color:var(--text-muted); padding:3px 0; letter-spacing:.2px;">
+            <%= l %>
+        </div>
+        <% }) %>
+    </div>
+
+    <!-- ── Calendar day cells (rendered by JS) ───── -->
+    <div id="dc-grid" style="display:grid; grid-template-columns:repeat(7,1fr); padding:2px 10px 6px; row-gap:1px;"></div>
+
+    <!-- ── Legend (rendered by JS) ──────────────── -->
+    <div id="dc-legend"></div>
+
+    <!-- ── Upcoming holidays ─────────────────────── -->
+    <% if (hasHoliday) { %>
+    <div style="border-top:1px solid var(--border); padding:10px 14px 14px;">
+        <div style="font-size:10px; font-weight:700; color:var(--text-muted); text-transform:uppercase; letter-spacing:.5px; margin-bottom:8px;">
+            Upcoming Holidays
+        </div>
+        <div id="dc-upcoming"></div>
+    </div>
+    <% } %>
+
+</div>
+
+<script>
+(function () {
+    /* ── Data from server ─────────────────────── */
+    const DC_ALL = <%- JSON.stringify((calendarHolidays || []).map(h => ({
+        name: h.name,
+        type: h.type,
+        s: new Date(h.startDate).toISOString(),
+        e: new Date(h.endDate).toISOString()
+    }))) %>;
+
+    const DC_UPCOMING = <%- JSON.stringify((upcomingHolidays || []).map(h => ({
+        name: h.name,
+        type: h.type,
+        s: new Date(h.startDate).toISOString()
+    }))) %>;
+
+    /* ── Constants ────────────────────────────── */
+    const TODAY  = new Date(); TODAY.setHours(0,0,0,0);
+    const MONTHS = ['January','February','March','April','May','June',
+                    'July','August','September','October','November','December'];
+    const COLOR  = { public:'#3b82f6', school_specific:'#8b5cf6', optional:'#f59e0b', exam_break:'#10b981' };
+    const LABEL  = { public:'Public', school_specific:'School', optional:'Optional', exam_break:'Exam Break' };
+
+    /* ── State ────────────────────────────────── */
+    let VY = <%= _dc_yr %>;
+    let VM = <%= _dc_mo %>;
+
+    /* ── Navigation ───────────────────────────── */
+    window.dcPrev = function () { VM--; if (VM < 0)  { VM = 11; VY--; } render(); };
+    window.dcNext = function () { VM++; if (VM > 11) { VM = 0;  VY++; } render(); };
+
+    /* ── Build day → holidays map for a given month ── */
+    function buildMap(year, month) {
+        const map = {};
+        DC_ALL.forEach(h => {
+            const s = new Date(h.s), e = new Date(h.e);
+            for (let off = 0; off <= 400; off++) {
+                const d = new Date(s.getFullYear(), s.getMonth(), s.getDate() + off);
+                if (d > e) break;
+                if (d.getFullYear() === year && d.getMonth() === month) {
+                    (map[d.getDate()] = map[d.getDate()] || []).push(h);
+                }
+            }
+        });
+        return map;
+    }
+
+    /* ── Main render ──────────────────────────── */
+    function render() {
+        document.getElementById('dc-month-label').textContent = MONTHS[VM] + ' ' + VY;
+
+        const firstDay = new Date(VY, VM, 1).getDay();
+        const daysInMo = new Date(VY, VM + 1, 0).getDate();
+        const isCurMo  = VY === TODAY.getFullYear() && VM === TODAY.getMonth();
+        const map      = buildMap(VY, VM);
+
+        /* Build flat cell array */
+        const cells = [];
+        for (let i = 0; i < firstDay; i++) cells.push(null);
+        for (let d = 1; d <= daysInMo; d++) cells.push(d);
+        while (cells.length % 7 !== 0) cells.push(null);
+
+        /* Render cells */
+        let html = '';
+        cells.forEach(day => {
+            if (day === null) { html += '<div></div>'; return; }
+            const hols    = map[day] || [];
+            const isToday = isCurMo && day === TODAY.getDate();
+            const hasHol  = hols.length > 0;
+
+            const circleStyle = isToday
+                ? 'background:var(--primary);color:#fff;'
+                : hasHol ? 'color:var(--text);font-weight:700;' : 'color:var(--text-muted);';
+
+            const dots = hasHol
+                ? '<div style="display:flex;gap:2px;margin-top:1px;height:5px;align-items:center;">'
+                    + hols.slice(0, 3).map(h =>
+                        `<div style="width:4px;height:4px;border-radius:50%;background:${COLOR[h.type]||'#6b7280'};"
+                              title="${h.name.replace(/"/g,'&quot;')}"></div>`
+                      ).join('')
+                    + '</div>'
+                : '<div style="height:6px;"></div>';
+
+            html += `<div style="display:flex;flex-direction:column;align-items:center;padding:2px 0;">
+                <div style="width:26px;height:26px;display:flex;align-items:center;justify-content:center;border-radius:50%;font-size:12px;font-weight:600;${circleStyle}">${day}</div>
+                ${dots}
+            </div>`;
+        });
+        document.getElementById('dc-grid').innerHTML = html;
+
+        /* Legend — only show types present this month */
+        const legendEl  = document.getElementById('dc-legend');
+        const typesNow  = [...new Set(Object.values(map).flat().map(h => h.type))];
+        if (typesNow.length) {
+            legendEl.innerHTML =
+                '<div style="display:flex;gap:8px;flex-wrap:wrap;padding:6px 12px 8px;border-top:1px solid var(--border);">'
+                + typesNow.map(t =>
+                    `<div style="display:flex;align-items:center;gap:3px;font-size:10px;color:var(--text-muted);">
+                        <span style="width:7px;height:7px;border-radius:50%;background:${COLOR[t]||'#6b7280'};display:inline-block;"></span>
+                        ${LABEL[t] || t}
+                    </div>`
+                ).join('')
+                + '</div>';
+        } else {
+            legendEl.innerHTML = '';
+        }
+
+        /* Upcoming — always relative to today */
+        const upEl = document.getElementById('dc-upcoming');
+        if (!upEl) return;
+        if (!DC_UPCOMING.length) {
+            upEl.innerHTML = '<div style="font-size:12px;color:var(--text-muted);">No holidays in the next 30 days.</div>';
+            return;
+        }
+        upEl.innerHTML = DC_UPCOMING.map(h => {
+            const s    = new Date(h.s);
+            const diff = Math.ceil((s - TODAY) / 86400000);
+            const lbl  = s.toLocaleDateString('en-IN', { day:'2-digit', month:'short' });
+            const badge = diff <= 0
+                ? '<span style="font-size:10px;padding:2px 7px;border-radius:8px;background:#ecfdf5;color:#065f46;font-weight:700;white-space:nowrap;flex-shrink:0;">Today</span>'
+                : diff === 1
+                    ? '<span style="font-size:10px;padding:2px 7px;border-radius:8px;background:#eff6ff;color:#1d4ed8;font-weight:700;white-space:nowrap;flex-shrink:0;">Tmrw</span>'
+                    : `<span style="font-size:10px;padding:2px 7px;border-radius:8px;background:#f3f4f6;color:var(--text-muted);font-weight:700;white-space:nowrap;flex-shrink:0;">In ${diff}d</span>`;
+            return `<div style="display:flex;align-items:center;gap:8px;margin-bottom:7px;">
+                <div style="width:3px;height:30px;border-radius:2px;flex-shrink:0;background:${COLOR[h.type]||'#6b7280'};"></div>
+                <div style="flex:1;min-width:0;">
+                    <div style="font-size:12px;font-weight:600;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${h.name}</div>
+                    <div style="font-size:10px;color:var(--text-muted);margin-top:1px;">${lbl}</div>
+                </div>
+                ${badge}
+            </div>`;
+        }).join('');
+    }
+
+    render();
+})();
+</script>

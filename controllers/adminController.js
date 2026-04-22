@@ -12,6 +12,7 @@ const path = require('path');
 
 const Class = require('../models/Class');
 const ClassSection = require('../models/ClassSection');
+const Holiday = require('../models/Holiday');
 
 // Dashboard
 const getDashboard = async (req, res) => {
@@ -25,12 +26,28 @@ const getDashboard = async (req, res) => {
         const recentUsers = await User.find({ school: schoolId, role: { $nin: ['super_admin', 'school_admin'] } })
             .sort({ createdAt: -1 }).limit(5);
 
+        const schoolModules = (req.user && req.user.school && req.user.school.modules) || {};
+        let calendarHolidays = [], upcomingHolidays = [];
+        if (schoolModules.holiday) {
+            const now = new Date();
+            const in30Days = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
+            [calendarHolidays, upcomingHolidays] = await Promise.all([
+                Holiday.find({ school: schoolId }).sort({ startDate: 1 }).lean(),
+                Holiday.find({ school: schoolId, endDate: { $gte: now }, startDate: { $lte: in30Days } })
+                    .sort({ startDate: 1 }).limit(5).lean(),
+            ]);
+        }
+
         res.render('admin/dashboard', {
             title: 'School Admin Dashboard',
             layout: 'layouts/main',
             stats: { teachers, students, parents, classes, sections },
             recentUsers,
             schoolName: req.session.schoolName,
+            hasHoliday: !!schoolModules.holiday,
+            calendarHolidays,
+            upcomingHolidays,
+            holidayViewUrl: '/admin/holidays',
         });
     } catch (err) {
         console.error(err);

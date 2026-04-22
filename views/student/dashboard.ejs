@@ -4,103 +4,101 @@
         <h2>Welcome, <%= session.userName %>!</h2>
         <p>
             <% if (profile) { %>
-                Class <%= profile.class %>
-                    <%= profile.section ? ' — Section ' + profile.section : '' %> · <%= session.schoolName %>
-                            <% } else { %>
-                                Student Dashboard
-                                <% } %>
+                Class <%= profile.class %><%= profile.section ? ' — Section ' + profile.section : '' %> &middot; <%= session.schoolName %>
+            <% } else { %>
+                Student Dashboard
+            <% } %>
         </p>
     </div>
 </div>
 
 <!-- Student Info -->
 <% if (profile) { %>
-    <div class="stats-grid" style="grid-template-columns:repeat(4,1fr);">
-        <div class="stat-card">
-            <div class="stat-icon cyan">🏫</div>
-            <div class="stat-info">
-                <div class="stat-value" style="font-size:18px;">
-                    <%= profile.class || '—' %>
-                </div>
-                <div class="stat-label">Class</div>
+<div class="stats-grid" style="grid-template-columns:repeat(4,1fr);">
+    <div class="stat-card">
+        <div class="stat-icon cyan">🏫</div>
+        <div class="stat-info">
+            <div class="stat-value" style="font-size:18px;"><%= profile.class || '—' %></div>
+            <div class="stat-label">Class</div>
+        </div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-icon purple">📌</div>
+        <div class="stat-info">
+            <div class="stat-value" style="font-size:18px;"><%= profile.section || '—' %></div>
+            <div class="stat-label">Section</div>
+        </div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-icon orange">👪</div>
+        <div class="stat-info">
+            <div class="stat-value" style="font-size:14px; line-height:1.3;">
+                <%= profile.parent ? profile.parent.name : '—' %>
+            </div>
+            <div class="stat-label">Parent/Guardian</div>
+        </div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-icon green">✅</div>
+        <div class="stat-info">
+            <div class="stat-value" style="font-size:18px;">—</div>
+            <div class="stat-label">Attendance</div>
+        </div>
+    </div>
+</div>
+<% } %>
+
+<!-- Feature Tiles + Calendar -->
+<div style="display:grid; grid-template-columns:1fr 260px; gap:20px;">
+    <div style="display:grid; grid-template-columns:repeat(3,1fr); gap:16px;">
+        <div class="card">
+            <div class="card-body" style="text-align:center; padding:32px 20px;">
+                <div style="font-size:40px; margin-bottom:14px;">📅</div>
+                <div class="card-title" style="margin-bottom:6px;">Timetable</div>
+                <p class="text-muted" style="font-size:12px; margin-bottom:12px;">View your class schedule</p>
+                <span class="badge badge-gray">Coming Soon</span>
             </div>
         </div>
-        <div class="stat-card">
-            <div class="stat-icon purple">📌</div>
-            <div class="stat-info">
-                <div class="stat-value" style="font-size:18px;">
-                    <%= profile.section || '—' %>
-                </div>
-                <div class="stat-label">Section</div>
+        <div class="card">
+            <div class="card-body" style="text-align:center; padding:32px 20px;">
+                <div style="font-size:40px; margin-bottom:14px;">📝</div>
+                <div class="card-title" style="margin-bottom:6px;">Assignments</div>
+                <p class="text-muted" style="font-size:12px; margin-bottom:12px;">View & submit assignments</p>
+                <span class="badge badge-gray">Coming Soon</span>
             </div>
         </div>
-        <div class="stat-card">
-            <div class="stat-icon orange">👪</div>
-            <div class="stat-info">
-                <div class="stat-value" style="font-size:14px; line-height:1.3;">
-                    <%= profile.parent ? profile.parent.name : '—' %>
-                </div>
-                <div class="stat-label">Parent/Guardian</div>
+        <div class="card">
+            <div class="card-body" style="text-align:center; padding:32px 20px;">
+                <div style="font-size:40px; margin-bottom:14px;">📊</div>
+                <div class="card-title" style="margin-bottom:6px;">Grades</div>
+                <p class="text-muted" style="font-size:12px; margin-bottom:12px;">Check your performance</p>
+                <span class="badge badge-gray">Coming Soon</span>
             </div>
         </div>
-        <div class="stat-card">
-            <div class="stat-icon green">✅</div>
-            <div class="stat-info">
-                <div class="stat-value" style="font-size:18px;">—</div>
-                <div class="stat-label">Attendance</div>
+        <div class="card">
+            <div class="card-body" style="text-align:center; padding:32px 20px;">
+                <div style="font-size:40px; margin-bottom:14px;">📢</div>
+                <div class="card-title" style="margin-bottom:6px;">Announcements</div>
+                <p class="text-muted" style="font-size:12px; margin-bottom:12px;">School updates & notices</p>
+                <span class="badge badge-gray">Coming Soon</span>
+            </div>
+        </div>
+        <div class="card">
+            <div class="card-body" style="text-align:center; padding:32px 20px;">
+                <div style="font-size:40px; margin-bottom:14px;">✅</div>
+                <div class="card-title" style="margin-bottom:6px;">Attendance</div>
+                <p class="text-muted" style="font-size:12px; margin-bottom:12px;">Track your attendance</p>
+                <span class="badge badge-gray">Coming Soon</span>
+            </div>
+        </div>
+        <div class="card">
+            <div class="card-body" style="text-align:center; padding:32px 20px;">
+                <div style="font-size:40px; margin-bottom:14px;">📚</div>
+                <div class="card-title" style="margin-bottom:6px;">Library</div>
+                <p class="text-muted" style="font-size:12px; margin-bottom:12px;">Browse resources</p>
+                <span class="badge badge-gray">Coming Soon</span>
             </div>
         </div>
     </div>
-    <% } %>
-
-        <!-- Feature Tiles -->
-        <div style="display:grid; grid-template-columns:repeat(3,1fr); gap:16px;">
-            <div class="card">
-                <div class="card-body" style="text-align:center; padding:32px 20px;">
-                    <div style="font-size:40px; margin-bottom:14px;">📅</div>
-                    <div class="card-title" style="margin-bottom:6px;">Timetable</div>
-                    <p class="text-muted" style="font-size:12px; margin-bottom:12px;">View your class schedule</p>
-                    <span class="badge badge-gray">Coming Soon</span>
-                </div>
-            </div>
-            <div class="card">
-                <div class="card-body" style="text-align:center; padding:32px 20px;">
-                    <div style="font-size:40px; margin-bottom:14px;">📝</div>
-                    <div class="card-title" style="margin-bottom:6px;">Assignments</div>
-                    <p class="text-muted" style="font-size:12px; margin-bottom:12px;">View & submit assignments</p>
-                    <span class="badge badge-gray">Coming Soon</span>
-                </div>
-            </div>
-            <div class="card">
-                <div class="card-body" style="text-align:center; padding:32px 20px;">
-                    <div style="font-size:40px; margin-bottom:14px;">📊</div>
-                    <div class="card-title" style="margin-bottom:6px;">Grades</div>
-                    <p class="text-muted" style="font-size:12px; margin-bottom:12px;">Check your performance</p>
-                    <span class="badge badge-gray">Coming Soon</span>
-                </div>
-            </div>
-            <div class="card">
-                <div class="card-body" style="text-align:center; padding:32px 20px;">
-                    <div style="font-size:40px; margin-bottom:14px;">📢</div>
-                    <div class="card-title" style="margin-bottom:6px;">Announcements</div>
-                    <p class="text-muted" style="font-size:12px; margin-bottom:12px;">School updates & notices</p>
-                    <span class="badge badge-gray">Coming Soon</span>
-                </div>
-            </div>
-            <div class="card">
-                <div class="card-body" style="text-align:center; padding:32px 20px;">
-                    <div style="font-size:40px; margin-bottom:14px;">✅</div>
-                    <div class="card-title" style="margin-bottom:6px;">Attendance</div>
-                    <p class="text-muted" style="font-size:12px; margin-bottom:12px;">Track your attendance</p>
-                    <span class="badge badge-gray">Coming Soon</span>
-                </div>
-            </div>
-            <div class="card">
-                <div class="card-body" style="text-align:center; padding:32px 20px;">
-                    <div style="font-size:40px; margin-bottom:14px;">📚</div>
-                    <div class="card-title" style="margin-bottom:6px;">Library</div>
-                    <p class="text-muted" style="font-size:12px; margin-bottom:12px;">Browse resources</p>
-                    <span class="badge badge-gray">Coming Soon</span>
-                </div>
-            </div>
-        </div>
+    <%- include('../partials/dashboard-calendar', { hasHoliday, calendarHolidays, upcomingHolidays, holidayViewUrl }) %>
+</div>
