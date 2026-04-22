@@ -1,0 +1,261 @@
+<div class="page-header">
+    <div>
+        <h1><%= holiday ? '✏️ Edit Holiday' : '🎉 Create Holiday' %></h1>
+        <p><%= holiday ? 'Update holiday details and applicability.' : 'Add a new holiday to the school calendar.' %></p>
+    </div>
+    <a href="/admin/holidays" class="btn btn-secondary">← Back</a>
+</div>
+
+<form method="POST" action="<%= action %>" id="holidayForm">
+
+    <!-- Basic Info -->
+    <div class="form-section">
+        <div class="form-section-header">
+            <h3>Holiday Details</h3>
+            <span class="section-badge">Step 1</span>
+        </div>
+        <div class="form-section-body">
+            <div class="form-grid">
+                <div class="form-group">
+                    <label class="form-label">Holiday Name *</label>
+                    <input type="text" name="name" class="form-control" required
+                           placeholder="e.g. Diwali, Republic Day"
+                           value="<%= holiday ? holiday.name : '' %>" />
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Holiday Type *</label>
+                    <select name="type" class="form-control" required>
+                        <option value="">— Select Type —</option>
+                        <option value="public"          <%= holiday && holiday.type === 'public'          ? 'selected' : '' %>>Public Holiday</option>
+                        <option value="school_specific" <%= holiday && holiday.type === 'school_specific' ? 'selected' : '' %>>School Specific</option>
+                        <option value="optional"        <%= holiday && holiday.type === 'optional'        ? 'selected' : '' %>>Optional Holiday</option>
+                        <option value="exam_break"      <%= holiday && holiday.type === 'exam_break'      ? 'selected' : '' %>>Exam Break</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="form-grid">
+                <div class="form-group">
+                    <label class="form-label">Start Date *</label>
+                    <input type="date" name="startDate" id="startDate" class="form-control" required
+                           value="<%= holiday ? holiday.startDate.toISOString().split('T')[0] : '' %>" />
+                </div>
+                <div class="form-group">
+                    <label class="form-label">End Date *</label>
+                    <input type="date" name="endDate" id="endDate" class="form-control" required
+                           value="<%= holiday ? holiday.endDate.toISOString().split('T')[0] : '' %>" />
+                    <p style="font-size:12px; color:var(--text-muted); margin-top:4px;">
+                        For a single-day holiday, set start = end date.
+                    </p>
+                </div>
+            </div>
+
+            <div id="durationInfo" style="display:none; margin-bottom:12px;">
+                <span class="section-badge" id="durationLabel"></span>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">Description <span style="color:var(--text-muted); font-weight:400;">(optional)</span></label>
+                <textarea name="description" class="form-control" rows="3"
+                          placeholder="Brief note about this holiday…"><%= holiday ? holiday.description : '' %></textarea>
+            </div>
+
+            <div class="form-group">
+                <label style="display:flex; align-items:center; gap:10px; cursor:pointer; user-select:none;">
+                    <input type="checkbox" name="isRecurring" id="isRecurring"
+                           style="width:16px; height:16px; accent-color:var(--primary);"
+                           <%= holiday && holiday.isRecurring ? 'checked' : '' %> />
+                    <div>
+                        <span style="font-weight:600; font-size:14px;">Recurring Holiday</span>
+                        <span style="display:block; font-size:12px; color:var(--text-muted);">Mark this holiday as repeating every year.</span>
+                    </div>
+                </label>
+            </div>
+        </div>
+    </div>
+
+    <!-- Applicability -->
+    <div class="form-section">
+        <div class="form-section-header">
+            <h3>Applicability</h3>
+            <span class="section-badge">Step 2</span>
+        </div>
+        <div class="form-section-body">
+            <div class="form-group">
+                <label class="form-label">Who does this holiday apply to? *</label>
+                <select name="scope" id="scopeSelect" class="form-control" onchange="updateScope()" required>
+                    <option value="all"                   <%= !holiday || holiday.applicability.scope === 'all'                   ? 'selected' : '' %>>All Users (Students, Teachers, Parents)</option>
+                    <option value="specific_classes"      <%= holiday && holiday.applicability.scope === 'specific_classes'      ? 'selected' : '' %>>Specific Classes</option>
+                    <option value="specific_departments"  <%= holiday && holiday.applicability.scope === 'specific_departments'  ? 'selected' : '' %>>Specific Departments (Staff)</option>
+                </select>
+            </div>
+
+            <!-- Specific Classes picker -->
+            <div id="classesPicker" style="display:none;">
+                <label class="form-label">
+                    Select Classes *
+                    <% if (typeof academicYear !== 'undefined' && academicYear) { %>
+                    <span style="font-size:12px; color:var(--text-muted); font-weight:400; margin-left:6px;">
+                        (<%= academicYear.yearName %>)
+                    </span>
+                    <% } %>
+                </label>
+                <% if (classes.length === 0) { %>
+                    <p style="color:var(--text-muted); font-size:13px;">
+                        No classes found for the active academic year. Please create classes first.
+                    </p>
+                <% } else { %>
+                <div style="display:grid; grid-template-columns:repeat(auto-fill, minmax(140px,1fr)); gap:10px; margin-top:8px;">
+                    <% classes.forEach(c => {
+                        const isChecked = holiday && holiday.applicability.scope === 'specific_classes' &&
+                            holiday.applicability.classes.some(cl => cl._id ? cl._id.toString() === c._id.toString() : cl.toString() === c._id.toString());
+                    %>
+                    <label class="class-card <%= isChecked ? 'class-card--checked' : '' %>">
+                        <input type="checkbox" name="classes" value="<%= c._id %>"
+                               class="class-checkbox"
+                               style="accent-color:var(--primary); width:15px; height:15px; flex-shrink:0;"
+                               onchange="toggleClassCard(this)"
+                               <%= isChecked ? 'checked' : '' %> />
+                        <span style="font-weight:600; font-size:14px;">Class <%= c.classNumber %></span>
+                    </label>
+                    <% }) %>
+                </div>
+                <% } %>
+            </div>
+
+            <!-- Departments picker -->
+            <div id="deptPicker" style="display:none;">
+                <label class="form-label">Select Departments *</label>
+                <div style="display:flex; flex-direction:column; gap:10px; margin-top:8px;">
+                    <% const hasDepts = holiday && holiday.applicability.scope === 'specific_departments'; %>
+                    <label style="display:flex; align-items:center; gap:10px; cursor:pointer;">
+                        <input type="checkbox" name="departments" value="teaching_staff"
+                               style="accent-color:var(--primary); width:16px; height:16px;"
+                               <%= hasDepts && holiday.applicability.departments.includes('teaching_staff') ? 'checked' : '' %> />
+                        <div>
+                            <span style="font-weight:600; font-size:14px;">Teaching Staff</span>
+                            <span style="display:block; font-size:12px; color:var(--text-muted);">All teachers in the school</span>
+                        </div>
+                    </label>
+                    <label style="display:flex; align-items:center; gap:10px; cursor:pointer;">
+                        <input type="checkbox" name="departments" value="admin_staff"
+                               style="accent-color:var(--primary); width:16px; height:16px;"
+                               <%= hasDepts && holiday.applicability.departments.includes('admin_staff') ? 'checked' : '' %> />
+                        <div>
+                            <span style="font-weight:600; font-size:14px;">Administrative Staff</span>
+                            <span style="display:block; font-size:12px; color:var(--text-muted);">School administrators and co-admins</span>
+                        </div>
+                    </label>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <!-- Notification preview -->
+    <div class="form-section">
+        <div class="form-section-header">
+            <h3>Notifications</h3>
+        </div>
+        <div class="form-section-body">
+            <div style="display:flex; align-items:flex-start; gap:12px; background:#f0f4ff; border:1px solid #c7d7ff; border-radius:10px; padding:14px 16px;">
+                <span style="font-size:20px;">🔔</span>
+                <div>
+                    <div style="font-weight:600; font-size:14px; color:#1d4ed8;">Automatic In-App Notification</div>
+                    <div style="font-size:13px; color:#374151; margin-top:4px;">
+                        An in-app notification will be sent to all applicable users when this holiday is
+                        <%= holiday ? 'updated' : 'created' %> — only if your school has the <strong>Notification Module</strong> enabled.
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="formError" class="alert alert-error" style="display:none; margin-bottom:16px;"></div>
+
+    <div style="display:flex; gap:12px;">
+        <button type="submit" class="btn btn-primary"><%= holiday ? 'Save Changes' : 'Create Holiday' %></button>
+        <a href="/admin/holidays" class="btn btn-secondary">Cancel</a>
+    </div>
+</form>
+
+<style>
+.class-card {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 12px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    cursor: pointer;
+    background: var(--card-bg, #fff);
+    transition: border-color .15s, background .15s;
+    user-select: none;
+}
+.class-card:hover {
+    border-color: var(--primary);
+}
+.class-card--checked {
+    border-color: var(--primary);
+    background: #f0f4ff;
+}
+</style>
+
+<script>
+function toggleClassCard(checkbox) {
+    const card = checkbox.closest('.class-card');
+    if (checkbox.checked) {
+        card.classList.add('class-card--checked');
+    } else {
+        card.classList.remove('class-card--checked');
+    }
+}
+
+function updateScope() {
+    const scope = document.getElementById('scopeSelect').value;
+    document.getElementById('classesPicker').style.display = scope === 'specific_classes'     ? '' : 'none';
+    document.getElementById('deptPicker').style.display    = scope === 'specific_departments' ? '' : 'none';
+}
+
+function updateDuration() {
+    const s = document.getElementById('startDate').value;
+    const e = document.getElementById('endDate').value;
+    const info  = document.getElementById('durationInfo');
+    const label = document.getElementById('durationLabel');
+    if (s && e) {
+        const start = new Date(s), end = new Date(e);
+        if (end >= start) {
+            const days = Math.round((end - start) / 86400000) + 1;
+            label.textContent = `${days} day${days !== 1 ? 's' : ''}`;
+            info.style.display = '';
+            return;
+        }
+    }
+    info.style.display = 'none';
+}
+
+document.getElementById('startDate').addEventListener('change', () => {
+    const s = document.getElementById('startDate').value;
+    document.getElementById('endDate').min = s;
+    if (document.getElementById('endDate').value < s) document.getElementById('endDate').value = s;
+    updateDuration();
+});
+document.getElementById('endDate').addEventListener('change', updateDuration);
+
+document.getElementById('holidayForm').addEventListener('submit', function(e) {
+    const s = new Date(document.getElementById('startDate').value);
+    const en = new Date(document.getElementById('endDate').value);
+    const err = document.getElementById('formError');
+    if (en < s) {
+        e.preventDefault();
+        err.textContent = 'End date must be on or after start date.';
+        err.style.display = '';
+        return;
+    }
+    err.style.display = 'none';
+});
+
+// Initialize on page load
+updateScope();
+updateDuration();
+</script>

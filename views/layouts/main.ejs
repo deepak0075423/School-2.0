@@ -40,6 +40,7 @@
                     const _hasAptitudeExam = !!_schoolModules.aptitudeExam;
                     const _hasResult       = !!_schoolModules.result;
                     const _hasTimetable    = !!_schoolModules.timetable || (currentUser && currentUser.role === 'super_admin');
+                    const _hasHoliday      = !!_schoolModules.holiday;
                     const _path = (typeof locals !== 'undefined' && locals.title) ? title : '';
                     const _unreadCount = (typeof unreadNotificationCount !== 'undefined') ? unreadNotificationCount : 0;
                 %>
@@ -80,6 +81,12 @@
                     </a>
                     <a href="/super-admin/notifications/create" class="nav-item">
                         <span class="nav-icon">📢</span> Send Notification
+                    </a>
+
+                    <div class="nav-section-label">Audit</div>
+                    <a href="/super-admin/holidays/audit"
+                        class="nav-item <%= _path.includes('Holiday Audit') ? 'active' : '' %>">
+                        <span class="nav-icon">📋</span> Holiday Audit
                     </a>
 
                 <% } else if (session && session.userRole === 'school_admin') { %>
@@ -147,6 +154,17 @@
                     </a>
                     <% } %>
 
+                    <% if (_hasHoliday) { %>
+                    <div class="nav-section-label">Calendar</div>
+                    <a href="/admin/holidays"
+                        class="nav-item <%= _path.includes('Holiday') ? 'active' : '' %>">
+                        <span class="nav-icon">🎉</span> Holidays
+                    </a>
+                    <a href="/admin/holidays/create" class="nav-item">
+                        <span class="nav-icon">➕</span> Add Holiday
+                    </a>
+                    <% } %>
+
                 <% } else if (session && session.userRole === 'teacher') { %>
                     <div class="nav-section-label">Classroom</div>
                     <a href="/teacher/dashboard"
@@ -161,6 +179,13 @@
                     <a href="/teacher/timetable"
                         class="nav-item <%= _path.includes('Timetable') ? 'active' : '' %>">
                         <span class="nav-icon">📅</span> Timetable
+                    </a>
+                    <% } %>
+
+                    <% if (_hasHoliday) { %>
+                    <a href="/teacher/holidays"
+                        class="nav-item <%= _path.includes('Holiday') ? 'active' : '' %>">
+                        <span class="nav-icon">🎉</span> Holidays
                     </a>
                     <% } %>
 
@@ -239,6 +264,13 @@
                     </a>
                     <% } %>
 
+                    <% if (_hasHoliday) { %>
+                    <a href="/student/holidays"
+                        class="nav-item <%= _path.includes('Holiday') ? 'active' : '' %>">
+                        <span class="nav-icon">🎉</span> Holidays
+                    </a>
+                    <% } %>
+
                     <% if (_hasAptitudeExam) { %>
                     <div class="nav-section-label">Exams</div>
                     <a href="/student/exams" class="nav-item <%= _path.includes('Exam') && !_path.includes('Formal') ? 'active' : '' %>">
@@ -278,6 +310,13 @@
                         class="nav-item <%= _path.includes('Child') && !_path.includes('Attendance') ? 'active' : '' %>">
                         <span class="nav-icon">🏫</span> Child's Class
                     </a>
+
+                    <% if (_hasHoliday) { %>
+                    <a href="/parent/holidays"
+                        class="nav-item <%= _path.includes('Holiday') ? 'active' : '' %>">
+                        <span class="nav-icon">🎉</span> Holidays
+                    </a>
+                    <% } %>
 
                     <% if (_hasAptitudeExam) { %>
                     <div class="nav-section-label">Exams</div>

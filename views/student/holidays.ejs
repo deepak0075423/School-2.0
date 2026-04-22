@@ -1,0 +1,234 @@
+<style>
+.badge-public          { background:#eff6ff; color:#1d4ed8; border:1px solid #bfdbfe; }
+.badge-school_specific { background:#f5f3ff; color:#6d28d9; border:1px solid #ddd6fe; }
+.badge-optional        { background:#fffbeb; color:#b45309; border:1px solid #fde68a; }
+.badge-exam_break      { background:#ecfdf5; color:#065f46; border:1px solid #a7f3d0; }
+.type-badge { display:inline-block; padding:2px 10px; border-radius:12px; font-size:12px; font-weight:600; text-transform:capitalize; white-space:nowrap; }
+.view-tabs { display:flex; gap:4px; border-bottom:2px solid var(--border); margin-bottom:24px; }
+.view-tab { padding:9px 20px; border:none; background:none; cursor:pointer; font-size:14px; font-weight:500; color:var(--text-muted); border-bottom:2px solid transparent; margin-bottom:-2px; transition:all .15s; border-radius:6px 6px 0 0; }
+.view-tab.active { color:var(--primary); border-bottom-color:var(--primary); background:#f0f4ff; }
+.cal-header { display:flex; align-items:center; justify-content:space-between; margin-bottom:16px; }
+.cal-nav-btn { background:var(--sidebar-bg); border:1px solid var(--border); border-radius:8px; padding:6px 14px; cursor:pointer; font-size:16px; color:var(--text); }
+.cal-nav-btn:hover { background:var(--border); }
+.cal-month-label { font-size:20px; font-weight:700; color:var(--text); }
+.cal-grid { display:grid; grid-template-columns:repeat(7,1fr); gap:4px; }
+.cal-day-header { text-align:center; font-size:12px; font-weight:600; color:var(--text-muted); padding:8px 0; text-transform:uppercase; letter-spacing:.5px; }
+.cal-cell { min-height:80px; border:1px solid var(--border); border-radius:8px; padding:6px; background:var(--card-bg,#fff); }
+.cal-cell.empty { background:var(--sidebar-bg); border-color:transparent; }
+.cal-cell.today { border-color:var(--primary); }
+.cal-cell.today .cal-date { background:var(--primary); color:#fff; border-radius:50%; width:24px; height:24px; display:flex; align-items:center; justify-content:center; }
+.cal-date { font-size:13px; font-weight:600; color:var(--text); margin-bottom:4px; }
+.cal-holiday-pill { display:block; font-size:11px; padding:2px 6px; border-radius:4px; margin-top:2px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; cursor:pointer; font-weight:500; }
+.pill-public { background:#3b82f6; color:#fff; }
+.pill-school_specific { background:#8b5cf6; color:#fff; }
+.pill-optional { background:#f59e0b; color:#fff; }
+.pill-exam_break { background:#10b981; color:#fff; }
+.cal-legend { display:flex; gap:16px; flex-wrap:wrap; margin-bottom:20px; }
+.legend-item { display:flex; align-items:center; gap:6px; font-size:13px; color:var(--text); }
+.legend-dot { width:12px; height:12px; border-radius:3px; flex-shrink:0; }
+.holiday-modal-overlay { display:none; position:fixed; inset:0; background:rgba(0,0,0,.45); z-index:1100; align-items:center; justify-content:center; }
+.holiday-modal-overlay.open { display:flex; }
+.holiday-modal { background:var(--card-bg,#fff); border-radius:14px; padding:28px 32px; max-width:480px; width:90%; box-shadow:0 20px 60px rgba(0,0,0,.2); position:relative; }
+.holiday-modal-close { position:absolute; top:14px; right:18px; background:none; border:none; font-size:22px; cursor:pointer; color:var(--text-muted); line-height:1; }
+.holiday-modal-title { font-size:20px; font-weight:700; margin-bottom:16px; color:var(--text); }
+.holiday-detail-row { display:flex; gap:8px; align-items:flex-start; margin-bottom:10px; font-size:14px; color:var(--text); }
+.detail-label { font-weight:600; min-width:90px; color:var(--text-muted); }
+</style>
+
+<div class="page-header">
+    <div>
+        <h1>🎉 School Holidays</h1>
+        <p>Your upcoming holidays and school breaks.</p>
+    </div>
+</div>
+
+<div class="view-tabs">
+    <button class="view-tab active" onclick="showTab('list', this)">📋 List View</button>
+    <button class="view-tab"        onclick="showTab('calendar', this)">📅 Calendar View</button>
+</div>
+
+<!-- LIST VIEW -->
+<div id="tab-list">
+    <% if (holidays.length === 0) { %>
+    <div class="empty-state">
+        <div class="empty-icon">🎉</div>
+        <h3>No holidays scheduled</h3>
+        <p>No holidays have been announced yet. Check back later.</p>
+    </div>
+    <% } else { %>
+    <%
+        const now = new Date(); now.setHours(0,0,0,0);
+        const upcoming = holidays.filter(h => new Date(h.endDate) >= now);
+        const past     = holidays.filter(h => new Date(h.endDate) <  now);
+    %>
+
+    <!-- Summary cards -->
+    <div style="display:grid; grid-template-columns:repeat(auto-fill,minmax(160px,1fr)); gap:16px; margin-bottom:24px;">
+        <div class="stat-card">
+            <div class="stat-value"><%= holidays.length %></div>
+            <div class="stat-label">Total Holidays</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-value" style="color:#3b82f6;"><%= upcoming.length %></div>
+            <div class="stat-label">Upcoming</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-value" style="color:#10b981;">
+                <%= holidays.reduce((s,h) => s + Math.round((new Date(h.endDate)-new Date(h.startDate))/86400000)+1, 0) %>
+            </div>
+            <div class="stat-label">Total Days Off</div>
+        </div>
+    </div>
+
+    <% if (upcoming.length > 0) { %>
+    <h3 style="font-size:16px; font-weight:700; margin-bottom:12px; color:var(--text);">Upcoming Holidays</h3>
+    <div style="display:flex; flex-direction:column; gap:10px; margin-bottom:24px;">
+    <% upcoming.forEach(h => {
+        const start = new Date(h.startDate), end = new Date(h.endDate);
+        const days  = Math.round((end-start)/86400000)+1;
+        const typeLabel = {public:'Public',school_specific:'School Specific',optional:'Optional',exam_break:'Exam Break'}[h.type]||h.type;
+        const colors = {public:'#3b82f6',school_specific:'#8b5cf6',optional:'#f59e0b',exam_break:'#10b981'};
+    %>
+    <div style="display:flex; gap:14px; align-items:flex-start; padding:16px; border:1px solid var(--border); border-radius:12px; background:var(--card-bg,#fff); border-left:4px solid <%= colors[h.type] || '#3b82f6' %>;">
+        <div style="text-align:center; min-width:52px; background:var(--sidebar-bg); border-radius:8px; padding:8px 6px;">
+            <div style="font-size:18px; font-weight:800; color:var(--text); line-height:1;"><%= start.getDate() %></div>
+            <div style="font-size:11px; color:var(--text-muted); text-transform:uppercase; font-weight:600;"><%= start.toLocaleDateString('en-IN',{month:'short'}) %></div>
+        </div>
+        <div style="flex:1;">
+            <div style="font-weight:700; font-size:15px; color:var(--text);">
+                <%= h.name %>
+                <% if (h.isRecurring) { %><span style="font-size:11px; color:#10b981; font-weight:600; margin-left:8px;">↻ Yearly</span><% } %>
+            </div>
+            <div style="margin-top:4px; display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
+                <span class="type-badge badge-<%= h.type %>"><%= typeLabel %></span>
+                <span style="font-size:12px; color:var(--text-muted);">
+                    <%= days === 1 ? '1 day' : days + ' days' %>
+                    <% if (days > 1) { %> · <%= end.toLocaleDateString('en-IN',{day:'2-digit',month:'short'}) %><% } %>
+                </span>
+            </div>
+            <% if (h.description) { %>
+            <div style="font-size:13px; color:var(--text-muted); margin-top:6px;"><%= h.description %></div>
+            <% } %>
+        </div>
+    </div>
+    <% }) %>
+    </div>
+    <% } %>
+
+    <% if (past.length > 0) { %>
+    <details style="margin-top:8px;">
+        <summary style="font-size:14px; font-weight:600; color:var(--text-muted); cursor:pointer; padding:8px 0;">
+            Past Holidays (<%= past.length %>)
+        </summary>
+        <div class="table-wrapper" style="margin-top:12px;">
+            <table class="data-table">
+                <thead><tr><th>Holiday</th><th>Type</th><th>Dates</th><th>Duration</th></tr></thead>
+                <tbody>
+                <% past.forEach(h => {
+                    const start = new Date(h.startDate), end = new Date(h.endDate);
+                    const days  = Math.round((end-start)/86400000)+1;
+                    const tl    = {public:'Public',school_specific:'School Specific',optional:'Optional',exam_break:'Exam Break'}[h.type]||h.type;
+                %>
+                <tr style="opacity:0.6;">
+                    <td><div style="font-weight:600;"><%= h.name %></div></td>
+                    <td><span class="type-badge badge-<%= h.type %>"><%= tl %></span></td>
+                    <td style="font-size:13px;">
+                        <%= start.toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'}) %>
+                        <% if (days > 1) { %> – <%= end.toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'}) %><% } %>
+                    </td>
+                    <td style="font-size:13px; color:var(--text-muted);"><%= days %> day<%= days!==1?'s':'' %></td>
+                </tr>
+                <% }) %>
+                </tbody>
+            </table>
+        </div>
+    </details>
+    <% } %>
+    <% } %>
+</div>
+
+<!-- CALENDAR VIEW -->
+<div id="tab-calendar" style="display:none;">
+    <div class="cal-legend">
+        <div class="legend-item"><div class="legend-dot" style="background:#3b82f6;"></div> Public</div>
+        <div class="legend-item"><div class="legend-dot" style="background:#8b5cf6;"></div> School Specific</div>
+        <div class="legend-item"><div class="legend-dot" style="background:#f59e0b;"></div> Optional</div>
+        <div class="legend-item"><div class="legend-dot" style="background:#10b981;"></div> Exam Break</div>
+    </div>
+    <div class="card" style="padding:24px;">
+        <div class="cal-header">
+            <button class="cal-nav-btn" onclick="prevMonth()">&#8592;</button>
+            <div class="cal-month-label" id="calMonthLabel"></div>
+            <button class="cal-nav-btn" onclick="nextMonth()">&#8594;</button>
+        </div>
+        <div class="cal-grid" id="calGrid"></div>
+    </div>
+</div>
+
+<!-- Modal -->
+<div class="holiday-modal-overlay" id="holidayModal" onclick="closeModal(event)">
+    <div class="holiday-modal">
+        <button class="holiday-modal-close" onclick="closeModal(null,true)">&times;</button>
+        <div class="holiday-modal-title" id="modalName"></div>
+        <div id="modalBody"></div>
+    </div>
+</div>
+
+<script>
+const HOLIDAYS    = <%- holidaysJson %>;
+const TYPE_LABELS = { public:'Public', school_specific:'School Specific', optional:'Optional', exam_break:'Exam Break' };
+const DAY_NAMES   = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+const MONTH_NAMES = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+let calYear = new Date().getFullYear(), calMonth = new Date().getMonth();
+
+function showTab(tab, btn) {
+    document.getElementById('tab-list').style.display     = tab === 'list'     ? '' : 'none';
+    document.getElementById('tab-calendar').style.display = tab === 'calendar' ? '' : 'none';
+    document.querySelectorAll('.view-tab').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    if (tab === 'calendar') renderCalendar();
+}
+function prevMonth() { calMonth--; if (calMonth<0){calMonth=11;calYear--;} renderCalendar(); }
+function nextMonth() { calMonth++; if (calMonth>11){calMonth=0;calYear++;} renderCalendar(); }
+
+function buildHolidayMap(y,m) {
+    const map={}, ms=new Date(y,m,1), me=new Date(y,m+1,0);
+    HOLIDAYS.forEach(h=>{
+        const s=new Date(h.startDate+'T00:00:00'),e=new Date(h.endDate+'T00:00:00');
+        if(s>me||e<ms) return;
+        const c=new Date(Math.max(s,ms)), l=new Date(Math.min(e,me));
+        while(c<=l){const d=c.getDate();if(!map[d])map[d]=[];map[d].push(h);c.setDate(c.getDate()+1);}
+    });
+    return map;
+}
+function renderCalendar() {
+    document.getElementById('calMonthLabel').textContent=`${MONTH_NAMES[calMonth]} ${calYear}`;
+    const today=new Date(), fd=new Date(calYear,calMonth,1).getDay(), dim=new Date(calYear,calMonth+1,0).getDate(), map=buildHolidayMap(calYear,calMonth);
+    let html=DAY_NAMES.map(d=>`<div class="cal-day-header">${d}</div>`).join('');
+    for(let i=0;i<fd;i++) html+='<div class="cal-cell empty"></div>';
+    for(let d=1;d<=dim;d++){
+        const tc=d===today.getDate()&&calMonth===today.getMonth()&&calYear===today.getFullYear()?' today':'';
+        const pills=(map[d]||[]).map(h=>`<span class="cal-holiday-pill pill-${h.type}" onclick="openModal('${h._id}')">${h.name}</span>`).join('');
+        html+=`<div class="cal-cell${tc}"><div class="cal-date">${d}</div>${pills}</div>`;
+    }
+    document.getElementById('calGrid').innerHTML=html;
+}
+function openModal(id){
+    const h=HOLIDAYS.find(x=>x._id===id);if(!h)return;
+    document.getElementById('modalName').textContent=h.name;
+    const fmt=d=>new Date(d+'T00:00:00').toLocaleDateString('en-IN',{day:'2-digit',month:'long',year:'numeric'});
+    const days=Math.round((new Date(h.endDate)-new Date(h.startDate))/86400000)+1;
+    const clr={public:'#3b82f6',school_specific:'#8b5cf6',optional:'#f59e0b',exam_break:'#10b981'};
+    document.getElementById('modalBody').innerHTML=`
+        <div style="display:inline-block;padding:4px 12px;border-radius:12px;background:${clr[h.type]}22;color:${clr[h.type]};font-weight:600;font-size:13px;margin-bottom:16px;border:1px solid ${clr[h.type]}44;">${TYPE_LABELS[h.type]||h.type}</div>
+        <div class="holiday-detail-row"><span class="detail-label">Start Date</span><span>${fmt(h.startDate)}</span></div>
+        <div class="holiday-detail-row"><span class="detail-label">End Date</span><span>${fmt(h.endDate)}</span></div>
+        <div class="holiday-detail-row"><span class="detail-label">Duration</span><span>${days} day${days!==1?'s':''}</span></div>
+        ${h.isRecurring?'<div class="holiday-detail-row"><span class="detail-label">Recurring</span><span style="color:#10b981;font-weight:600;">✓ Repeats yearly</span></div>':''}
+        ${h.description?`<div class="holiday-detail-row"><span class="detail-label">Note</span><span style="color:var(--text-muted);">${h.description}</span></div>`:''}
+    `;
+    document.getElementById('holidayModal').classList.add('open');
+}
+function closeModal(e,force){if(force||(e&&e.target===document.getElementById('holidayModal')))document.getElementById('holidayModal').classList.remove('open');}
+document.addEventListener('keydown',e=>{if(e.key==='Escape')document.getElementById('holidayModal').classList.remove('open');});
+</script>

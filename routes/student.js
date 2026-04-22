@@ -35,6 +35,11 @@ router.post('/exams/:id/violation',     examGuard, examCtrl.postLogViolation);
 router.post('/exams/:id/submit',        examGuard, examCtrl.postSubmitExam);
 router.get('/exams/:id/result',         examGuard, examCtrl.getStudentResult);
 
+// ── Holiday Management ────────────────────────────────────────
+const holidayCtrl  = require('../controllers/holidayController');
+const holidayGuard = [...guard, requireModule('holiday')];
+router.get('/holidays', holidayGuard, holidayCtrl.studentGetHolidays);
+
 // ── Result & Assessment Management ────────────────────────────
 const formalExamCtrl = require('../controllers/formalExamController');
 const classTestCtrl  = require('../controllers/classTestController');

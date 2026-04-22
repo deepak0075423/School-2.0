@@ -19,6 +19,7 @@ const MODULE_LABELS = {
     aptitudeExam: 'Aptitude Exam Module',
     result:       'Result & Assessment Management',
     timetable:    'Timetable Management',
+    holiday:      'Holiday Management',
 };
 
 const requireModule = (moduleName) => (req, res, next) => {

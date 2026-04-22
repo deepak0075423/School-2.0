@@ -126,5 +126,21 @@ router.post('/results/exams/:id/marks/:subjectId',        resultGuard, formalExa
 router.get('/results/exams/:id/result',                   resultGuard, formalExamCtrl.adminGetResult);
 router.get('/api/results/sections/:sectionId/subjects',   resultGuard, formalExamCtrl.adminApiSectionSubjects);
 
+// ── Holiday Management ────────────────────────────────────────
+const holidayCtrl  = require('../controllers/holidayController');
+const uploadCsv    = require('../middleware/uploadCsv');
+const holidayGuard = [...guard, requireModule('holiday')];
+router.get('/holidays',                holidayGuard, holidayCtrl.adminGetHolidays);
+router.get('/holidays/create',         holidayGuard, holidayCtrl.adminGetCreateHoliday);
+router.post('/holidays/create',        holidayGuard, holidayCtrl.adminPostCreateHoliday);
+router.get('/holidays/import',         holidayGuard, holidayCtrl.adminGetImportHolidays);
+router.post('/holidays/import',        holidayGuard, uploadCsv.single('csvFile'), holidayCtrl.adminPostImportHolidays);
+router.get('/holidays/export',         holidayGuard, holidayCtrl.adminGetExportHolidays);
+router.get('/holidays/template',       holidayGuard, holidayCtrl.adminGetImportTemplate);
+router.get('/holidays/audit',          holidayGuard, holidayCtrl.adminGetAuditLog);
+router.get('/holidays/:id/edit',       holidayGuard, holidayCtrl.adminGetEditHoliday);
+router.post('/holidays/:id/edit',      holidayGuard, holidayCtrl.adminPostEditHoliday);
+router.post('/holidays/:id/delete',    holidayGuard, holidayCtrl.adminPostDeleteHoliday);
+
 module.exports = router;
 
