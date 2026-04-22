@@ -3,6 +3,7 @@ const TimetableEntry = require('../models/TimetableEntry');
 const ClassSection = require('../models/ClassSection');
 const Subject = require('../models/Subject');
 const User = require('../models/User');
+const SectionSubjectTeacher = require('../models/SectionSubjectTeacher');
 
 const adminManageTimetable = async (req, res) => {
     try {
@@ -128,9 +129,37 @@ const adminAssignPeriods = async (req, res) => {
             return res.redirect(`/admin/sections/${sectionId}/timetable`);
         }
 
-        const entries = await TimetableEntry.find({ timetable: timetable._id }).populate('subject').populate('teacher');
-        const subjects = await Subject.find({ school: req.session.schoolId });
-        
+        const entries = await TimetableEntry.find({ timetable: timetable._id })
+            .populate('subject')
+            .populate('additionalSubjects.subject')
+            .populate('additionalSubjects.teacher')
+            .populate('teacher');
+
+        // Fetch subjects and teachers assigned to this specific section
+        const sectionAssignments = await SectionSubjectTeacher.find({ section: sectionId })
+            .populate('subject')
+            .populate('teacher', 'name email');
+
+        // Build unique subjects list and teachersBySubject map for this section
+        const subjectMap = {};
+        const teachersBySubject = {};
+        for (const a of sectionAssignments) {
+            if (a.subject) {
+                subjectMap[a.subject._id.toString()] = a.subject;
+                if (!teachersBySubject[a.subject._id.toString()]) teachersBySubject[a.subject._id.toString()] = [];
+                if (a.teacher) teachersBySubject[a.subject._id.toString()].push(a.teacher);
+            }
+        }
+        const subjects = Object.values(subjectMap);
+
+        // Only sections of the same class (for per-period merge)
+        const allSections = await ClassSection.find({
+            school: req.session.schoolId,
+            academicYear: section.academicYear._id || section.academicYear,
+            class: section.class._id || section.class,
+            _id: { $ne: sectionId }
+        }).populate('class').sort({ sectionName: 1 });
+
         const days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];
         if (section.openOnSaturday) days.push('Saturday');
 
@@ -141,6 +170,8 @@ const adminAssignPeriods = async (req, res) => {
             timetable,
             entries,
             subjects,
+            teachersBySubject: JSON.stringify(teachersBySubject),
+            allSections,
             days
         });
     } catch (err) {
@@ -178,12 +209,28 @@ const adminSaveEntries = async (req, res) => {
                 const teacherId = req.body[`teacher_${day}_${period.periodNumber}`];
 
                 if (subjectId) {
+                    // additionalSubjects_Day_N[] and additionalTeachers_Day_N[] are positionally matched
+                    let extraSubjectIds = req.body[`additionalSubjects_${day}_${period.periodNumber}`] || [];
+                    if (!Array.isArray(extraSubjectIds)) extraSubjectIds = [extraSubjectIds];
+                    let extraTeacherIds = req.body[`additionalTeachers_${day}_${period.periodNumber}`] || [];
+                    if (!Array.isArray(extraTeacherIds)) extraTeacherIds = [extraTeacherIds];
+
+                    const additionalSubjects = extraSubjectIds
+                        .map((subId, i) => subId ? { subject: subId, teacher: extraTeacherIds[i] || null } : null)
+                        .filter(Boolean);
+
+                    let mergedSections = req.body[`mergedSections_${day}_${period.periodNumber}`] || [];
+                    if (!Array.isArray(mergedSections)) mergedSections = [mergedSections];
+                    mergedSections = mergedSections.filter(Boolean);
+
                     newEntries.push({
                         timetable: timetable._id,
                         dayOfWeek: day,
                         periodNumber: period.periodNumber,
                         subject: subjectId,
-                        teacher: teacherId || null
+                        teacher: teacherId || null,
+                        additionalSubjects,
+                        mergedSections
                     });
                 }
             }
@@ -203,20 +250,29 @@ const adminSaveEntries = async (req, res) => {
 
 const apiGetTeachersBySubject = async (req, res) => {
     try {
-        const { subjectId, day, period, timetableId } = req.query;
-        
-        const subject = await Subject.findOne({ _id: subjectId, school: req.session.schoolId }).populate({
-            path: 'teachers',
-            match: { isActive: true },
-            select: 'name email'
-        });
-        
-        if (!subject) return res.json({ success: false, message: 'Subject not found' });
-        
-        let potentialTeachers = subject.teachers || [];
-            
+        const { subjectId, day, period, timetableId, sectionId } = req.query;
+
+        let potentialTeachers = [];
+
+        if (sectionId) {
+            // Fetch teachers assigned to this subject in this section
+            const assignments = await SectionSubjectTeacher.find({ section: sectionId, subject: subjectId })
+                .populate({ path: 'teacher', match: { isActive: true }, select: 'name email' });
+            potentialTeachers = assignments.map(a => a.teacher).filter(Boolean);
+        }
+
         if (potentialTeachers.length === 0) {
-             potentialTeachers = await User.find({ school: req.session.schoolId, role: 'teacher', isActive: true }).select('name email');
+            const subject = await Subject.findOne({ _id: subjectId, school: req.session.schoolId }).populate({
+                path: 'teachers',
+                match: { isActive: true },
+                select: 'name email'
+            });
+            if (!subject) return res.json({ success: false, message: 'Subject not found' });
+            potentialTeachers = subject.teachers || [];
+        }
+
+        if (potentialTeachers.length === 0) {
+            potentialTeachers = await User.find({ school: req.session.schoolId, role: 'teacher', isActive: true }).select('name email');
         }
 
         // Filter availability
@@ -226,7 +282,7 @@ const apiGetTeachersBySubject = async (req, res) => {
                 let conflictQuery = {
                     teacher: t._id,
                     dayOfWeek: day,
-                    periodNumber: period
+                    periodNumber: parseInt(period)
                 };
                 if (timetableId) {
                     conflictQuery.timetable = { $ne: timetableId };
@@ -241,7 +297,7 @@ const apiGetTeachersBySubject = async (req, res) => {
         }
 
         res.json({ success: true, teachers: availableTeachers });
-        
+
     } catch (err) {
         res.status(500).json({ success: false, message: err.message });
     }

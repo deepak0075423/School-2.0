@@ -13,9 +13,9 @@
 .timetable-grid th {
     background-color: var(--sidebar-bg);
 }
-.subject-select, .teacher-select {
+.subject-select, .teacher-select, .add-subject-select {
     width: 100%;
-    margin-bottom: 8px;
+    margin-bottom: 6px;
     padding: 6px;
     border-radius: 6px;
     border: 1px solid var(--border);
@@ -28,6 +28,56 @@
     font-size: 14px;
     font-weight: 500;
     vertical-align: middle !important;
+}
+.extra-subject-block {
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 6px;
+    margin-bottom: 4px;
+    position: relative;
+    background: var(--sidebar-bg);
+}
+.extra-subject-block select { margin-bottom: 4px; }
+.btn-remove-subject {
+    position: absolute;
+    top: 4px;
+    right: 4px;
+    background: none;
+    border: none;
+    color: #ef4444;
+    cursor: pointer;
+    font-size: 15px;
+    padding: 0;
+    line-height: 1;
+}
+.btn-add-subject {
+    font-size: 11px;
+    padding: 3px 8px;
+    border-radius: 4px;
+    border: 1px solid var(--border);
+    background: none;
+    color: var(--text-muted);
+    cursor: not-allowed;
+    margin-top: 2px;
+    opacity: 0.45;
+}
+.btn-add-subject.enabled {
+    color: #4f46e5;
+    border-color: #4f46e5;
+    cursor: pointer;
+    opacity: 1;
+}
+.btn-add-subject.enabled:hover { background: rgba(79,70,229,0.08); }
+.merge-select {
+    width: 100%;
+    margin-bottom: 4px;
+    padding: 4px 6px;
+    border-radius: 6px;
+    border: 1px solid var(--border);
+    background: var(--input-bg);
+    color: var(--text);
+    font-size: 11px;
+    min-height: 52px;
 }
 </style>
 
@@ -43,6 +93,7 @@
         <a href="/admin/sections/<%= section._id %>" class="btn btn-secondary">← Back to Section</a>
     </div>
 </div>
+
 
 <div class="card" style="overflow-x: auto;">
     <div class="card-body">
@@ -73,12 +124,14 @@
                                 <% if (p.isRecess) { %>
                                     <td class="recess-cell"><%= p.recessName || 'Recess' %></td>
                                 <% } else { %>
-                                    <% 
-                                        // Find existing entry if any
-                                        const entry = entries.find(e => e.dayOfWeek === day && e.periodNumber === p.periodNumber); 
+                                    <%
+                                        const entry = entries.find(e => e.dayOfWeek === day && e.periodNumber === p.periodNumber);
+                                        const extraSubs = entry && entry.additionalSubjects ? entry.additionalSubjects : [];
                                     %>
                                     <td>
-                                        <select name="subject_<%= day %>_<%= p.periodNumber %>" class="subject-select" onchange="fetchTeachersForSubject(this, '<%= day %>', '<%= p.periodNumber %>', '<%= timetable._id %>')">
+                                        <!-- Primary subject -->
+                                        <select name="subject_<%= day %>_<%= p.periodNumber %>" class="subject-select"
+                                            onchange="fetchTeachersForSubject(this, '<%= day %>', '<%= p.periodNumber %>', '<%= timetable._id %>', '<%= section._id %>')">
                                             <option value="">— Subject —</option>
                                             <% subjects.forEach(sub => { %>
                                                 <option value="<%= sub._id %>" <%= entry && entry.subject && entry.subject._id.toString() === sub._id.toString() ? 'selected' : '' %>>
@@ -86,13 +139,66 @@
                                                 </option>
                                             <% }) %>
                                         </select>
-                                        <select name="teacher_<%= day %>_<%= p.periodNumber %>" id="teacher_<%= day %>_<%= p.periodNumber %>" class="teacher-select">
+
+                                        <!-- Teacher -->
+                                        <select name="teacher_<%= day %>_<%= p.periodNumber %>"
+                                            id="teacher_<%= day %>_<%= p.periodNumber %>"
+                                            class="teacher-select"
+                                            onchange="onPrimaryTeacherChange('<%= day %>', '<%= p.periodNumber %>')">
                                             <option value="">— Teacher —</option>
                                             <% if (entry && entry.teacher) { %>
-                                                <!-- If already assigned, preset it -->
                                                 <option value="<%= entry.teacher._id %>" selected><%= entry.teacher.name %></option>
                                             <% } %>
                                         </select>
+
+                                        <!-- Merge sections for this period -->
+                                        <% if (allSections.length > 0) { %>
+                                        <% const entryMerged = entry && entry.mergedSections ? entry.mergedSections.map(m => m.toString()) : []; %>
+                                        <select name="mergedSections_<%= day %>_<%= p.periodNumber %>[]" multiple class="merge-select" title="Hold Ctrl/Cmd to merge multiple sections for this period">
+                                            <% allSections.forEach(s => { %>
+                                                <option value="<%= s._id %>" <%= entryMerged.includes(s._id.toString()) ? 'selected' : '' %>>
+                                                    🔗 <%= s.class ? s.class.className : '' %> - <%= s.sectionName %>
+                                                </option>
+                                            <% }) %>
+                                        </select>
+                                        <div style="font-size:10px; color:var(--text-muted); margin-bottom:4px;">Merge sections (Ctrl+click)</div>
+                                        <% } %>
+
+                                        <!-- Additional subjects (each with own teacher) -->
+                                        <div id="extraSubjects_<%= day %>_<%= p.periodNumber %>">
+                                            <% extraSubs.forEach((es, idx) => { %>
+                                            <% if (!es || !es.subject) return; %>
+                                            <div class="extra-subject-block">
+                                                <button type="button" class="btn-remove-subject" onclick="removeExtraSubject(this, '<%= day %>', '<%= p.periodNumber %>')">×</button>
+                                                <select name="additionalSubjects_<%= day %>_<%= p.periodNumber %>[]" class="add-subject-select subject-select"
+                                                    onchange="refreshExtraSubjectOptions('<%= day %>', '<%= p.periodNumber %>')">
+                                                    <option value="">— Extra Subject —</option>
+                                                    <% subjects.forEach(sub => { %>
+                                                        <option value="<%= sub._id %>" <%= es.subject._id && es.subject._id.toString() === sub._id.toString() ? 'selected' : '' %>>
+                                                            <%= sub.subjectName %>
+                                                        </option>
+                                                    <% }) %>
+                                                </select>
+                                                <select name="additionalTeachers_<%= day %>_<%= p.periodNumber %>[]" class="teacher-select">
+                                                    <option value="">— Teacher —</option>
+                                                    <% if (es.teacher) { %>
+                                                        <option value="<%= es.teacher._id %>" selected><%= es.teacher.name %></option>
+                                                    <% } %>
+                                                </select>
+                                            </div>
+                                            <% }) %>
+                                        </div>
+                                        <%
+                                            const hasTeacher = entry && entry.teacher;
+                                            const atMax = extraSubs.length >= 2;
+                                        %>
+                                        <button type="button"
+                                            class="btn-add-subject <%= (hasTeacher && !atMax) ? 'enabled' : '' %>"
+                                            onclick="addExtraSubject('<%= day %>', '<%= p.periodNumber %>')"
+                                            id="addSubjectBtn_<%= day %>_<%= p.periodNumber %>"
+                                            <%= (!hasTeacher || atMax) ? 'disabled' : '' %>>
+                                            + Subject
+                                        </button>
                                     </td>
                                 <% } %>
                             <% }) %>
@@ -100,33 +206,141 @@
                     <% }) %>
                 </tbody>
             </table>
-            
+
             <button type="submit" class="btn btn-primary" style="width: 100%;">Save Timetable Entries</button>
         </form>
     </div>
 </div>
 
 <script>
-// On page load, auto-fetch teachers for pre-selected subjects (just the pre-selected ones that aren't loaded)
-// Though for simplicity, the existing teacher is rendered as a standalone <option>. 
-// If the user changes it, the fetch happens.
+const teachersBySubject = <%- teachersBySubject %>;
+const sectionId = '<%= section._id %>';
+const MAX_EXTRA_SUBJECTS = 2;
 
-async function fetchTeachersForSubject(selectElem, day, periodNumber, timetableId) {
-    const subjectId = selectElem.value;
-    const teacherSelect = document.getElementById(`teacher_${day}_${periodNumber}`);
-    
-    // Clear current options
-    teacherSelect.innerHTML = '<option value="">— Loading —</option>';
-    
+// All subjects available for this section (populated from server)
+const allSubjects = [
+    <% subjects.forEach((sub, i) => { %>
+    { id: '<%= sub._id %>', name: '<%= sub.subjectName.replace(/'/g, "\\'") %>' }<%= i < subjects.length - 1 ? ',' : '' %>
+    <% }) %>
+];
+
+function getSelectedSubjectIds(day, period) {
+    const ids = new Set();
+    // Primary subject
+    const primary = document.querySelector(`select[name="subject_${day}_${period}"]`);
+    if (primary && primary.value) ids.add(primary.value);
+    // Extra subjects
+    const extras = document.querySelectorAll(`#extraSubjects_${day}_${period} select[name="additionalSubjects_${day}_${period}[]"]`);
+    extras.forEach(s => { if (s.value) ids.add(s.value); });
+    return ids;
+}
+
+function buildExtraSubjectOptions(day, period, selectedId = '') {
+    const excluded = getSelectedSubjectIds(day, period);
+    let html = '<option value="">— Extra Subject —</option>';
+    allSubjects.forEach(sub => {
+        if (excluded.has(sub.id) && sub.id !== selectedId) return;
+        html += `<option value="${sub.id}" ${sub.id === selectedId ? 'selected' : ''}>${sub.name}</option>`;
+    });
+    return html;
+}
+
+// Refresh all extra subject dropdowns in a cell to exclude already-selected subjects
+function refreshExtraSubjectOptions(day, period) {
+    const container = document.getElementById(`extraSubjects_${day}_${period}`);
+    const blocks = container.querySelectorAll('.extra-subject-block');
+    blocks.forEach(block => {
+        const sel = block.querySelector(`select[name="additionalSubjects_${day}_${period}[]"]`);
+        if (!sel) return;
+        const currentVal = sel.value;
+        sel.innerHTML = buildExtraSubjectOptions(day, period, currentVal);
+    });
+    updateAddButton(day, period);
+}
+
+function onPrimaryTeacherChange(day, period) {
+    updateAddButton(day, period);
+}
+
+function updateAddButton(day, period) {
+    const btn = document.getElementById(`addSubjectBtn_${day}_${period}`);
+    if (!btn) return;
+    const teacherSel = document.getElementById(`teacher_${day}_${period}`);
+    const hasTeacher = teacherSel && teacherSel.value;
+    const container = document.getElementById(`extraSubjects_${day}_${period}`);
+    const atMax = container && container.children.length >= MAX_EXTRA_SUBJECTS;
+
+    if (hasTeacher && !atMax) {
+        btn.classList.add('enabled');
+        btn.disabled = false;
+    } else {
+        btn.classList.remove('enabled');
+        btn.disabled = true;
+    }
+}
+
+function addExtraSubject(day, period) {
+    const btn = document.getElementById(`addSubjectBtn_${day}_${period}`);
+    if (btn && btn.disabled) return;
+
+    const container = document.getElementById(`extraSubjects_${day}_${period}`);
+    if (container.children.length >= MAX_EXTRA_SUBJECTS) return;
+
+    const subjectOptions = buildExtraSubjectOptions(day, period);
+    const block = document.createElement('div');
+    block.className = 'extra-subject-block';
+    block.innerHTML = `
+        <button type="button" class="btn-remove-subject" onclick="removeExtraSubject(this, '${day}', '${period}')">×</button>
+        <select name="additionalSubjects_${day}_${period}[]" class="add-subject-select subject-select"
+            onchange="refreshExtraSubjectOptions('${day}', '${period}')">
+            ${subjectOptions}
+        </select>
+        <select name="additionalTeachers_${day}_${period}[]" class="teacher-select">
+            <option value="">— Teacher —</option>
+        </select>
+    `;
+
+    // When extra subject changes, also populate its teacher dropdown
+    const subSel = block.querySelector(`select[name="additionalSubjects_${day}_${period}[]"]`);
+    const teachSel = block.querySelector(`select[name="additionalTeachers_${day}_${period}[]"]`);
+    subSel.addEventListener('change', () => populateExtraTeacher(subSel, teachSel, day, period));
+
+    container.appendChild(block);
+    updateAddButton(day, period);
+}
+
+function removeExtraSubject(btn, day, period) {
+    const block = btn.parentElement;
+    block.parentElement.removeChild(block);
+    refreshExtraSubjectOptions(day, period);
+    updateAddButton(day, period);
+}
+
+async function populateExtraTeacher(subjectSelect, teacherSelect, day, period) {
+    const subjectId = subjectSelect.value;
     if (!subjectId) {
         teacherSelect.innerHTML = '<option value="">— Teacher —</option>';
         return;
     }
-    
+
+    const timetableId = '<%= timetable._id %>';
+
+    const sectionTeachers = teachersBySubject[subjectId];
+    if (sectionTeachers && sectionTeachers.length > 0) {
+        teacherSelect.innerHTML = '<option value="">— Select Teacher —</option>';
+        sectionTeachers.forEach(t => {
+            const opt = document.createElement('option');
+            opt.value = t._id;
+            opt.textContent = t.name;
+            teacherSelect.appendChild(opt);
+        });
+        return;
+    }
+
     try {
-        const res = await fetch(`/admin/api/timetable/teachers?subjectId=${subjectId}&day=${day}&period=${periodNumber}&timetableId=${timetableId}`);
+        teacherSelect.innerHTML = '<option value="">— Loading —</option>';
+        const res = await fetch(`/admin/api/timetable/teachers?subjectId=${subjectId}&day=${day}&period=${period}&timetableId=${timetableId}&sectionId=${sectionId}`);
         const data = await res.json();
-        
         teacherSelect.innerHTML = '<option value="">— Select Teacher —</option>';
         if (data.success && data.teachers && data.teachers.length > 0) {
             data.teachers.forEach(t => {
@@ -136,10 +350,55 @@ async function fetchTeachersForSubject(selectElem, day, periodNumber, timetableI
                 teacherSelect.appendChild(opt);
             });
         } else {
-             teacherSelect.innerHTML = '<option value="">— No Staff Found —</option>';
+            teacherSelect.innerHTML = '<option value="">— No Staff Found —</option>';
         }
     } catch (err) {
-        console.error('Error fetching teachers', err);
+        teacherSelect.innerHTML = '<option value="">— Error —</option>';
+    }
+}
+
+async function fetchTeachersForSubject(selectElem, day, periodNumber, timetableId, secId) {
+    const subjectId = selectElem.value;
+    const teacherSelect = document.getElementById(`teacher_${day}_${periodNumber}`);
+
+    // Reset + Subject button when primary subject changes
+    const btn = document.getElementById(`addSubjectBtn_${day}_${periodNumber}`);
+    if (btn) { btn.classList.remove('enabled'); btn.disabled = true; }
+
+    teacherSelect.innerHTML = '<option value="">— Loading —</option>';
+
+    if (!subjectId) {
+        teacherSelect.innerHTML = '<option value="">— Teacher —</option>';
+        return;
+    }
+
+    const sectionTeachers = teachersBySubject[subjectId];
+    if (sectionTeachers && sectionTeachers.length > 0) {
+        teacherSelect.innerHTML = '<option value="">— Select Teacher —</option>';
+        sectionTeachers.forEach(t => {
+            const opt = document.createElement('option');
+            opt.value = t._id;
+            opt.textContent = t.name;
+            teacherSelect.appendChild(opt);
+        });
+        return;
+    }
+
+    try {
+        const res = await fetch(`/admin/api/timetable/teachers?subjectId=${subjectId}&day=${day}&period=${periodNumber}&timetableId=${timetableId}&sectionId=${secId}`);
+        const data = await res.json();
+        teacherSelect.innerHTML = '<option value="">— Select Teacher —</option>';
+        if (data.success && data.teachers && data.teachers.length > 0) {
+            data.teachers.forEach(t => {
+                const opt = document.createElement('option');
+                opt.value = t._id;
+                opt.textContent = t.name;
+                teacherSelect.appendChild(opt);
+            });
+        } else {
+            teacherSelect.innerHTML = '<option value="">— No Staff Found —</option>';
+        }
+    } catch (err) {
         teacherSelect.innerHTML = '<option value="">— Error —</option>';
     }
 }

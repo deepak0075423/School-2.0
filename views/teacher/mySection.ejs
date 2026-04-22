@@ -12,7 +12,9 @@
         <% if (section) { %>
             <div style="display:flex; gap:8px;">
                 <a href="/teacher/attendance" class="btn btn-secondary">📋 Attendance</a>
+                <% if (locals.currentUser && (locals.currentUser.school?.modules?.timetable || locals.currentUser.role === 'super_admin')) { %>
                 <a href="/teacher/timetable" class="btn btn-secondary">🗓️ Timetable</a>
+                <% } %>
             </div>
             <% } %>
     </div>

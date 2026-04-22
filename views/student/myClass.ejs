@@ -95,6 +95,7 @@
                     </div>
 
                     <%# Timetable %>
+                    <% if (locals.currentUser && (locals.currentUser.school?.modules?.timetable || locals.currentUser.role === 'super_admin')) { %>
                         <div class="card">
                             <div class="card-header">
                                 <div class="card-title">🗓️ Weekly Timetable</div>
@@ -132,6 +133,7 @@
                                     </div>
                                     <% } %>
                         </div>
+                    <% } %>
             </div>
 
             <% } %>

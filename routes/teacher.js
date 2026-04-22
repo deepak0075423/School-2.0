@@ -9,6 +9,7 @@ const requireModule = require('../middleware/requireModule');
 
 const guard = [isAuthenticated, requirePasswordReset, requireRole('teacher')];
 const attendanceGuard = [...guard, requireModule('attendance')];
+const timetableGuard = [...guard, requireModule('timetable')];
 
 router.get('/dashboard', guard, ctrl.getDashboard);
 
@@ -42,8 +43,8 @@ router.get('/correction-requests', attendanceGuard, attendanceCtrl.getCorrection
 router.post('/correction-requests/review', attendanceGuard, attendanceCtrl.postReviewCorrection);
 
 // ── Timetable ─────────────────────────────────────────────────
-router.get('/timetable', guard, timetableCtrl.teacherViewTimetable);
-router.get('/timetable/download', guard, timetableCtrl.teacherDownloadTimetable);
+router.get('/timetable', timetableGuard, timetableCtrl.teacherViewTimetable);
+router.get('/timetable/download', timetableGuard, timetableCtrl.teacherDownloadTimetable);
 
 // ── Notifications ─────────────────────────────────────────────
 const notifCtrl  = require('../controllers/notificationController');

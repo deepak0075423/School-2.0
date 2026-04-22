@@ -18,6 +18,7 @@ const MODULE_LABELS = {
     notification: 'Notification Module',
     aptitudeExam: 'Aptitude Exam Module',
     result:       'Result & Assessment Management',
+    timetable:    'Timetable Management',
 };
 
 const requireModule = (moduleName) => (req, res, next) => {

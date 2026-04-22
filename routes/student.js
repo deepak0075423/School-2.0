@@ -9,13 +9,14 @@ const requireModule = require('../middleware/requireModule');
 
 const guard = [isAuthenticated, requirePasswordReset, requireRole('student')];
 const attendanceGuard = [...guard, requireModule('attendance')];
+const timetableGuard = [...guard, requireModule('timetable')];
 
 router.get('/dashboard', guard, ctrl.getDashboard);
 router.get('/my-class', guard, classCtrl.getMyClass);
 
 // ── Timetable ─────────────────────────────────────────────────
-router.get('/timetable', guard, timetableCtrl.studentViewTimetable);
-router.get('/timetable/download', guard, timetableCtrl.studentDownloadTimetable);
+router.get('/timetable', timetableGuard, timetableCtrl.studentViewTimetable);
+router.get('/timetable/download', timetableGuard, timetableCtrl.studentDownloadTimetable);
 
 // ── Attendance Calendar ───────────────────────────────────────
 router.get('/my-attendance', attendanceGuard, attendanceCtrl.getStudentAttendanceCalendar);

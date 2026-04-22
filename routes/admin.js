@@ -12,6 +12,7 @@ const upload = require('../middleware/upload');
 
 const guard = [isAuthenticated, requirePasswordReset, requireRole('school_admin')];
 const attendanceGuard = [...guard, requireModule('attendance')];
+const timetableGuard = [...guard, requireModule('timetable')];
 
 router.get('/dashboard', guard, ctrl.getDashboard);
 
@@ -73,13 +74,13 @@ router.post('/sections/:sectionId/subjects/assign', guard, subjectCtrl.postAssig
 router.post('/sections/:sectionId/subjects/:subjectId/remove', guard, subjectCtrl.postRemoveSectionSubject);
 
 // Timetable
-router.get('/sections/:sectionId/timetable', guard, timetableCtrl.adminManageTimetable);
-router.post('/sections/:sectionId/timetable/structure', guard, timetableCtrl.adminSaveTimetableStructure);
-router.get('/sections/:sectionId/timetable/entries', guard, timetableCtrl.adminAssignPeriods);
-router.post('/sections/:sectionId/timetable/entries', guard, timetableCtrl.adminSaveEntries);
-router.get('/sections/:sectionId/timetable/download', guard, timetableCtrl.adminDownloadSectionTimetable);
-router.get('/timetable/download-all', guard, timetableCtrl.adminDownloadAllTimetables);
-router.get('/api/timetable/teachers', guard, timetableCtrl.apiGetTeachersBySubject);
+router.get('/sections/:sectionId/timetable', timetableGuard, timetableCtrl.adminManageTimetable);
+router.post('/sections/:sectionId/timetable/structure', timetableGuard, timetableCtrl.adminSaveTimetableStructure);
+router.get('/sections/:sectionId/timetable/entries', timetableGuard, timetableCtrl.adminAssignPeriods);
+router.post('/sections/:sectionId/timetable/entries', timetableGuard, timetableCtrl.adminSaveEntries);
+router.get('/sections/:sectionId/timetable/download', timetableGuard, timetableCtrl.adminDownloadSectionTimetable);
+router.get('/timetable/download-all', timetableGuard, timetableCtrl.adminDownloadAllTimetables);
+router.get('/api/timetable/teachers', timetableGuard, timetableCtrl.apiGetTeachersBySubject);
 
 // ── Subjects ──────────────────────────────────────────────────
 router.get('/subjects', guard, subjectCtrl.getSubjects);
