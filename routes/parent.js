@@ -28,5 +28,10 @@ router.get('/results',                  resultGuard, formalExamCtrl.parentGetRes
 router.get('/results/class-tests',      resultGuard, classTestCtrl.parentGetClassTests);
 router.get('/results/:resultId',        resultGuard, formalExamCtrl.parentGetResultDetail);
 
+// ── Holiday Management ────────────────────────────────────────
+const holidayCtrl  = require('../controllers/holidayController');
+const holidayGuard = [...guard, requireModule('holiday')];
+router.get('/holidays', holidayGuard, holidayCtrl.parentGetHolidays);
+
 module.exports = router;
 

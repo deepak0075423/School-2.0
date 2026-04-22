@@ -75,6 +75,11 @@ router.get('/exams/:id/result-approval',            examGuard, examCtrl.getResul
 router.post('/exams/:id/subject-approve',           examGuard, examCtrl.postSubjectApproveResults);
 router.post('/exams/:id/result-approval',           examGuard, examCtrl.postApproveResults);
 
+// ── Holiday Management ────────────────────────────────────────
+const holidayCtrl  = require('../controllers/holidayController');
+const holidayGuard = [...guard, requireModule('holiday')];
+router.get('/holidays', holidayGuard, holidayCtrl.teacherGetHolidays);
+
 // ── Result & Assessment Management ────────────────────────────
 const formalExamCtrl  = require('../controllers/formalExamController');
 const classTestCtrl   = require('../controllers/classTestController');

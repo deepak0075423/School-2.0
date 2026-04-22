@@ -53,6 +53,10 @@ const SchoolSchema = new mongoose.Schema({
             type: Boolean,
             default: false,
         },
+        holiday: {
+            type: Boolean,
+            default: false,
+        },
     },
     createdAt: {
         type: Date,

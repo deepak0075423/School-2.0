@@ -39,4 +39,8 @@ router.get('/notifications',      guard, notifCtrl.getNotificationList);
 router.get('/notifications/create', guard, notifCtrl.getCreateNotification);
 router.post('/notifications/send',  guard, notifCtrl.postSendNotification);
 
+// ── Holiday Audit Log (all schools) ──────────────────────────
+const holidayCtrl = require('../controllers/holidayController');
+router.get('/holidays/audit', guard, holidayCtrl.superAdminGetAuditLog);
+
 module.exports = router;
