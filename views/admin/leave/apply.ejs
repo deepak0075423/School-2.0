@@ -1,0 +1,198 @@
+<div class="page-header">
+    <div>
+        <h1 class="page-title">Apply Leave for Teacher</h1>
+        <p class="text-muted">Record leave directly on behalf of a teacher — auto-approved, no balance restriction</p>
+    </div>
+    <a href="/admin/leave/requests" class="btn btn-secondary">← Leave Requests</a>
+</div>
+
+<div style="display:grid; grid-template-columns:1fr 300px; gap:20px;">
+
+    <!-- Form -->
+    <div class="card">
+        <div class="card-body">
+            <form method="POST" action="/admin/leave/requests/apply" id="adminLeaveForm">
+
+                <div class="form-group">
+                    <label class="form-label">Teacher *</label>
+                    <select name="teacherId" class="form-control" required id="teacherSelect" onchange="loadBalance(this.value)">
+                        <option value="">Select teacher</option>
+                        <% teachers.forEach(t => { %>
+                        <option value="<%= t._id %>"><%= t.name %> &mdash; <span style="color:var(--text-muted);"><%= t.email %></span></option>
+                        <% }) %>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Leave Type *</label>
+                    <select name="leaveTypeId" class="form-control" required id="leaveTypeSelect"
+                            onchange="calcDays()">
+                        <option value="">Select leave type</option>
+                        <% leaveTypes.forEach(lt => { %>
+                        <option value="<%= lt._id %>"
+                                data-max-consecutive="<%= lt.maxConsecutiveDays %>">
+                            <%= lt.name %> (<%= lt.code %>)
+                        </option>
+                        <% }) %>
+                    </select>
+                </div>
+
+                <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px;">
+                    <div class="form-group">
+                        <label class="form-label">From Date *</label>
+                        <input type="date" name="fromDate" id="fromDate" class="form-control" required onchange="calcDays()" />
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">To Date *</label>
+                        <input type="date" name="toDate" id="toDate" class="form-control" required onchange="calcDays()" />
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Leave Mode *</label>
+                    <div style="display:flex; gap:16px;">
+                        <label class="checkbox-label">
+                            <input type="radio" name="leaveMode" value="full_day" checked onchange="calcDays()" id="fullDayRadio" /> Full Day
+                        </label>
+                        <label class="checkbox-label" id="halfDayLabel">
+                            <input type="radio" name="leaveMode" value="half_day" onchange="calcDays()" id="halfDayRadio" /> Half Day
+                        </label>
+                    </div>
+                </div>
+
+                <!-- Days preview -->
+                <div id="daysPreview" style="display:none; padding:10px 14px; border-radius:8px; margin-bottom:14px;
+                     background:rgba(99,102,241,0.08); border:1px solid rgba(99,102,241,0.2);">
+                    <span id="daysText" style="font-size:13px; font-weight:600; color:var(--primary);"></span>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Reason *</label>
+                    <textarea name="reason" class="form-control" rows="3" required
+                              placeholder="Reason for this leave..."></textarea>
+                </div>
+
+                <div style="display:flex; gap:12px; margin-top:8px;">
+                    <button type="submit" class="btn btn-primary"
+                            onclick="return confirm('Apply leave on behalf of this teacher? The leave will be auto-approved.')">
+                        Apply & Approve
+                    </button>
+                    <a href="/admin/leave/requests" class="btn btn-secondary">Cancel</a>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Info sidebar -->
+    <div>
+        <!-- Balance card (populated via JS after teacher selection) -->
+        <div class="card" id="balanceCard" style="display:none; margin-bottom:16px;">
+            <div class="card-header"><div class="card-title">📊 Teacher Balance</div></div>
+            <div class="card-body" id="balanceBody" style="font-size:13px;"></div>
+        </div>
+
+        <div class="card">
+            <div class="card-header"><div class="card-title">ℹ️ Notes</div></div>
+            <div class="card-body" style="font-size:12px; color:var(--text-muted); line-height:1.7;">
+                <ul style="padding-left:16px; margin:0;">
+                    <li>Leave is <strong>auto-approved</strong> immediately.</li>
+                    <li>No balance check — you can apply for any number of days.</li>
+                    <li>Weekends and holidays are excluded from the day count.</li>
+                    <li>The teacher will be notified in-app.</li>
+                    <li>The leave will appear in reports and balance records.</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+const SATURDAY_WORKING = <%= saturdayWorking ? 'true' : 'false' %>;
+const HOLIDAY_SET      = new Set(<%- JSON.stringify(holidayDates) %>);
+const LEAVE_TYPES_MAP  = {};
+<% leaveTypes.forEach(lt => { %>
+LEAVE_TYPES_MAP['<%= lt._id %>'] = { name: '<%- lt.name %>', code: '<%- lt.code %>' };
+<% }) %>
+
+function localDateStr(d) {
+    return d.getFullYear() + '-' +
+        String(d.getMonth() + 1).padStart(2, '0') + '-' +
+        String(d.getDate()).padStart(2, '0');
+}
+
+function countWorkingDays(fromStr, toStr) {
+    let count = 0;
+    const cur = new Date(fromStr + 'T00:00:00');
+    const end = new Date(toStr   + 'T00:00:00');
+    while (cur <= end) {
+        const dow     = cur.getDay();
+        const dateStr = localDateStr(cur);
+        if (dow !== 0 && (dow !== 6 || SATURDAY_WORKING) && !HOLIDAY_SET.has(dateStr)) count++;
+        cur.setDate(cur.getDate() + 1);
+    }
+    return count;
+}
+
+function updateLeaveMode() {
+    const from = document.getElementById('fromDate').value;
+    const to   = document.getElementById('toDate').value;
+    const halfLabel = document.getElementById('halfDayLabel');
+    const fullRadio = document.getElementById('fullDayRadio');
+    const halfRadio = document.getElementById('halfDayRadio');
+
+    const multiDay = from && to && from !== to;
+    halfLabel.style.display = multiDay ? 'none' : '';
+    if (multiDay && halfRadio.checked) {
+        fullRadio.checked = true;
+    }
+}
+
+function calcDays() {
+    updateLeaveMode();
+
+    const from    = document.getElementById('fromDate').value;
+    const to      = document.getElementById('toDate').value;
+    const mode    = document.querySelector('input[name="leaveMode"]:checked')?.value;
+    const preview = document.getElementById('daysPreview');
+    const txt     = document.getElementById('daysText');
+
+    if (!from || !to) { preview.style.display = 'none'; return; }
+    const f = new Date(from + 'T00:00:00'), t = new Date(to + 'T00:00:00');
+    if (f > t) { txt.textContent = '⚠️ From date must be before To date.'; preview.style.display = ''; return; }
+
+    const days = mode === 'half_day' ? 0.5 : countWorkingDays(from, to);
+    const warn = days === 0 ? ' — ⚠️ No working days in this range' : '';
+    txt.textContent = `${days} working day(s) will be applied` + warn;
+    preview.style.display = '';
+}
+
+async function loadBalance(teacherId) {
+    const card = document.getElementById('balanceCard');
+    const body = document.getElementById('balanceBody');
+    if (!teacherId) { card.style.display = 'none'; return; }
+    try {
+        const res  = await fetch(`/admin/leave/api/balance?teacherId=${teacherId}`);
+        const data = await res.json();
+        if (!data.balances || !data.balances.length) {
+            body.innerHTML = '<p class="text-muted">No balance records found for this teacher.</p>';
+        } else {
+            body.innerHTML = data.balances.map(b => `
+                <div style="margin-bottom:10px; padding-bottom:10px; border-bottom:1px solid var(--border);">
+                    <div style="display:flex; justify-content:space-between; align-items:center;">
+                        <span style="font-weight:600;">${b.leaveTypeName}</span>
+                        <span class="badge badge-blue">${b.leaveTypeCode}</span>
+                    </div>
+                    <div style="font-size:11px; color:var(--text-muted); margin-top:4px;">
+                        Allocated: ${b.totalAllocated + b.carriedForward} &nbsp;|&nbsp;
+                        Used: ${b.used} &nbsp;|&nbsp;
+                        Remaining: <strong style="color:${b.remaining >= 0 ? '#065f46' : '#991b1b'}">${b.remaining}</strong>
+                    </div>
+                </div>`).join('');
+        }
+        card.style.display = '';
+    } catch (e) {
+        body.innerHTML = '<p class="text-muted">Could not load balance.</p>';
+        card.style.display = '';
+    }
+}
+</script>

@@ -7,9 +7,9 @@ const _dc_mo    = _dc_now.getMonth();
 
 <div class="card" style="width:260px; flex-shrink:0;">
 
-    <!-- ── Header: nav arrows + month/year + "View All" link ── -->
+    <!-- ── Header: nav arrows + month/year + action links ── -->
     <div style="padding:12px 14px 10px; border-bottom:1px solid var(--border);">
-        <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:<%= hasHoliday ? '8px' : '0' %>;">
+        <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:8px;">
             <button onclick="dcPrev()" title="Previous month"
                     style="background:none; border:1px solid var(--border); border-radius:6px; width:28px; height:28px; cursor:pointer; font-size:16px; color:var(--text); display:flex; align-items:center; justify-content:center; padding:0; line-height:1; flex-shrink:0;">
                 ‹
@@ -20,12 +20,22 @@ const _dc_mo    = _dc_now.getMonth();
                 ›
             </button>
         </div>
-        <% if (hasHoliday) { %>
-        <a href="<%= holidayViewUrl %>"
-           style="display:inline-flex; align-items:center; gap:4px; font-size:11px; font-weight:600; color:var(--primary); text-decoration:none; padding:3px 10px; border-radius:6px; background:rgba(99,102,241,0.08); border:1px solid rgba(99,102,241,0.2);">
-            🎉 View All Holidays →
-        </a>
-        <% } %>
+        <div style="display:flex; flex-direction:column; gap:5px;">
+            <% if (typeof hasLeave !== 'undefined' && hasLeave) { %>
+            <a href="/teacher/leave/apply" id="dc-apply-leave-btn"
+               style="display:inline-flex; align-items:center; justify-content:center; gap:4px; font-size:11px; font-weight:700;
+                      color:#fff; text-decoration:none; padding:5px 10px; border-radius:6px;
+                      background:linear-gradient(135deg,#b45309,#d97706); border:1px solid #92400e; letter-spacing:.02em;">
+                🏖️ Apply Leave
+            </a>
+            <% } %>
+            <% if (hasHoliday) { %>
+            <a href="<%= holidayViewUrl %>"
+               style="display:inline-flex; align-items:center; gap:4px; font-size:11px; font-weight:600; color:var(--primary); text-decoration:none; padding:3px 10px; border-radius:6px; background:rgba(99,102,241,0.08); border:1px solid rgba(99,102,241,0.2);">
+                🎉 View All Holidays →
+            </a>
+            <% } %>
+        </div>
     </div>
 
     <!-- ── Day-of-week headers ────────────────────── -->
@@ -71,12 +81,19 @@ const _dc_mo    = _dc_now.getMonth();
         s: new Date(h.startDate).toISOString()
     }))) %>;
 
+    const DC_LEAVES = <%- JSON.stringify(((typeof approvedLeaves !== 'undefined' ? approvedLeaves : [])).map(l => ({
+        name: (l.leaveType && l.leaveType.name) ? l.leaveType.name : 'Leave',
+        s: new Date(l.fromDate).toISOString(),
+        e: new Date(l.toDate).toISOString()
+    }))) %>;
+
     /* ── Constants ────────────────────────────── */
     const TODAY  = new Date(); TODAY.setHours(0,0,0,0);
     const MONTHS = ['January','February','March','April','May','June',
                     'July','August','September','October','November','December'];
     const COLOR  = { public:'#3b82f6', school_specific:'#8b5cf6', optional:'#f59e0b', exam_break:'#10b981' };
     const LABEL  = { public:'Public', school_specific:'School', optional:'Optional', exam_break:'Exam Break' };
+    const LEAVE_COLOR = '#b45309';
 
     /* ── State ────────────────────────────────── */
     let VY = <%= _dc_yr %>;
@@ -102,6 +119,22 @@ const _dc_mo    = _dc_now.getMonth();
         return map;
     }
 
+    /* ── Build day → leaves set for a given month ── */
+    function buildLeaveSet(year, month) {
+        const set = {};
+        DC_LEAVES.forEach(l => {
+            const s = new Date(l.s), e = new Date(l.e);
+            for (let off = 0; off <= 365; off++) {
+                const d = new Date(s.getFullYear(), s.getMonth(), s.getDate() + off);
+                if (d > e) break;
+                if (d.getFullYear() === year && d.getMonth() === month) {
+                    (set[d.getDate()] = set[d.getDate()] || []).push(l);
+                }
+            }
+        });
+        return set;
+    }
+
     /* ── Main render ──────────────────────────── */
     function render() {
         document.getElementById('dc-month-label').textContent = MONTHS[VM] + ' ' + VY;
@@ -110,6 +143,7 @@ const _dc_mo    = _dc_now.getMonth();
         const daysInMo = new Date(VY, VM + 1, 0).getDate();
         const isCurMo  = VY === TODAY.getFullYear() && VM === TODAY.getMonth();
         const map      = buildMap(VY, VM);
+        const leaveSet = buildLeaveSet(VY, VM);
 
         /* Build flat cell array */
         const cells = [];
@@ -121,36 +155,54 @@ const _dc_mo    = _dc_now.getMonth();
         let html = '';
         cells.forEach(day => {
             if (day === null) { html += '<div></div>'; return; }
-            const hols    = map[day] || [];
-            const isToday = isCurMo && day === TODAY.getDate();
-            const hasHol  = hols.length > 0;
+            const hols      = map[day] || [];
+            const leaves    = leaveSet[day] || [];
+            const isToday   = isCurMo && day === TODAY.getDate();
+            const hasHol    = hols.length > 0;
+            const hasLeave  = leaves.length > 0;
+
+            const bgStyle = hasLeave
+                ? 'background:rgba(180,83,9,0.12);border-radius:4px;'
+                : '';
 
             const circleStyle = isToday
                 ? 'background:var(--primary);color:#fff;'
-                : hasHol ? 'color:var(--text);font-weight:700;' : 'color:var(--text-muted);';
+                : hasLeave ? `background:${LEAVE_COLOR};color:#fff;`
+                : hasHol   ? 'color:var(--text);font-weight:700;'
+                : 'color:var(--text-muted);';
 
-            const dots = hasHol
+            const leaveTitle = leaves.map(l => l.name).join(', ');
+            const holTitle   = hols.map(h => h.name).join(', ');
+            const titleAttr  = [leaveTitle, holTitle].filter(Boolean).join(' | ');
+
+            const dots = (hasHol || hasLeave)
                 ? '<div style="display:flex;gap:2px;margin-top:1px;height:5px;align-items:center;">'
-                    + hols.slice(0, 3).map(h =>
+                    + (hasLeave ? `<div style="width:5px;height:5px;border-radius:50%;background:${LEAVE_COLOR};" title="${leaveTitle.replace(/"/g,'&quot;')}"></div>` : '')
+                    + hols.slice(0, 2).map(h =>
                         `<div style="width:4px;height:4px;border-radius:50%;background:${COLOR[h.type]||'#6b7280'};"
                               title="${h.name.replace(/"/g,'&quot;')}"></div>`
                       ).join('')
                     + '</div>'
                 : '<div style="height:6px;"></div>';
 
-            html += `<div style="display:flex;flex-direction:column;align-items:center;padding:2px 0;">
+            html += `<div style="display:flex;flex-direction:column;align-items:center;padding:2px 0;${bgStyle}" title="${titleAttr.replace(/"/g,'&quot;')}">
                 <div style="width:26px;height:26px;display:flex;align-items:center;justify-content:center;border-radius:50%;font-size:12px;font-weight:600;${circleStyle}">${day}</div>
                 ${dots}
             </div>`;
         });
         document.getElementById('dc-grid').innerHTML = html;
 
-        /* Legend — only show types present this month */
+        /* Legend — holiday types + leave indicator */
         const legendEl  = document.getElementById('dc-legend');
         const typesNow  = [...new Set(Object.values(map).flat().map(h => h.type))];
-        if (typesNow.length) {
+        const hasLeaveThisMonth = Object.keys(leaveSet).length > 0;
+        if (typesNow.length || hasLeaveThisMonth) {
             legendEl.innerHTML =
                 '<div style="display:flex;gap:8px;flex-wrap:wrap;padding:6px 12px 8px;border-top:1px solid var(--border);">'
+                + (hasLeaveThisMonth ? `<div style="display:flex;align-items:center;gap:3px;font-size:10px;color:var(--text-muted);">
+                        <span style="width:7px;height:7px;border-radius:50%;background:${LEAVE_COLOR};display:inline-block;"></span>
+                        My Leave
+                    </div>` : '')
                 + typesNow.map(t =>
                     `<div style="display:flex;align-items:center;gap:3px;font-size:10px;color:var(--text-muted);">
                         <span style="width:7px;height:7px;border-radius:50%;background:${COLOR[t]||'#6b7280'};display:inline-block;"></span>

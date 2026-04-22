@@ -57,6 +57,16 @@ const SchoolSchema = new mongoose.Schema({
             type: Boolean,
             default: false,
         },
+        leave: {
+            type: Boolean,
+            default: false,
+        },
+    },
+    leaveSettings: {
+        saturdayWorking: {
+            type: Boolean,
+            default: true,
+        },
     },
     createdAt: {
         type: Date,

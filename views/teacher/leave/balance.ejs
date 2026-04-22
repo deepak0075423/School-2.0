@@ -1,0 +1,113 @@
+<div class="page-header">
+    <div>
+        <h1 class="page-title">My Leave Balance</h1>
+        <p class="text-muted">Academic Year: <strong><%= academicYear %></strong></p>
+    </div>
+    <a href="/teacher/leave/apply" class="btn btn-primary" style="background:linear-gradient(135deg,#b45309,#d97706); border:none;">+ Apply Leave</a>
+</div>
+
+<% if (!balances.length) { %>
+<div class="card">
+    <div class="card-body">
+        <div class="empty-state">
+            <div class="empty-icon">📊</div>
+            <h3>No leave balance allocated</h3>
+            <p class="text-muted">Your leave quota has not been set up yet. Please contact the admin.</p>
+        </div>
+    </div>
+</div>
+<% } else { %>
+
+<div style="display:grid; grid-template-columns:repeat(auto-fill,minmax(260px,1fr)); gap:16px; margin-bottom:20px;">
+    <% balances.forEach(b => {
+        const total = b.totalAllocated + b.carriedForward;
+        const usedPct = total > 0 ? Math.min(100, Math.round((b.used / total) * 100)) : 0;
+        const pendPct = total > 0 ? Math.min(100 - usedPct, Math.round((b.pending / total) * 100)) : 0;
+    %>
+    <div class="card">
+        <div class="card-body">
+            <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:12px;">
+                <div>
+                    <div class="card-title" style="margin-bottom:2px;"><%= b.leaveType ? b.leaveType.name : '—' %></div>
+                    <span class="badge badge-blue"><%= b.leaveType ? b.leaveType.code : '' %></span>
+                </div>
+                <div style="text-align:right;">
+                    <div style="font-size:32px; font-weight:800; color:var(--text); line-height:1;"><%= b.remaining %></div>
+                    <div style="font-size:11px; color:var(--text-muted);">of <%= total %> left</div>
+                </div>
+            </div>
+
+            <!-- Stacked progress bar -->
+            <div style="background:var(--border); border-radius:6px; height:10px; overflow:hidden; margin-bottom:10px; position:relative;">
+                <div style="position:absolute; left:0; top:0; height:10px; border-radius:6px; background:#b45309; width:<%= usedPct %>%;"></div>
+                <div style="position:absolute; left:<%= usedPct %>%; top:0; height:10px; border-radius:6px; background:#fde68a; width:<%= pendPct %>%;"></div>
+            </div>
+
+            <div style="display:grid; grid-template-columns:1fr 1fr; gap:6px; font-size:12px; color:var(--text-muted);">
+                <div>
+                    <span style="display:inline-block; width:8px; height:8px; border-radius:50%; background:#b45309; margin-right:4px;"></span>
+                    Used: <strong><%= b.used %></strong>
+                </div>
+                <div>
+                    <span style="display:inline-block; width:8px; height:8px; border-radius:50%; background:#fde68a; margin-right:4px;"></span>
+                    Pending: <strong><%= b.pending %></strong>
+                </div>
+                <div>
+                    <span style="display:inline-block; width:8px; height:8px; border-radius:50%; background:var(--primary); margin-right:4px;"></span>
+                    Allocated: <strong><%= b.totalAllocated %></strong>
+                </div>
+                <% if (b.carriedForward > 0) { %>
+                <div>
+                    <span style="display:inline-block; width:8px; height:8px; border-radius:50%; background:#8b5cf6; margin-right:4px;"></span>
+                    Carried: <strong><%= b.carriedForward %></strong>
+                </div>
+                <% } %>
+            </div>
+        </div>
+    </div>
+    <% }) %>
+</div>
+
+<div class="card">
+    <div class="card-header"><div class="card-title">Balance Summary Table</div></div>
+    <div class="table-wrapper">
+        <table>
+            <thead>
+                <tr>
+                    <th>Leave Type</th>
+                    <th>Allocated</th>
+                    <th>Carried Forward</th>
+                    <th>Total Available</th>
+                    <th>Used</th>
+                    <th>Pending</th>
+                    <th>Remaining</th>
+                </tr>
+            </thead>
+            <tbody>
+                <% balances.forEach(b => {
+                    const total = b.totalAllocated + b.carriedForward;
+                %>
+                <tr>
+                    <td>
+                        <% if (b.leaveType) { %>
+                        <span class="badge badge-blue"><%= b.leaveType.code %></span>
+                        <span style="margin-left:6px;"><%= b.leaveType.name %></span>
+                        <% } else { %>—<% } %>
+                    </td>
+                    <td><%= b.totalAllocated %></td>
+                    <td><%= b.carriedForward %></td>
+                    <td><strong><%= total %></strong></td>
+                    <td><span style="color:#b45309;font-weight:700;"><%= b.used %></span></td>
+                    <td><span style="color:#a16207;"><%= b.pending %></span></td>
+                    <td>
+                        <strong style="color:<%= b.remaining > 3 ? '#065f46' : '#991b1b' %>">
+                            <%= b.remaining %>
+                        </strong>
+                    </td>
+                </tr>
+                <% }) %>
+            </tbody>
+        </table>
+    </div>
+</div>
+<% } %>

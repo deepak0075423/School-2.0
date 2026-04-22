@@ -1,0 +1,360 @@
+<style>
+/* Leave mode pill toggle */
+.mode-toggle { display:flex; gap:0; border:1.5px solid #e0e7ff; border-radius:8px; overflow:hidden; width:fit-content; }
+.mode-toggle input[type="radio"] { display:none; }
+.mode-toggle label {
+    padding:8px 22px; font-size:13px; font-weight:600; cursor:pointer;
+    color:var(--text-secondary); background:#f8faff; transition:all .18s;
+    border-right:1.5px solid #e0e7ff; user-select:none;
+}
+.mode-toggle label:last-child { border-right:none; }
+.mode-toggle input[type="radio"]:checked + label {
+    background:var(--primary); color:#fff; box-shadow:inset 0 1px 3px rgba(0,0,0,.12);
+}
+
+/* Balance indicator inside form */
+.bal-indicator {
+    display:flex; align-items:center; gap:10px;
+    padding:10px 14px; border-radius:8px; margin-bottom:16px;
+    background:rgba(180,83,9,0.07); border:1px solid rgba(180,83,9,0.18);
+}
+.bal-indicator .bal-icon { font-size:16px; flex-shrink:0; }
+.bal-indicator .bal-text { font-size:12.5px; font-weight:600; color:#92400e; }
+
+/* Days preview pill */
+.days-pill {
+    display:inline-flex; align-items:center; gap:6px;
+    padding:7px 14px; border-radius:20px; font-size:12.5px; font-weight:700;
+    background:linear-gradient(135deg,#ede9fe,#e0e7ff);
+    color:var(--primary); border:1px solid #c7d2fe; margin-bottom:16px;
+}
+.days-pill.warn { background:linear-gradient(135deg,#fef3c7,#fde68a); color:#92400e; border-color:#fcd34d; }
+
+/* Doc upload zone */
+.doc-upload {
+    border:1.5px dashed #c7d2fe; border-radius:8px; padding:14px 16px;
+    background:#f8faff; transition:border-color .2s;
+}
+.doc-upload:hover { border-color:var(--primary); }
+.doc-upload input[type="file"] { width:100%; background:none; border:none; padding:0; font-size:13px; }
+
+/* Divider */
+.form-divider { border:none; border-top:1px solid var(--border-light); margin:20px 0; }
+
+/* Submit bar */
+.submit-bar {
+    display:flex; align-items:center; gap:12px; padding-top:4px;
+}
+.btn-submit-leave {
+    background:linear-gradient(135deg,#b45309,#d97706);
+    border:none; color:#fff; padding:11px 28px;
+    border-radius:8px; font-size:14px; font-weight:700;
+    cursor:pointer; transition:opacity .2s; box-shadow:0 2px 8px rgba(180,83,9,.25);
+}
+.btn-submit-leave:hover { opacity:.9; }
+</style>
+
+<div class="page-header">
+    <div>
+        <h1 class="page-title">Apply for Leave</h1>
+        <p class="text-muted">Submit a leave application for admin approval</p>
+    </div>
+    <a href="/teacher/leave" class="btn btn-secondary">← My Leaves</a>
+</div>
+
+<div style="display:grid; grid-template-columns:1fr 290px; gap:20px; align-items:start;">
+
+    <!-- ── Application Form ─────────────────────────────── -->
+    <form method="POST" action="/teacher/leave/apply" enctype="multipart/form-data" id="leaveForm">
+
+        <!-- Section 1: Leave Type -->
+        <div class="form-section">
+            <div class="form-section-header">
+                <span style="font-size:18px;">📋</span>
+                <h3>Leave Details</h3>
+                <span class="section-badge">Step 1 of 2</span>
+            </div>
+            <div class="form-section-body">
+
+                <div class="form-group">
+                    <label class="form-label">Leave Type *</label>
+                    <select name="leaveTypeId" class="form-control" required id="leaveTypeSelect"
+                            onchange="updateBalance(this.value)">
+                        <option value="">Select leave type</option>
+                        <% leaveTypes.forEach(lt => { %>
+                        <option value="<%= lt._id %>"
+                                data-requires-doc="<%= lt.requiresDocument %>"
+                                data-doc-after-days="<%= lt.documentRequiredAfterDays || 0 %>"
+                                data-max-consecutive="<%= lt.maxConsecutiveDays %>">
+                            <%= lt.name %> (<%= lt.code %>)
+                        </option>
+                        <% }) %>
+                    </select>
+                </div>
+
+                <!-- Balance indicator -->
+                <div class="bal-indicator" id="balanceIndicator" style="display:none;">
+                    <span class="bal-icon">💰</span>
+                    <span class="bal-text" id="balanceText"></span>
+                </div>
+
+            </div>
+        </div>
+
+        <!-- Section 2: Dates & Mode -->
+        <div class="form-section">
+            <div class="form-section-header">
+                <span style="font-size:18px;">📅</span>
+                <h3>Duration</h3>
+                <span class="section-badge">Step 2 of 2</span>
+            </div>
+            <div class="form-section-body">
+
+                <div class="form-grid" style="margin-bottom:20px;">
+                    <div class="form-group" style="margin-bottom:0;">
+                        <label class="form-label">From Date *</label>
+                        <input type="date" name="fromDate" id="fromDate" class="form-control" required
+                               value="<%= prefillDate %>" onchange="calcDays()" />
+                    </div>
+                    <div class="form-group" style="margin-bottom:0;">
+                        <label class="form-label">To Date *</label>
+                        <input type="date" name="toDate" id="toDate" class="form-control" required
+                               value="<%= prefillDate %>" onchange="calcDays()" />
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Leave Mode *</label>
+                    <div class="mode-toggle">
+                        <input type="radio" name="leaveMode" value="full_day" id="fullDayRadio"
+                               checked onchange="calcDays()" />
+                        <label for="fullDayRadio">Full Day</label>
+                        <input type="radio" name="leaveMode" value="half_day" id="halfDayRadio"
+                               onchange="calcDays()" />
+                        <label for="halfDayRadio" id="halfDayLabel">Half Day</label>
+                    </div>
+                </div>
+
+                <!-- Days preview -->
+                <div id="daysPreview" style="display:none; margin-bottom:4px;">
+                    <span class="days-pill" id="daysPill">
+                        <span>📊</span>
+                        <span id="daysText"></span>
+                    </span>
+                </div>
+
+                <hr class="form-divider" />
+
+                <div class="form-group">
+                    <label class="form-label">Reason *</label>
+                    <textarea name="reason" class="form-control" rows="3" required
+                              placeholder="Briefly describe your reason for leave..."></textarea>
+                </div>
+
+                <!-- Document upload -->
+                <div id="docGroup" style="display:none;">
+                    <label class="form-label">
+                        Supporting Document <span id="docRequired" style="color:#ef4444; font-size:11px;"></span>
+                    </label>
+                    <div class="doc-upload">
+                        <input type="file" name="document" id="docInput" accept=".pdf" />
+                        <p style="font-size:11px; color:var(--text-muted); margin-top:6px;">PDF only · Max 5 MB</p>
+                    </div>
+                </div>
+
+                <hr class="form-divider" style="margin-top:4px;" />
+
+                <div class="submit-bar">
+                    <button type="submit" class="btn-submit-leave">Submit Application</button>
+                    <a href="/teacher/leave" class="btn btn-secondary">Cancel</a>
+                </div>
+
+            </div>
+        </div>
+
+    </form>
+
+    <!-- ── Sidebar ──────────────────────────────────────── -->
+    <div>
+
+        <!-- Leave Balance -->
+        <div class="card" style="margin-bottom:14px;">
+            <div class="card-header">
+                <div class="card-title">📊 Leave Balance</div>
+                <a href="/teacher/leave/balance" style="font-size:12px; color:var(--primary);">View all →</a>
+            </div>
+            <div class="card-body" style="padding:16px 20px;">
+                <% if (!Object.keys(balanceMap).length) { %>
+                <p class="text-muted" style="font-size:13px;">No balances allocated yet. Contact admin.</p>
+                <% } else { %>
+                <% leaveTypes.forEach(lt => {
+                    const bal = balanceMap[lt._id.toString()];
+                    if (!bal) return;
+                %>
+                <div style="margin-bottom:14px; padding-bottom:14px; border-bottom:1px solid var(--border-light);">
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+                        <span style="font-size:13px; font-weight:600;"><%= lt.name %></span>
+                        <span class="badge badge-blue"><%= lt.code %></span>
+                    </div>
+                    <div style="display:flex; justify-content:space-between; font-size:12px; margin-bottom:4px;">
+                        <span style="color:var(--text-muted);">Available</span>
+                        <strong style="color:<%= bal.remaining > 3 ? '#059669' : '#dc2626' %>">
+                            <%= bal.remaining %> days
+                        </strong>
+                    </div>
+                    <div style="display:flex; justify-content:space-between; font-size:11px; color:var(--text-muted); margin-bottom:6px;">
+                        <span>Used / Pending</span>
+                        <span><%= bal.used %> / <%= bal.pending %></span>
+                    </div>
+                    <div style="background:var(--border); border-radius:4px; height:5px; overflow:hidden;">
+                        <div style="height:5px; border-radius:4px; background:linear-gradient(90deg,#b45309,#d97706);
+                            width:<%= Math.min(100, Math.round(((bal.used + bal.pending) / (bal.totalAllocated + bal.carriedForward || 1)) * 100)) %>%;"></div>
+                    </div>
+                </div>
+                <% }) %>
+                <% } %>
+            </div>
+        </div>
+
+        <!-- Tips -->
+        <div class="card">
+            <div class="card-header"><div class="card-title">💡 Tips</div></div>
+            <div class="card-body" style="padding:16px 20px; font-size:12px; color:var(--text-muted); line-height:1.8;">
+                <ul style="padding-left:16px; margin:0;">
+                    <li>Apply at least 2 days in advance for planned leave.</li>
+                    <li>Medical leave requires a doctor's certificate.</li>
+                    <li>You will be notified once your request is processed.</li>
+                    <li>Pending applications count against your balance.</li>
+                    <li>Weekends &amp; holidays are excluded from the day count.</li>
+                </ul>
+            </div>
+        </div>
+
+    </div>
+</div>
+
+<script>
+const BALANCE_MAP       = <%- JSON.stringify(balanceMap) %>;
+const SATURDAY_WORKING  = <%= saturdayWorking ? 'true' : 'false' %>;
+const HOLIDAY_SET       = new Set(<%- JSON.stringify(holidayDates) %>);
+
+function localDateStr(d) {
+    return d.getFullYear() + '-' +
+        String(d.getMonth() + 1).padStart(2, '0') + '-' +
+        String(d.getDate()).padStart(2, '0');
+}
+
+function countWorkingDays(fromStr, toStr) {
+    let count = 0;
+    const cur = new Date(fromStr + 'T00:00:00');
+    const end = new Date(toStr   + 'T00:00:00');
+    while (cur <= end) {
+        const dow = cur.getDay();
+        const ds  = localDateStr(cur);
+        if (dow !== 0 && (dow !== 6 || SATURDAY_WORKING) && !HOLIDAY_SET.has(ds)) count++;
+        cur.setDate(cur.getDate() + 1);
+    }
+    return count;
+}
+
+function updateBalance(ltId) {
+    const bal = BALANCE_MAP[ltId];
+    const ind = document.getElementById('balanceIndicator');
+    const txt = document.getElementById('balanceText');
+    if (bal) {
+        const rem = Math.max(0, bal.totalAllocated + bal.carriedForward - bal.used - bal.pending);
+        txt.textContent = `${rem} day(s) available  ·  Used: ${bal.used}  ·  Pending: ${bal.pending}`;
+        ind.style.display = 'flex';
+    } else {
+        txt.textContent = 'No balance allocated for this leave type — contact admin.';
+        ind.style.display = 'flex';
+    }
+    calcDays();
+}
+
+function updateLeaveMode() {
+    const from      = document.getElementById('fromDate').value;
+    const to        = document.getElementById('toDate').value;
+    const halfLabel = document.getElementById('halfDayLabel');
+    const fullRadio = document.getElementById('fullDayRadio');
+    const halfRadio = document.getElementById('halfDayRadio');
+
+    const multiDay = from && to && from !== to;
+    halfLabel.style.display = multiDay ? 'none' : '';
+    // hide the half-day radio input itself so it can't submit
+    halfRadio.parentElement.style.display = multiDay ? 'none' : '';
+    if (multiDay && halfRadio.checked) fullRadio.checked = true;
+}
+
+function calcDays() {
+    updateLeaveMode();
+
+    const from    = document.getElementById('fromDate').value;
+    const to      = document.getElementById('toDate').value;
+    const mode    = document.querySelector('input[name="leaveMode"]:checked')?.value;
+    const preview = document.getElementById('daysPreview');
+    const pill    = document.getElementById('daysPill');
+    const txt     = document.getElementById('daysText');
+
+    if (!from || !to) { preview.style.display = 'none'; updateDocRequirement(0); return; }
+    const f = new Date(from + 'T00:00:00'), t = new Date(to + 'T00:00:00');
+    if (f > t) {
+        txt.textContent = 'From date must be before To date';
+        pill.className  = 'days-pill warn';
+        preview.style.display = '';
+        return;
+    }
+
+    const days = mode === 'half_day' ? 0.5 : countWorkingDays(from, to);
+
+    const sel      = document.getElementById('leaveTypeSelect');
+    const opt      = sel.options[sel.selectedIndex];
+    const maxC     = parseInt(opt?.getAttribute('data-max-consecutive') || '0', 10);
+    let warn = '';
+    if (days === 0 && mode !== 'half_day') warn = ' — no working days in range';
+    else if (maxC > 0 && days > maxC)      warn = ` — exceeds max ${maxC} consecutive days`;
+
+    txt.textContent   = `${days} working day${days !== 1 ? 's' : ''} requested` + warn;
+    pill.className    = 'days-pill' + (warn ? ' warn' : '');
+    preview.style.display = '';
+
+    updateDocRequirement(days);
+}
+
+function updateDocRequirement(days) {
+    const sel         = document.getElementById('leaveTypeSelect');
+    const opt         = sel.options[sel.selectedIndex];
+    const requiresDoc = opt?.getAttribute('data-requires-doc') === 'true';
+    const afterDays   = parseInt(opt?.getAttribute('data-doc-after-days') || '0', 10);
+    const docReq      = document.getElementById('docRequired');
+    const docInput    = document.getElementById('docInput');
+    const docGroup    = document.getElementById('docGroup');
+    const docUpload   = docGroup.querySelector('.doc-upload');
+
+    if (!requiresDoc) {
+        docGroup.style.display = 'none';
+        docInput.required = false;
+        docInput.value    = '';
+        return;
+    }
+
+    docGroup.style.display = '';
+
+    if (afterDays === 0 || days > afterDays) {
+        const reason = afterDays > 0
+            ? `Required — leave exceeds ${afterDays} day${afterDays !== 1 ? 's' : ''}`
+            : 'Required';
+        docReq.textContent      = `(${reason})`;
+        docInput.required       = true;
+        docUpload.style.borderColor = '#ef4444';
+        docUpload.style.background  = 'rgba(239,68,68,0.04)';
+    } else {
+        docReq.textContent      = `(Optional — required if leave exceeds ${afterDays} day${afterDays !== 1 ? 's' : ''})`;
+        docInput.required       = false;
+        docUpload.style.borderColor = '#f59e0b';
+        docUpload.style.background  = '#fffbeb';
+    }
+}
+
+calcDays();
+</script>

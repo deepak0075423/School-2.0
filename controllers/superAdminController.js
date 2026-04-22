@@ -616,6 +616,7 @@ const ALL_MODULES = [
     { key: 'result',       label: 'Result & Assessment Management', icon: '📊', description: 'Formal exam result management (Mid Term, Final, Unit Test) with multi-level approval workflow, class test tracking, grade computation, and role-based result visibility.' },
     { key: 'timetable',    label: 'Timetable Management',  icon: '📅', description: 'Class section timetable configuration, period-wise subject and teacher assignment, section merging, and PDF download.' },
     { key: 'holiday',      label: 'Holiday Management',    icon: '🎉', description: 'Manage school holidays with type classification, applicability rules, recurring flags, and automatic in-app notifications.' },
+    { key: 'leave',        label: 'Leave Management',      icon: '🏖️', description: 'Teacher leave applications with configurable leave types, balance tracking, approval workflow, calendar view, and reports.' },
 ];
 
 const getPermissions = async (req, res) => {

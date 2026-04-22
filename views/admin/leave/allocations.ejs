@@ -1,0 +1,161 @@
+<div class="page-header">
+    <div>
+        <h1 class="page-title">Leave Allocations</h1>
+        <p class="text-muted">Assign leave quotas to teachers — Academic Year: <strong><%= academicYear %></strong></p>
+    </div>
+    <form method="POST" action="/admin/leave/allocations/carry-forward"
+          onsubmit="return confirm('Run year-end carry-forward?\n\nThis will copy unused leave days from <%= previousYear %> into <%= academicYear %> for all leave types that have carry-forward enabled.\n\nExisting carry-forward values for <%= academicYear %> will be overwritten.')">
+        <button type="submit" class="btn btn-secondary">
+            ↩ Run Carry Forward (<%= previousYear %> → <%= academicYear %>)
+        </button>
+    </form>
+</div>
+
+<div style="display:grid; grid-template-columns:1fr 380px; gap:20px;">
+
+    <!-- Allocation table -->
+    <div class="card">
+        <div class="card-header">
+            <div class="card-title">Current Allocations</div>
+        </div>
+        <div class="table-wrapper">
+            <% if (!teachers.length || !leaveTypes.length) { %>
+            <div class="empty-state" style="padding:40px;">
+                <div class="empty-icon">📊</div>
+                <p><%= !leaveTypes.length ? 'No leave types configured. Add leave types first.' : 'No teachers found.' %></p>
+            </div>
+            <% } else { %>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Teacher</th>
+                        <% leaveTypes.forEach(lt => { %><th><%= lt.code %></th><% }) %>
+                    </tr>
+                </thead>
+                <tbody>
+                    <% teachers.forEach(t => { %>
+                    <tr>
+                        <td>
+                            <div class="fw-semibold"><%= t.name %></div>
+                            <div class="text-muted" style="font-size:11px;"><%= t.email %></div>
+                        </td>
+                        <% leaveTypes.forEach(lt => {
+                            const key = lt._id.toString();
+                            const tid = t._id.toString();
+                            const bal = balanceMap[tid] && balanceMap[tid][key];
+                        %>
+                        <td>
+                            <% if (bal) { %>
+                            <div style="font-size:12px;">
+                                <span class="badge badge-green" title="Allocated"><%= bal.totalAllocated %>d</span>
+                                <% if (bal.carriedForward > 0) { %>
+                                <span class="badge badge-purple" title="Carry Forward">+<%= bal.carriedForward %>CF</span>
+                                <% } %>
+                                <span style="color:var(--text-muted); font-size:10px; display:block; margin-top:2px;">
+                                    Used: <%= bal.used %> | Pending: <%= bal.pending %>
+                                </span>
+                            </div>
+                            <% } else { %>
+                            <span class="text-muted" style="font-size:12px;">—</span>
+                            <% } %>
+                        </td>
+                        <% }) %>
+                    </tr>
+                    <% }) %>
+                </tbody>
+            </table>
+            <% } %>
+        </div>
+    </div>
+
+    <!-- Allocation form panel -->
+    <div>
+        <!-- Individual allocation -->
+        <div class="card" style="margin-bottom:16px;">
+            <div class="card-header"><div class="card-title">Individual Allocation</div></div>
+            <div class="card-body">
+                <form method="POST" action="/admin/leave/allocations">
+                    <input type="hidden" name="scope" value="individual" />
+                    <input type="hidden" name="academicYear" value="<%= academicYear %>" />
+                    <div class="form-group">
+                        <label class="form-label">Teacher *</label>
+                        <select name="teacherId" class="form-control" required>
+                            <option value="">Select teacher</option>
+                            <% teachers.forEach(t => { %>
+                            <option value="<%= t._id %>"><%= t.name %></option>
+                            <% }) %>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Leave Type *</label>
+                        <select name="leaveTypeId" class="form-control" required>
+                            <option value="">Select type</option>
+                            <% leaveTypes.forEach(lt => { %>
+                            <option value="<%= lt._id %>"><%= lt.name %> (<%= lt.code %>)</option>
+                            <% }) %>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Total Days *</label>
+                        <input type="number" name="totalDays" class="form-control" required min="0" step="0.5" placeholder="12" />
+                    </div>
+                    <button type="submit" class="btn btn-primary" style="width:100%;">Allocate</button>
+                </form>
+            </div>
+        </div>
+
+        <!-- Excel bulk allocation -->
+        <div class="card" style="margin-bottom:16px;">
+            <div class="card-header">
+                <div class="card-title">Excel Bulk Allocation</div>
+                <a href="/admin/leave/allocations/template" class="btn btn-sm btn-secondary">⬇ Download Template</a>
+            </div>
+            <div class="card-body">
+                <p class="text-muted" style="font-size:13px; margin-bottom:12px;">
+                    Download the template, fill in allocations, then upload. One row per teacher per leave type.
+                </p>
+                <form method="POST" action="/admin/leave/allocations/excel" enctype="multipart/form-data">
+                    <div class="form-group">
+                        <label class="form-label">Excel File (.xlsx / .xls) *</label>
+                        <input type="file" name="excelFile" class="form-control" accept=".xlsx,.xls" required />
+                    </div>
+                    <button type="submit" class="btn btn-primary" style="width:100%;"
+                            onclick="return confirm('Import allocations from Excel? Existing entries will be overwritten.')">
+                        Import from Excel
+                    </button>
+                </form>
+            </div>
+        </div>
+
+        <!-- Same-quota bulk allocation -->
+        <div class="card">
+            <div class="card-header"><div class="card-title">Same-Quota Bulk Allocation</div></div>
+            <div class="card-body">
+                <p class="text-muted" style="font-size:13px; margin-bottom:14px;">
+                    Assign the same days to <strong>all active teachers</strong> for one leave type at once.
+                </p>
+                <form method="POST" action="/admin/leave/allocations">
+                    <input type="hidden" name="scope" value="bulk" />
+                    <input type="hidden" name="academicYear" value="<%= academicYear %>" />
+                    <div class="form-group">
+                        <label class="form-label">Leave Type *</label>
+                        <select name="leaveTypeId" class="form-control" required>
+                            <option value="">Select type</option>
+                            <% leaveTypes.forEach(lt => { %>
+                            <option value="<%= lt._id %>"><%= lt.name %> (<%= lt.code %>)</option>
+                            <% }) %>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Total Days *</label>
+                        <input type="number" name="totalDays" class="form-control" required min="0" step="0.5" placeholder="12" />
+                    </div>
+                    <button type="submit" class="btn btn-secondary" style="width:100%;"
+                            onclick="return confirm('Bulk-allocate to ALL active teachers? Existing allocations will be overwritten.')">
+                        Bulk Allocate All Teachers
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>

@@ -1,0 +1,137 @@
+<div class="page-header">
+    <div>
+        <h1 class="page-title"><%= leaveType ? 'Edit Leave Type' : 'Create Leave Type' %></h1>
+        <p class="text-muted"><%= leaveType ? 'Update policy for this leave category' : 'Configure a new leave category and its policy' %></p>
+    </div>
+    <a href="/admin/leave/types" class="btn btn-secondary">← Back</a>
+</div>
+
+<div class="card" style="max-width:700px;">
+    <div class="card-body">
+        <form method="POST" action="<%= leaveType ? `/admin/leave/types/${leaveType._id}/edit` : '/admin/leave/types/create' %>">
+
+            <div class="form-section">
+                <h3>Basic Info</h3>
+                <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px;">
+                    <div class="form-group">
+                        <label class="form-label">Name *</label>
+                        <input type="text" name="name" class="form-control" required
+                               value="<%= leaveType ? leaveType.name : '' %>"
+                               placeholder="e.g. Casual Leave" />
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Code * <span class="text-muted" style="font-size:11px;">(unique, e.g. CL)</span></label>
+                        <input type="text" name="code" class="form-control" required maxlength="8"
+                               value="<%= leaveType ? leaveType.code : '' %>"
+                               placeholder="CL" style="text-transform:uppercase;" />
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Annual Allocation (days) *</label>
+                    <input type="number" name="annualAllocation" class="form-control" required min="0" step="0.5"
+                           value="<%= leaveType ? leaveType.annualAllocation : 0 %>" />
+                </div>
+            </div>
+
+            <div class="form-section">
+                <h3>Monthly Accrual</h3>
+                <div class="form-group">
+                    <label class="checkbox-label">
+                        <input type="checkbox" name="monthlyAccrualEnabled"
+                               <%= (leaveType && leaveType.monthlyAccrual && leaveType.monthlyAccrual.enabled) ? 'checked' : '' %>
+                               onchange="toggleSection('accrualSection', this.checked)" />
+                        Enable monthly accrual
+                    </label>
+                </div>
+                <div id="accrualSection" style="<%= (leaveType && leaveType.monthlyAccrual && leaveType.monthlyAccrual.enabled) ? '' : 'display:none;' %>">
+                    <div class="form-group">
+                        <label class="form-label">Days accrued per month</label>
+                        <input type="number" name="daysPerMonth" class="form-control" min="0" step="0.5"
+                               value="<%= (leaveType && leaveType.monthlyAccrual) ? leaveType.monthlyAccrual.daysPerMonth : 0 %>" />
+                    </div>
+                </div>
+            </div>
+
+            <div class="form-section">
+                <h3>Carry Forward</h3>
+                <div class="form-group">
+                    <label class="checkbox-label">
+                        <input type="checkbox" name="carryForwardEnabled"
+                               <%= (leaveType && leaveType.carryForward && leaveType.carryForward.enabled) ? 'checked' : '' %>
+                               onchange="toggleSection('carrySection', this.checked)" />
+                        Allow carry forward to next year
+                    </label>
+                </div>
+                <div id="carrySection" style="<%= (leaveType && leaveType.carryForward && leaveType.carryForward.enabled) ? '' : 'display:none;' %>">
+                    <div class="form-group">
+                        <label class="form-label">Maximum carry-forward days</label>
+                        <input type="number" name="maxCarryDays" class="form-control" min="0"
+                               value="<%= (leaveType && leaveType.carryForward) ? leaveType.carryForward.maxDays : 0 %>" />
+                    </div>
+                </div>
+            </div>
+
+            <div class="form-section">
+                <h3>Additional Rules</h3>
+                <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px;">
+                    <div class="form-group">
+                        <label class="form-label">Max Consecutive Days <span class="text-muted">(0 = no limit)</span></label>
+                        <input type="number" name="maxConsecutiveDays" class="form-control" min="0"
+                               value="<%= leaveType ? leaveType.maxConsecutiveDays : 0 %>" />
+                    </div>
+                    <div class="form-group" style="display:flex; flex-direction:column; gap:12px; padding-top:24px;">
+                        <label class="checkbox-label">
+                            <input type="checkbox" name="encashable"
+                                   <%= (leaveType && leaveType.encashable) ? 'checked' : '' %> />
+                            Encashable
+                        </label>
+                        <label class="checkbox-label">
+                            <input type="checkbox" name="requiresDocument" id="requiresDocCheck"
+                                   <%= (leaveType && leaveType.requiresDocument) ? 'checked' : '' %>
+                                   onchange="toggleSection('docThresholdGroup', this.checked)" />
+                            Requires supporting document
+                        </label>
+                        <% if (leaveType) { %>
+                        <label class="checkbox-label">
+                            <input type="checkbox" name="isActive"
+                                   <%= leaveType.isActive ? 'checked' : '' %> />
+                            Active
+                        </label>
+                        <% } %>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Document threshold — shown only when requiresDocument is checked -->
+            <div id="docThresholdGroup" class="form-section"
+                 style="<%= (leaveType && leaveType.requiresDocument) ? '' : 'display:none;' %>">
+                <h3>Document Threshold</h3>
+                <div class="form-group">
+                    <label class="form-label">
+                        Minimum days after which document is required
+                        <span class="text-muted" style="font-size:11px;">(0 = always required)</span>
+                    </label>
+                    <input type="number" name="documentRequiredAfterDays" class="form-control"
+                           min="0" step="1" style="max-width:200px;"
+                           value="<%= (leaveType && leaveType.documentRequiredAfterDays) ? leaveType.documentRequiredAfterDays : 0 %>"
+                           placeholder="0" />
+                    <div class="text-muted" style="font-size:12px; margin-top:6px;">
+                        Example: set to <strong>2</strong> to require a document only when the teacher applies for more than 2 days.
+                        Set to <strong>0</strong> to always require a document.
+                    </div>
+                </div>
+            </div>
+
+            <div style="display:flex; gap:12px; margin-top:8px;">
+                <button type="submit" class="btn btn-primary"><%= leaveType ? 'Save Changes' : 'Create Leave Type' %></button>
+                <a href="/admin/leave/types" class="btn btn-secondary">Cancel</a>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+function toggleSection(id, show) {
+    document.getElementById(id).style.display = show ? '' : 'none';
+}
+</script>
