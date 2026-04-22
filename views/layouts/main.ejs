@@ -39,6 +39,7 @@
                     const _hasNotification = !!_schoolModules.notification;
                     const _hasAptitudeExam = !!_schoolModules.aptitudeExam;
                     const _hasResult       = !!_schoolModules.result;
+                    const _hasTimetable    = !!_schoolModules.timetable || (currentUser && currentUser.role === 'super_admin');
                     const _path = (typeof locals !== 'undefined' && locals.title) ? title : '';
                     const _unreadCount = (typeof unreadNotificationCount !== 'undefined') ? unreadNotificationCount : 0;
                 %>
@@ -156,10 +157,12 @@
                         class="nav-item <%= _path.includes('Section') ? 'active' : '' %>">
                         <span class="nav-icon">👥</span> My Section
                     </a>
+                    <% if (_hasTimetable) { %>
                     <a href="/teacher/timetable"
                         class="nav-item <%= _path.includes('Timetable') ? 'active' : '' %>">
                         <span class="nav-icon">📅</span> Timetable
                     </a>
+                    <% } %>
 
                     <% if (_hasNotification) { %>
                     <div class="nav-section-label">Communications</div>
@@ -229,10 +232,12 @@
                         class="nav-item <%= _path.includes('Class') ? 'active' : '' %>">
                         <span class="nav-icon">🏫</span> My Class
                     </a>
+                    <% if (_hasTimetable) { %>
                     <a href="/student/timetable"
                         class="nav-item <%= _path.includes('Timetable') ? 'active' : '' %>">
                         <span class="nav-icon">📅</span> My Timetable
                     </a>
+                    <% } %>
 
                     <% if (_hasAptitudeExam) { %>
                     <div class="nav-section-label">Exams</div>

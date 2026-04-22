@@ -6,9 +6,11 @@
         </p>
     </div>
     <div style="display:flex; gap:8px;">
+        <% if (locals.currentUser && (locals.currentUser.school?.modules?.timetable || locals.currentUser.role === 'super_admin')) { %>
         <a href="/admin/sections/<%= section._id %>/timetable" class="btn btn-primary">📅 Config Timetable</a>
         <% if (locals.timetable && timetable.periodsStructure && timetable.periodsStructure.length > 0) { %>
             <a href="/admin/sections/<%= section._id %>/timetable/entries" class="btn btn-info" style="background-color: var(--primary); color: white; border: none;">👁️ View Timetable Grid</a>
+        <% } %>
         <% } %>
         <a href="/admin/sections/<%= section._id %>/subjects" class="btn btn-secondary">📚 Subject Teachers</a>
         <a href="/admin/classes/<%= section.class?._id %>" class="btn btn-secondary">← Back to Class</a>

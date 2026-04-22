@@ -26,6 +26,14 @@ const TimetableEntrySchema = new mongoose.Schema({
         ref: 'User',
         default: null,
     },
+    additionalSubjects: [{
+        subject: { type: mongoose.Schema.Types.ObjectId, ref: 'Subject' },
+        teacher: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
+    }],
+    mergedSections: [{
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'ClassSection',
+    }],
 });
 
 // Unique period per day per timetable

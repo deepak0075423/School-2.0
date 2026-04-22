@@ -49,6 +49,10 @@ const SchoolSchema = new mongoose.Schema({
             type: Boolean,
             default: false,
         },
+        timetable: {
+            type: Boolean,
+            default: false,
+        },
     },
     createdAt: {
         type: Date,
