@@ -1,0 +1,231 @@
+<style>
+.status-badge { display:inline-block; padding:3px 10px; border-radius:12px; font-size:11px; font-weight:700; }
+.status-pending     { background:#fefce8; color:#a16207; border:1px solid #fde68a; }
+.status-approved    { background:#ecfdf5; color:#065f46; border:1px solid #a7f3d0; }
+.status-rejected    { background:#fef2f2; color:#991b1b; border:1px solid #fecaca; }
+.status-modification_requested { background:#f5f3ff; color:#6d28d9; border:1px solid #ddd6fe; }
+.status-cancelled   { background:#f3f4f6; color:#6b7280; border:1px solid #e5e7eb; }
+
+.action-modal { display:none; position:fixed; inset:0; background:rgba(0,0,0,.5); z-index:9999; align-items:center; justify-content:center; }
+.action-modal.open { display:flex; }
+.modal-box { background:var(--card-bg,#1a1d2e); border:1px solid var(--border); border-radius:14px; width:min(480px,92vw); padding:28px; }
+</style>
+
+<div class="page-header">
+    <div>
+        <h1 class="page-title">Leave Requests</h1>
+        <p class="text-muted">Review and process teacher leave applications</p>
+    </div>
+    <a href="/admin/leave/requests/apply" class="btn btn-primary">+ Apply Leave for Teacher</a>
+</div>
+
+<!-- Filters -->
+<div class="card" style="margin-bottom:16px;">
+    <div class="card-body" style="padding:16px;">
+        <form method="GET" action="/admin/leave/requests" style="display:flex; gap:12px; flex-wrap:wrap; align-items:flex-end;">
+            <div class="form-group" style="margin:0; min-width:150px;">
+                <label class="form-label" style="font-size:11px;">Status</label>
+                <select name="status" class="form-control form-control-sm">
+                    <option value="">All Statuses</option>
+                    <% ['pending','approved','rejected','modification_requested','cancelled'].forEach(s => { %>
+                    <option value="<%= s %>" <%= filters.status === s ? 'selected' : '' %>><%= s.replace(/_/g,' ') %></option>
+                    <% }) %>
+                </select>
+            </div>
+            <div class="form-group" style="margin:0; min-width:180px;">
+                <label class="form-label" style="font-size:11px;">Teacher</label>
+                <select name="teacherId" class="form-control form-control-sm">
+                    <option value="">All Teachers</option>
+                    <% teachers.forEach(t => { %>
+                    <option value="<%= t._id %>" <%= filters.teacherId === t._id.toString() ? 'selected' : '' %>><%= t.name %></option>
+                    <% }) %>
+                </select>
+            </div>
+            <div class="form-group" style="margin:0; min-width:160px;">
+                <label class="form-label" style="font-size:11px;">Leave Type</label>
+                <select name="leaveTypeId" class="form-control form-control-sm">
+                    <option value="">All Types</option>
+                    <% leaveTypes.forEach(lt => { %>
+                    <option value="<%= lt._id %>" <%= filters.leaveTypeId === lt._id.toString() ? 'selected' : '' %>><%= lt.name %></option>
+                    <% }) %>
+                </select>
+            </div>
+            <div class="form-group" style="margin:0;">
+                <label class="form-label" style="font-size:11px;">From</label>
+                <input type="date" name="from" class="form-control form-control-sm" value="<%= filters.from %>" />
+            </div>
+            <div class="form-group" style="margin:0;">
+                <label class="form-label" style="font-size:11px;">To</label>
+                <input type="date" name="to" class="form-control form-control-sm" value="<%= filters.to %>" />
+            </div>
+            <button type="submit" class="btn btn-primary btn-sm">Filter</button>
+            <a href="/admin/leave/requests" class="btn btn-secondary btn-sm">Clear</a>
+        </form>
+    </div>
+</div>
+
+<% if (!applications.length) { %>
+<div class="card">
+    <div class="card-body">
+        <div class="empty-state">
+            <div class="empty-icon">📋</div>
+            <p>No leave requests found.</p>
+        </div>
+    </div>
+</div>
+<% } else { %>
+<div class="card">
+    <div class="table-wrapper">
+        <table>
+            <thead>
+                <tr>
+                    <th>Teacher</th>
+                    <th>Leave Type</th>
+                    <th>From</th>
+                    <th>To</th>
+                    <th>Days</th>
+                    <th>Mode</th>
+                    <th>Status</th>
+                    <th>Applied</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                <% applications.forEach(app => { %>
+                <tr>
+                    <td>
+                        <div class="fw-semibold"><%= app.teacher ? app.teacher.name : '—' %></div>
+                        <div class="text-muted" style="font-size:11px;"><%= app.teacher ? app.teacher.email : '' %></div>
+                    </td>
+                    <td>
+                        <% if (app.leaveType) { %>
+                        <span class="badge badge-blue"><%= app.leaveType.code %></span>
+                        <span style="font-size:12px; margin-left:4px;"><%= app.leaveType.name %></span>
+                        <% } else { %>—<% } %>
+                    </td>
+                    <td><%= fmtDate(app.fromDate) %></td>
+                    <td><%= fmtDate(app.toDate) %></td>
+                    <td><strong><%= app.totalDays %></strong></td>
+                    <td><span class="badge badge-gray"><%= app.leaveMode === 'half_day' ? 'Half Day' : 'Full Day' %></span></td>
+                    <td>
+                        <span class="status-badge status-<%= app.status %>">
+                            <%= app.status.replace(/_/g,' ') %>
+                        </span>
+                    </td>
+                    <td style="font-size:12px;"><%= fmtDate(app.appliedAt) %></td>
+                    <td>
+                        <div style="display:flex; gap:4px; flex-wrap:wrap;">
+                            <button onclick="openDetail('<%= app._id %>')" class="btn btn-sm btn-secondary">View</button>
+                            <% if (app.status === 'pending' || app.status === 'modification_requested') { %>
+                            <button onclick="openApprove('<%= app._id %>')" class="btn btn-sm btn-success">Approve</button>
+                            <button onclick="openReject('<%= app._id %>')" class="btn btn-sm btn-danger">Reject</button>
+                            <button onclick="openModify('<%= app._id %>')" class="btn btn-sm" style="background:#8b5cf6;color:#fff;">Modify</button>
+                            <% } %>
+                        </div>
+                    </td>
+                </tr>
+                <!-- Hidden detail row -->
+                <tr id="detail-<%= app._id %>" style="display:none;">
+                    <td colspan="9" style="background:var(--card-bg);padding:16px 24px;">
+                        <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px;">
+                            <div>
+                                <div class="form-label">Reason</div>
+                                <p style="margin:4px 0;"><%= app.reason %></p>
+                            </div>
+                            <div>
+                                <% if (app.adminComment) { %>
+                                <div class="form-label">Admin Comment</div>
+                                <p style="margin:4px 0; color:var(--text-muted);"><%= app.adminComment %></p>
+                                <% } %>
+                                <% if (app.document) { %>
+                                <div class="form-label" style="margin-top:8px;">Supporting Document</div>
+                                <a href="<%= app.document %>" target="_blank" class="btn btn-sm btn-secondary">View Document</a>
+                                <% } %>
+                            </div>
+                        </div>
+                    </td>
+                </tr>
+                <% }) %>
+            </tbody>
+        </table>
+    </div>
+</div>
+<% } %>
+
+<!-- Approve Modal -->
+<div class="action-modal" id="approveModal">
+    <div class="modal-box">
+        <h3 style="margin-bottom:16px;">Approve Leave</h3>
+        <form method="POST" id="approveForm">
+            <div class="form-group">
+                <label class="form-label">Comment (optional)</label>
+                <textarea name="comment" class="form-control" rows="3" placeholder="Add a note for the teacher..."></textarea>
+            </div>
+            <div style="display:flex; gap:10px; margin-top:16px;">
+                <button type="submit" class="btn btn-success">Confirm Approve</button>
+                <button type="button" onclick="closeModals()" class="btn btn-secondary">Cancel</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Reject Modal -->
+<div class="action-modal" id="rejectModal">
+    <div class="modal-box">
+        <h3 style="margin-bottom:16px;">Reject Leave</h3>
+        <form method="POST" id="rejectForm">
+            <div class="form-group">
+                <label class="form-label">Reason for rejection *</label>
+                <textarea name="comment" class="form-control" rows="3" required
+                          placeholder="Provide reason for rejection..."></textarea>
+            </div>
+            <div style="display:flex; gap:10px; margin-top:16px;">
+                <button type="submit" class="btn btn-danger">Confirm Reject</button>
+                <button type="button" onclick="closeModals()" class="btn btn-secondary">Cancel</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Modification Modal -->
+<div class="action-modal" id="modifyModal">
+    <div class="modal-box">
+        <h3 style="margin-bottom:16px;">Request Modification</h3>
+        <form method="POST" id="modifyForm">
+            <div class="form-group">
+                <label class="form-label">Modification instructions *</label>
+                <textarea name="comment" class="form-control" rows="3" required
+                          placeholder="What needs to be changed?"></textarea>
+            </div>
+            <div style="display:flex; gap:10px; margin-top:16px;">
+                <button type="submit" class="btn" style="background:#8b5cf6;color:#fff;">Send Request</button>
+                <button type="button" onclick="closeModals()" class="btn btn-secondary">Cancel</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+function openDetail(id) {
+    const row = document.getElementById('detail-' + id);
+    if (row) row.style.display = row.style.display === 'none' ? '' : 'none';
+}
+function openApprove(id) {
+    document.getElementById('approveForm').action = '/admin/leave/requests/' + id + '/approve';
+    document.getElementById('approveModal').classList.add('open');
+}
+function openReject(id) {
+    document.getElementById('rejectForm').action = '/admin/leave/requests/' + id + '/reject';
+    document.getElementById('rejectModal').classList.add('open');
+}
+function openModify(id) {
+    document.getElementById('modifyForm').action = '/admin/leave/requests/' + id + '/modification';
+    document.getElementById('modifyModal').classList.add('open');
+}
+function closeModals() {
+    document.querySelectorAll('.action-modal').forEach(m => m.classList.remove('open'));
+}
+document.querySelectorAll('.action-modal').forEach(m => {
+    m.addEventListener('click', e => { if (e.target === m) closeModals(); });
+});
+</script>

@@ -1,7 +1,8 @@
-const User = require('../models/User');
-const TeacherProfile = require('../models/TeacherProfile');
-const StudentProfile = require('../models/StudentProfile');
-const Holiday = require('../models/Holiday');
+const User             = require('../models/User');
+const TeacherProfile   = require('../models/TeacherProfile');
+const StudentProfile   = require('../models/StudentProfile');
+const Holiday          = require('../models/Holiday');
+const LeaveApplication = require('../models/LeaveApplication');
 
 const getDashboard = async (req, res) => {
     try {
@@ -12,7 +13,7 @@ const getDashboard = async (req, res) => {
         }).populate('user') : [];
 
         const schoolModules = (req.user && req.user.school && req.user.school.modules) || {};
-        let calendarHolidays = [], upcomingHolidays = [];
+        let calendarHolidays = [], upcomingHolidays = [], approvedLeaves = [];
         if (schoolModules.holiday) {
             const now = new Date();
             const in30Days = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
@@ -22,6 +23,13 @@ const getDashboard = async (req, res) => {
                     .sort({ startDate: 1 }).limit(5).lean(),
             ]);
         }
+        if (schoolModules.leave) {
+            approvedLeaves = await LeaveApplication.find({
+                teacher: req.session.userId,
+                school: req.session.schoolId,
+                status: 'approved',
+            }).populate('leaveType', 'name').lean();
+        }
 
         res.render('teacher/dashboard', {
             title: 'Teacher Dashboard',
@@ -29,8 +37,10 @@ const getDashboard = async (req, res) => {
             profile,
             students: studentsInClasses,
             hasHoliday: !!schoolModules.holiday,
+            hasLeave: !!schoolModules.leave,
             calendarHolidays,
             upcomingHolidays,
+            approvedLeaves,
             holidayViewUrl: '/teacher/holidays',
         });
     } catch (err) {
@@ -38,7 +48,9 @@ const getDashboard = async (req, res) => {
         res.render('teacher/dashboard', {
             title: 'Teacher Dashboard', layout: 'layouts/main',
             profile: null, students: [],
-            hasHoliday: false, calendarHolidays: [], upcomingHolidays: [], holidayViewUrl: '/teacher/holidays',
+            hasHoliday: false, hasLeave: false,
+            calendarHolidays: [], upcomingHolidays: [], approvedLeaves: [],
+            holidayViewUrl: '/teacher/holidays',
         });
     }
 };

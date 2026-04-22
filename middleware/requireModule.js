@@ -20,6 +20,7 @@ const MODULE_LABELS = {
     result:       'Result & Assessment Management',
     timetable:    'Timetable Management',
     holiday:      'Holiday Management',
+    leave:        'Leave Management',
 };
 
 const requireModule = (moduleName) => (req, res, next) => {

@@ -75,6 +75,16 @@ router.get('/exams/:id/result-approval',            examGuard, examCtrl.getResul
 router.post('/exams/:id/subject-approve',           examGuard, examCtrl.postSubjectApproveResults);
 router.post('/exams/:id/result-approval',           examGuard, examCtrl.postApproveResults);
 
+// ── Leave Management ──────────────────────────────────────────
+const leaveCtrl      = require('../controllers/leaveController');
+const uploadLeaveDoc = require('../middleware/uploadLeaveDoc');
+const leaveGuard     = [...guard, requireModule('leave')];
+router.get('/leave',                  leaveGuard, leaveCtrl.teacherGetMyLeaves);
+router.get('/leave/balance',          leaveGuard, leaveCtrl.teacherGetLeaveBalance);
+router.get('/leave/apply',            leaveGuard, leaveCtrl.teacherGetApplyLeave);
+router.post('/leave/apply',           leaveGuard, uploadLeaveDoc.single('document'), leaveCtrl.teacherPostApplyLeave);
+router.post('/leave/:id/cancel',      leaveGuard, leaveCtrl.teacherPostCancelLeave);
+
 // ── Holiday Management ────────────────────────────────────────
 const holidayCtrl  = require('../controllers/holidayController');
 const holidayGuard = [...guard, requireModule('holiday')];

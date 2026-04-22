@@ -106,7 +106,7 @@
         </div>
     </div>
 
-    <%- include('../partials/dashboard-calendar', { hasHoliday, calendarHolidays, upcomingHolidays, holidayViewUrl }) %>
+    <%- include('../partials/dashboard-calendar', { hasHoliday, calendarHolidays, upcomingHolidays, holidayViewUrl, hasLeave: typeof hasLeave !== 'undefined' ? hasLeave : false, approvedLeaves: typeof approvedLeaves !== 'undefined' ? approvedLeaves : [] }) %>
 </div>
 
 <!-- Feature tiles -->

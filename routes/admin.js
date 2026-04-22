@@ -126,6 +126,32 @@ router.post('/results/exams/:id/marks/:subjectId',        resultGuard, formalExa
 router.get('/results/exams/:id/result',                   resultGuard, formalExamCtrl.adminGetResult);
 router.get('/api/results/sections/:sectionId/subjects',   resultGuard, formalExamCtrl.adminApiSectionSubjects);
 
+// ── Leave Management ──────────────────────────────────────────
+const leaveCtrl      = require('../controllers/leaveController');
+const uploadLeaveDoc = require('../middleware/uploadLeaveDoc');
+const leaveGuard     = [...guard, requireModule('leave')];
+router.get('/leave/types',                      leaveGuard, leaveCtrl.adminGetLeaveTypes);
+router.get('/leave/types/create',               leaveGuard, leaveCtrl.adminGetCreateLeaveType);
+router.post('/leave/types/create',              leaveGuard, leaveCtrl.adminPostCreateLeaveType);
+router.get('/leave/types/:id/edit',             leaveGuard, leaveCtrl.adminGetEditLeaveType);
+router.post('/leave/types/:id/edit',            leaveGuard, leaveCtrl.adminPostEditLeaveType);
+router.post('/leave/types/:id/delete',          leaveGuard, leaveCtrl.adminPostDeleteLeaveType);
+router.post('/leave/settings',                  leaveGuard, leaveCtrl.adminPostLeaveSettings);
+router.get('/leave/requests',                   leaveGuard, leaveCtrl.adminGetRequests);
+router.get('/leave/requests/apply',             leaveGuard, leaveCtrl.adminGetApplyLeave);
+router.post('/leave/requests/apply',            leaveGuard, leaveCtrl.adminPostApplyLeave);
+router.get('/leave/api/balance',                leaveGuard, leaveCtrl.adminApiTeacherBalance);
+router.post('/leave/requests/:id/approve',      leaveGuard, leaveCtrl.adminPostApproveRequest);
+router.post('/leave/requests/:id/reject',       leaveGuard, leaveCtrl.adminPostRejectRequest);
+router.post('/leave/requests/:id/modification', leaveGuard, leaveCtrl.adminPostRequestModification);
+router.get('/leave/allocations',                leaveGuard, leaveCtrl.adminGetAllocations);
+router.post('/leave/allocations',               leaveGuard, leaveCtrl.adminPostAllocate);
+router.get('/leave/allocations/template',       leaveGuard, leaveCtrl.adminGetAllocationTemplate);
+router.post('/leave/allocations/excel',         leaveGuard, upload.single('excelFile'), leaveCtrl.adminPostBulkAllocateExcel);
+router.post('/leave/allocations/carry-forward', leaveGuard, leaveCtrl.adminPostRunCarryForward);
+router.get('/leave/reports',                    leaveGuard, leaveCtrl.adminGetReports);
+router.get('/leave/reports/export',             leaveGuard, leaveCtrl.adminExportReports);
+
 // ── Holiday Management ────────────────────────────────────────
 const holidayCtrl  = require('../controllers/holidayController');
 const uploadCsv    = require('../middleware/uploadCsv');

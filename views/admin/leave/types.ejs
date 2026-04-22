@@ -1,0 +1,124 @@
+<div class="page-header">
+    <div>
+        <h1 class="page-title">Leave Types</h1>
+        <p class="text-muted">Configure leave categories and their policies</p>
+    </div>
+    <a href="/admin/leave/types/create" class="btn btn-primary">+ Add Leave Type</a>
+</div>
+
+<!-- Leave Settings -->
+<div class="card" style="margin-bottom:20px;">
+    <div class="card-header">
+        <div class="card-title">⚙️ Leave Settings</div>
+    </div>
+    <div class="card-body">
+        <form method="POST" action="/admin/leave/settings" style="display:flex; align-items:center; gap:24px; flex-wrap:wrap;">
+            <div>
+                <label class="form-label" style="margin-bottom:6px;">Saturday Working Day</label>
+                <p class="text-muted" style="font-size:12px; margin:0 0 8px;">
+                    If OFF, Saturdays are treated as holidays and excluded from leave day counts.
+                    Sundays are always excluded.
+                </p>
+                <div style="display:flex; gap:16px;">
+                    <label class="checkbox-label">
+                        <input type="radio" name="saturdayWorking" value="true" <%= saturdayWorking ? 'checked' : '' %> />
+                        Working (count as leave days)
+                    </label>
+                    <label class="checkbox-label">
+                        <input type="radio" name="saturdayWorking" value="false" <%= !saturdayWorking ? 'checked' : '' %> />
+                        Holiday (skip from leave count)
+                    </label>
+                </div>
+            </div>
+            <div style="align-self:flex-end;">
+                <button type="submit" class="btn btn-primary">Save Settings</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<% if (!leaveTypes.length) { %>
+<div class="card">
+    <div class="card-body">
+        <div class="empty-state">
+            <div class="empty-icon">📋</div>
+            <h3>No leave types configured</h3>
+            <p class="text-muted">Create your first leave type to get started.</p>
+            <a href="/admin/leave/types/create" class="btn btn-primary" style="margin-top:12px;">+ Add Leave Type</a>
+        </div>
+    </div>
+</div>
+<% } else { %>
+<div class="card">
+    <div class="table-wrapper">
+        <table>
+            <thead>
+                <tr>
+                    <th>Name</th>
+                    <th>Code</th>
+                    <th>Annual Days</th>
+                    <th>Monthly Accrual</th>
+                    <th>Carry Forward</th>
+                    <th>Encashable</th>
+                    <th>Doc Required</th>
+                    <th>Max Consecutive</th>
+                    <th>Status</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                <% leaveTypes.forEach(lt => { %>
+                <tr>
+                    <td class="fw-semibold"><%= lt.name %></td>
+                    <td><span class="badge badge-blue"><%= lt.code %></span></td>
+                    <td><%= lt.annualAllocation %> days</td>
+                    <td>
+                        <% if (lt.monthlyAccrual && lt.monthlyAccrual.enabled) { %>
+                            <span class="badge badge-green"><%= lt.monthlyAccrual.daysPerMonth %>/mo</span>
+                        <% } else { %>
+                            <span class="text-muted">—</span>
+                        <% } %>
+                    </td>
+                    <td>
+                        <% if (lt.carryForward && lt.carryForward.enabled) { %>
+                            <span class="badge badge-purple">Max <%= lt.carryForward.maxDays %></span>
+                        <% } else { %>
+                            <span class="text-muted">—</span>
+                        <% } %>
+                    </td>
+                    <td>
+                        <% if (lt.encashable) { %><span class="badge badge-green">Yes</span>
+                        <% } else { %><span class="badge badge-gray">No</span><% } %>
+                    </td>
+                    <td>
+                        <% if (lt.requiresDocument) { %>
+                            <% if (lt.documentRequiredAfterDays > 0) { %>
+                                <span class="badge badge-orange">After <%= lt.documentRequiredAfterDays %>d</span>
+                            <% } else { %>
+                                <span class="badge badge-orange">Always</span>
+                            <% } %>
+                        <% } else { %>
+                            <span class="badge badge-gray">Not Required</span>
+                        <% } %>
+                    </td>
+                    <td><%= lt.maxConsecutiveDays > 0 ? lt.maxConsecutiveDays + ' days' : 'No limit' %></td>
+                    <td>
+                        <% if (lt.isActive) { %><span class="badge badge-green">Active</span>
+                        <% } else { %><span class="badge badge-gray">Inactive</span><% } %>
+                    </td>
+                    <td>
+                        <div style="display:flex; gap:6px;">
+                            <a href="/admin/leave/types/<%= lt._id %>/edit" class="btn btn-sm btn-secondary">Edit</a>
+                            <form method="POST" action="/admin/leave/types/<%= lt._id %>/delete"
+                                  onsubmit="return confirm('Delete leave type \'<%= lt.name %>\'? This cannot be undone.')">
+                                <button type="submit" class="btn btn-sm btn-danger">Delete</button>
+                            </form>
+                        </div>
+                    </td>
+                </tr>
+                <% }) %>
+            </tbody>
+        </table>
+    </div>
+</div>
+<% } %>
