@@ -617,6 +617,7 @@ const ALL_MODULES = [
     { key: 'timetable',    label: 'Timetable Management',  icon: '📅', description: 'Class section timetable configuration, period-wise subject and teacher assignment, section merging, and PDF download.' },
     { key: 'holiday',      label: 'Holiday Management',    icon: '🎉', description: 'Manage school holidays with type classification, applicability rules, recurring flags, and automatic in-app notifications.' },
     { key: 'leave',        label: 'Leave Management',      icon: '🏖️', description: 'Teacher leave applications with configurable leave types, balance tracking, approval workflow, calendar view, and reports.' },
+    { key: 'document',     label: 'Document Sharing',      icon: '📄', description: 'Upload and share documents (PDFs, Word, Excel, Images) with the school, classes, or sections. Supports assignment submissions, version control, and audit logs.' },
 ];
 
 const getPermissions = async (req, res) => {

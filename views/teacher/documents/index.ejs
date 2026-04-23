@@ -1,0 +1,112 @@
+<style>
+.cat-badge { display:inline-block; padding:2px 10px; border-radius:10px; font-size:11px; font-weight:700; }
+.cat-Assignment { background:#fef3c7; color:#92400e; border:1px solid #fcd34d; }
+.cat-Notes      { background:#dbeafe; color:#1e40af; border:1px solid #93c5fd; }
+.cat-Circular   { background:#d1fae5; color:#065f46; border:1px solid #6ee7b7; }
+.cat-Report     { background:#ede9fe; color:#5b21b6; border:1px solid #c4b5fd; }
+.cat-Other      { background:#f3f4f6; color:#374151; border:1px solid #d1d5db; }
+.tabs { display:flex; border-bottom:2px solid var(--border); margin-bottom:16px; }
+.tabs a { padding:10px 20px; font-size:13px; font-weight:600; color:var(--text-secondary); text-decoration:none; border-bottom:2px solid transparent; margin-bottom:-2px; }
+.tabs a.active { color:var(--primary); border-bottom-color:var(--primary); }
+</style>
+
+<div class="page-header">
+    <div>
+        <h1 class="page-title">Documents</h1>
+        <p class="text-muted">Upload and manage documents for your classes</p>
+    </div>
+    <a href="/teacher/documents/upload" class="btn btn-primary">+ Upload Document</a>
+</div>
+
+<!-- Filters -->
+<div class="card" style="margin-bottom:16px;">
+    <div class="card-body" style="padding:12px 16px;">
+        <form method="GET" action="/teacher/documents" style="display:flex; gap:10px; flex-wrap:wrap; align-items:flex-end;">
+            <div class="form-group" style="margin:0; min-width:160px;">
+                <label class="form-label" style="font-size:11px;">Category</label>
+                <select name="category" class="form-control form-control-sm">
+                    <option value="">All</option>
+                    <% ['Assignment','Notes','Circular','Report','Other'].forEach(c => { %>
+                    <option value="<%= c %>" <%= filters.category === c ? 'selected' : '' %>><%= c %></option>
+                    <% }) %>
+                </select>
+            </div>
+            <div class="form-group" style="margin:0; min-width:180px;">
+                <label class="form-label" style="font-size:11px;">Search</label>
+                <input type="text" name="search" class="form-control form-control-sm" value="<%= filters.search %>" placeholder="Search title…" />
+            </div>
+            <input type="hidden" name="tab" value="<%= activeTab %>" />
+            <button type="submit" class="btn btn-primary btn-sm">Filter</button>
+            <a href="/teacher/documents" class="btn btn-secondary btn-sm">Clear</a>
+        </form>
+    </div>
+</div>
+
+<div class="tabs">
+    <a href="/teacher/documents?tab=my" class="<%= activeTab === 'my' ? 'active' : '' %>">My Uploads (<%= myDocs.length %>)</a>
+    <a href="/teacher/documents?tab=shared" class="<%= activeTab !== 'my' ? 'active' : '' %>">Shared With Me (<%= sharedDocs.length %>)</a>
+</div>
+
+<% const displayDocs = activeTab === 'my' ? myDocs : sharedDocs; %>
+
+<% if (!displayDocs.length) { %>
+<div class="card">
+    <div class="card-body">
+        <div class="empty-state">
+            <div class="empty-icon">📄</div>
+            <% if (activeTab === 'my') { %>
+            <p>You haven't uploaded any documents yet. <a href="/teacher/documents/upload">Upload one</a>.</p>
+            <% } else { %>
+            <p>No documents have been shared with you.</p>
+            <% } %>
+        </div>
+    </div>
+</div>
+<% } else { %>
+<div class="card">
+    <div class="table-wrapper">
+        <table>
+            <thead>
+                <tr>
+                    <th>Title</th>
+                    <th>Category</th>
+                    <% if (activeTab !== 'my') { %><th>Shared By</th><% } %>
+                    <th>Files</th>
+                    <th>Date</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                <% displayDocs.forEach(doc => { %>
+                <tr>
+                    <td>
+                        <div class="fw-semibold"><%= doc.title %></div>
+                        <% if (doc.subject) { %><div class="text-muted" style="font-size:11px;"><%= doc.subject %></div><% } %>
+                        <% if (doc.isAssignment) { %>
+                        <span class="badge badge-orange" style="font-size:10px;">Assignment</span>
+                        <% if (activeTab === 'my' && submissionCounts[doc._id] !== undefined) { %>
+                        <span class="text-muted" style="font-size:11px;"><%= submissionCounts[doc._id] %> submitted</span>
+                        <% } %>
+                        <% } %>
+                    </td>
+                    <td><span class="cat-badge cat-<%= doc.category %>"><%= doc.category %></span></td>
+                    <% if (activeTab !== 'my') { %>
+                    <td style="font-size:12px;"><%= doc.uploadedBy ? doc.uploadedBy.name : '—' %></td>
+                    <% } %>
+                    <td style="font-size:12px;"><%= doc.files.length %> file(s)</td>
+                    <td style="font-size:12px;"><%= new Date(doc.createdAt).toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'}) %></td>
+                    <td>
+                        <div style="display:flex; gap:4px;">
+                            <a href="/teacher/documents/<%= doc._id %>" class="btn btn-sm btn-secondary">View</a>
+                            <% if (doc.isAssignment && activeTab === 'my') { %>
+                            <a href="/teacher/documents/<%= doc._id %>/submissions" class="btn btn-sm btn-primary">Submissions</a>
+                            <% } %>
+                        </div>
+                    </td>
+                </tr>
+                <% }) %>
+            </tbody>
+        </table>
+    </div>
+</div>
+<% } %>

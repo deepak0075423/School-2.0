@@ -1,0 +1,250 @@
+<style>
+.cat-badge { display:inline-block; padding:2px 10px; border-radius:10px; font-size:11px; font-weight:700; }
+.cat-Assignment { background:#fef3c7; color:#92400e; }
+.cat-Notes { background:#dbeafe; color:#1e40af; }
+.cat-Circular { background:#d1fae5; color:#065f46; }
+.cat-Report { background:#ede9fe; color:#5b21b6; }
+.cat-Other { background:#f3f4f6; color:#374151; }
+.file-row { display:flex; align-items:center; gap:10px; padding:10px 14px; background:var(--input-bg); border-radius:8px; margin-bottom:8px; }
+.tab-nav { display:flex; gap:0; border-bottom:2px solid var(--border); margin-bottom:20px; }
+.tab-nav a { padding:10px 20px; font-size:13px; font-weight:600; color:var(--text-secondary); text-decoration:none; border-bottom:2px solid transparent; margin-bottom:-2px; }
+.tab-nav a.active { color:var(--primary); border-bottom-color:var(--primary); }
+.tab-content { display:none; }
+.tab-content.active { display:block; }
+.status-submitted { background:#ecfdf5; color:#065f46; border:1px solid #a7f3d0; }
+.status-late      { background:#fef2f2; color:#991b1b; border:1px solid #fecaca; }
+.status-pending   { background:#fefce8; color:#a16207; border:1px solid #fde68a; }
+.status-badge { display:inline-block; padding:2px 10px; border-radius:10px; font-size:11px; font-weight:700; }
+</style>
+
+<div class="page-header">
+    <div>
+        <h1 class="page-title"><%= doc.title %></h1>
+        <div style="margin-top:4px; display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
+            <span class="cat-badge cat-<%= doc.category %>"><%= doc.category %></span>
+            <% if (doc.isAssignment) { %><span class="badge badge-orange">Assignment</span><% } %>
+            <span class="text-muted" style="font-size:12px;">v<%= doc.currentVersion %></span>
+        </div>
+    </div>
+    <div style="display:flex; gap:8px; flex-wrap:wrap;">
+        <% if (isOwner) { %>
+        <a href="/teacher/documents/<%= doc._id %>/edit" class="btn btn-secondary">Edit</a>
+        <form method="POST" action="/teacher/documents/<%= doc._id %>/delete" style="display:inline;" onsubmit="return confirm('Delete this document?')">
+            <button class="btn btn-danger">Delete</button>
+        </form>
+        <% } %>
+        <a href="/teacher/documents" class="btn btn-secondary">← Back</a>
+    </div>
+</div>
+
+<div class="tab-nav">
+    <a href="#" class="active" onclick="switchTab('files',this)">Files</a>
+    <% if (isOwner && doc.isAssignment) { %>
+    <a href="#" onclick="switchTab('submissions',this)">Submissions (<%= submissionStats ? submissionStats.total : 0 %>)</a>
+    <% } %>
+    <% if (isOwner && versions.length) { %>
+    <a href="#" onclick="switchTab('versions',this)">Versions (<%= versions.length %>)</a>
+    <% } %>
+    <% if (isOwner) { %>
+    <a href="#" onclick="switchTab('edit',this)">Edit</a>
+    <% } %>
+</div>
+
+<!-- FILES TAB -->
+<div class="tab-content active" id="tab-files">
+<div style="display:grid; grid-template-columns:1fr 300px; gap:20px;">
+<div>
+    <div class="card">
+        <div class="card-header"><h2 class="card-title">Files</h2></div>
+        <div class="card-body">
+            <% if (!doc.files.length) { %><p class="text-muted">No files attached.</p>
+            <% } else { doc.files.forEach(f => { %>
+            <div class="file-row">
+                <span style="font-size:20px;">📄</span>
+                <div style="flex:1; min-width:0;">
+                    <div class="fw-semibold" style="font-size:13px; overflow:hidden; text-overflow:ellipsis;"><%= f.originalName %></div>
+                    <div class="text-muted" style="font-size:11px;"><%= fmtSize(f.fileSize) %></div>
+                </div>
+                <a href="<%= f.filePath %>" target="_blank" class="btn btn-sm btn-secondary">View</a>
+                <a href="<%= f.filePath %>" download="<%= f.originalName %>" class="btn btn-sm btn-primary">↓</a>
+            </div>
+            <% }) } %>
+        </div>
+    </div>
+    <% if (doc.description) { %>
+    <div class="card" style="margin-top:16px;"><div class="card-body"><p style="margin:0;"><%= doc.description %></p></div></div>
+    <% } %>
+</div>
+<div>
+    <div class="card">
+        <div class="card-body">
+            <table style="width:100%; font-size:13px; border-collapse:collapse;">
+                <tr><td class="text-muted" style="padding:5px 0; width:100px;">Uploaded by</td><td><strong><%= doc.uploadedBy ? doc.uploadedBy.name : '—' %></strong></td></tr>
+                <tr><td class="text-muted" style="padding:5px 0;">Subject</td><td><%= doc.subject || '—' %></td></tr>
+                <tr><td class="text-muted" style="padding:5px 0;">Shared with</td><td><%= doc.targetType.replace(/_/g,' ') %></td></tr>
+                <tr><td class="text-muted" style="padding:5px 0;">Date</td><td><%= new Date(doc.createdAt).toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'}) %></td></tr>
+            </table>
+        </div>
+    </div>
+    <% if (doc.isAssignment) { %>
+    <div class="card" style="margin-top:12px;">
+        <div class="card-header"><h2 class="card-title">Assignment</h2></div>
+        <div class="card-body">
+            <% if (submissionStats) { %>
+            <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-bottom:12px;">
+                <div style="background:var(--input-bg); border-radius:8px; padding:8px; text-align:center;">
+                    <div style="font-size:20px; font-weight:700;"><%= submissionStats.submitted %></div>
+                    <div class="text-muted" style="font-size:11px;">Submitted</div>
+                </div>
+                <div style="background:var(--input-bg); border-radius:8px; padding:8px; text-align:center;">
+                    <div style="font-size:20px; font-weight:700; color:#ef4444;"><%= submissionStats.late %></div>
+                    <div class="text-muted" style="font-size:11px;">Late</div>
+                </div>
+            </div>
+            <% } %>
+            <table style="width:100%; font-size:12px; border-collapse:collapse;">
+                <tr><td class="text-muted" style="padding:3px 0;">Due</td><td><%= doc.dueDate ? new Date(doc.dueDate).toLocaleString('en-IN') : '—' %></td></tr>
+                <tr><td class="text-muted" style="padding:3px 0;">Marks</td><td><%= doc.totalMarks || '—' %></td></tr>
+            </table>
+            <% if (isOwner) { %>
+            <a href="/teacher/documents/<%= doc._id %>/submissions" class="btn btn-primary btn-sm" style="margin-top:12px; width:100%;">View All Submissions</a>
+            <% } %>
+        </div>
+    </div>
+    <% } %>
+</div>
+</div>
+</div>
+
+<!-- SUBMISSIONS TAB -->
+<% if (isOwner && doc.isAssignment) { %>
+<div class="tab-content" id="tab-submissions">
+    <% if (!submissions.length) { %>
+    <div class="card"><div class="card-body"><div class="empty-state"><p>No submissions yet.</p></div></div></div>
+    <% } else { %>
+    <div class="card">
+        <div class="table-wrapper">
+            <table>
+                <thead><tr><th>Student</th><th>Status</th><th>Submitted</th><th>Marks</th><th>Files</th></tr></thead>
+                <tbody>
+                <% submissions.forEach(sub => { %>
+                <tr>
+                    <td><%= sub.student ? sub.student.name : '—' %></td>
+                    <td><span class="status-badge status-<%= sub.status %>"><%= sub.status %></span></td>
+                    <td style="font-size:12px;"><%= sub.submittedAt ? new Date(sub.submittedAt).toLocaleString('en-IN') : '—' %></td>
+                    <td style="font-size:12px;"><%= sub.marks !== null ? sub.marks : '—' %></td>
+                    <td>
+                        <% sub.files.forEach(f => { %>
+                        <a href="<%= f.filePath %>" target="_blank" class="btn btn-sm btn-secondary" style="margin:1px;">↓ <%= f.originalName.length > 12 ? f.originalName.slice(0,12)+'…' : f.originalName %></a>
+                        <% }) %>
+                    </td>
+                </tr>
+                <% }) %>
+                </tbody>
+            </table>
+        </div>
+    </div>
+    <% } %>
+</div>
+<% } %>
+
+<!-- VERSIONS TAB -->
+<% if (isOwner && versions.length) { %>
+<div class="tab-content" id="tab-versions">
+    <div class="card">
+        <div class="table-wrapper">
+            <table>
+                <thead><tr><th>Version</th><th>Files</th><th>Note</th><th>Date</th></tr></thead>
+                <tbody>
+                <% versions.forEach(v => { %>
+                <tr>
+                    <td><strong>v<%= v.versionNumber %></strong> <%= v.versionNumber === doc.currentVersion ? '<span class="badge badge-green" style="font-size:10px;">current</span>' : '' %></td>
+                    <td style="font-size:12px;"><%= v.files.length %> file(s)</td>
+                    <td style="font-size:12px;"><%= v.changeNote || '—' %></td>
+                    <td style="font-size:12px;"><%= new Date(v.createdAt).toLocaleDateString('en-IN') %></td>
+                </tr>
+                <% }) %>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+<% } %>
+
+<!-- EDIT TAB -->
+<% if (isOwner) { %>
+<div class="tab-content" id="tab-edit">
+    <form method="POST" action="/teacher/documents/<%= doc._id %>/edit" enctype="multipart/form-data">
+    <div style="display:grid; grid-template-columns:1fr 320px; gap:20px;">
+    <div class="card">
+        <div class="card-header"><h2 class="card-title">Edit Details</h2></div>
+        <div class="card-body">
+            <div class="form-group"><label class="form-label">Title</label>
+                <input type="text" name="title" class="form-control" value="<%= doc.title %>" required /></div>
+            <div class="form-group"><label class="form-label">Description</label>
+                <textarea name="description" class="form-control" rows="2"><%= doc.description %></textarea></div>
+            <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px;">
+                <div class="form-group"><label class="form-label">Category</label>
+                    <select name="category" class="form-control">
+                        <% ['Assignment','Notes','Circular','Report','Other'].forEach(c => { %>
+                        <option value="<%= c %>" <%= doc.category === c ? 'selected' : '' %>><%= c %></option>
+                        <% }) %>
+                    </select></div>
+                <div class="form-group"><label class="form-label">Subject</label>
+                    <input type="text" name="subject" class="form-control" value="<%= doc.subject %>" /></div>
+            </div>
+            <div class="form-group"><label class="form-label">Tags</label>
+                <input type="text" name="tags" class="form-control" value="<%= doc.tags.join(', ') %>" /></div>
+            <div class="form-group"><label class="form-label">Upload new files (optional)</label>
+                <input type="file" name="files" multiple class="form-control"
+                       accept=".pdf,.doc,.docx,.xls,.xlsx,.jpg,.jpeg,.png,.gif,.webp" /></div>
+            <div class="form-group"><label class="form-label">Change Note</label>
+                <input type="text" name="changeNote" class="form-control" /></div>
+            <% if (doc.isAssignment) { %>
+            <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px;">
+                <div class="form-group"><label class="form-label">Due Date</label>
+                    <input type="datetime-local" name="dueDate" class="form-control"
+                           value="<%= doc.dueDate ? new Date(doc.dueDate).toISOString().slice(0,16) : '' %>" /></div>
+                <div class="form-group"><label class="form-label">Total Marks</label>
+                    <input type="number" name="totalMarks" class="form-control" value="<%= doc.totalMarks || '' %>" /></div>
+            </div>
+            <input type="hidden" name="isAssignment" value="true" />
+            <label style="display:flex;align-items:center;gap:8px;font-size:13px;">
+                <input type="checkbox" name="allowSubmission" <%= doc.allowSubmission ? 'checked' : '' %> /> Allow Submission
+            </label>
+            <label style="display:flex;align-items:center;gap:8px;font-size:13px;margin-top:6px;">
+                <input type="checkbox" name="marksEnabled" <%= doc.marksEnabled ? 'checked' : '' %> /> Enable Marks
+            </label>
+            <% } %>
+        </div>
+    </div>
+    <div>
+        <div class="card">
+            <div class="card-header"><h2 class="card-title">Sections</h2></div>
+            <div class="card-body" style="max-height:300px; overflow-y:auto;">
+                <% allowedSections.forEach(({ section }) => { %>
+                <label style="display:flex;align-items:center;gap:8px;padding:5px 0;font-size:13px;cursor:pointer;">
+                    <input type="checkbox" name="targetSections" value="<%= section._id %>"
+                           <%= doc.targetSections && doc.targetSections.some(s => s.toString() === section._id.toString()) ? 'checked' : '' %> />
+                    <%= section.class ? `Class ${section.class.classNumber}` : '' %> — Sec <%= section.sectionName %>
+                </label>
+                <% }) %>
+                <input type="hidden" name="targetType" value="custom_sections" />
+            </div>
+        </div>
+        <button type="submit" class="btn btn-primary" style="width:100%; margin-top:12px;">Save Changes</button>
+    </div>
+    </div>
+    </form>
+</div>
+<% } %>
+
+<script>
+function switchTab(id, el) {
+    document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.tab-nav a').forEach(a => a.classList.remove('active'));
+    document.getElementById('tab-' + id).classList.add('active');
+    el.classList.add('active');
+    return false;
+}
+</script>

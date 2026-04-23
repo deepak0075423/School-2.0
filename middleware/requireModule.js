@@ -21,6 +21,7 @@ const MODULE_LABELS = {
     timetable:    'Timetable Management',
     holiday:      'Holiday Management',
     leave:        'Leave Management',
+    document:     'Document Sharing',
 };
 
 const requireModule = (moduleName) => (req, res, next) => {

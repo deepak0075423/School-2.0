@@ -35,6 +35,14 @@ router.post('/exams/:id/violation',     examGuard, examCtrl.postLogViolation);
 router.post('/exams/:id/submit',        examGuard, examCtrl.postSubmitExam);
 router.get('/exams/:id/result',         examGuard, examCtrl.getStudentResult);
 
+// ── Document Sharing ──────────────────────────────────────────
+const docCtrl              = require('../controllers/documentController');
+const { uploadSubmission } = require('../middleware/uploadDocument');
+const docGuard             = [...guard, requireModule('document')];
+router.get('/documents',           docGuard, docCtrl.studentGetDocuments);
+router.get('/documents/:id',       docGuard, docCtrl.studentGetDocument);
+router.post('/documents/:id/submit', docGuard, uploadSubmission.array('files', 5), docCtrl.studentPostSubmitAssignment);
+
 // ── Holiday Management ────────────────────────────────────────
 const holidayCtrl  = require('../controllers/holidayController');
 const holidayGuard = [...guard, requireModule('holiday')];

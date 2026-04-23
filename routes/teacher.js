@@ -85,6 +85,20 @@ router.get('/leave/apply',            leaveGuard, leaveCtrl.teacherGetApplyLeave
 router.post('/leave/apply',           leaveGuard, uploadLeaveDoc.single('document'), leaveCtrl.teacherPostApplyLeave);
 router.post('/leave/:id/cancel',      leaveGuard, leaveCtrl.teacherPostCancelLeave);
 
+// ── Document Sharing ──────────────────────────────────────────
+const docCtrl              = require('../controllers/documentController');
+const { uploadDocument, uploadSubmission } = require('../middleware/uploadDocument');
+const docGuard             = [...guard, requireModule('document')];
+router.get('/documents',                          docGuard, docCtrl.teacherGetDocuments);
+router.get('/documents/upload',                   docGuard, docCtrl.teacherGetUploadForm);
+router.post('/documents/upload',                  docGuard, uploadDocument.array('files', 10), docCtrl.teacherPostUpload);
+router.get('/documents/:id/edit',                 docGuard, docCtrl.teacherGetUploadForm);
+router.get('/documents/:id/submissions',          docGuard, docCtrl.teacherGetSubmissions);
+router.get('/documents/:id',                      docGuard, docCtrl.teacherGetDocument);
+router.post('/documents/:id/edit',                docGuard, uploadDocument.array('files', 10), docCtrl.teacherPostEditDocument);
+router.post('/documents/:id/delete',              docGuard, docCtrl.teacherPostDeleteDocument);
+router.post('/documents/submissions/:submissionId/review', docGuard, docCtrl.teacherPostReviewSubmission);
+
 // ── Holiday Management ────────────────────────────────────────
 const holidayCtrl  = require('../controllers/holidayController');
 const holidayGuard = [...guard, requireModule('holiday')];

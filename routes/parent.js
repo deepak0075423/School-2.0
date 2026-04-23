@@ -28,6 +28,12 @@ router.get('/results',                  resultGuard, formalExamCtrl.parentGetRes
 router.get('/results/class-tests',      resultGuard, classTestCtrl.parentGetClassTests);
 router.get('/results/:resultId',        resultGuard, formalExamCtrl.parentGetResultDetail);
 
+// ── Document Sharing ──────────────────────────────────────────
+const docCtrl  = require('../controllers/documentController');
+const docGuard = [...guard, requireModule('document')];
+router.get('/documents',     docGuard, docCtrl.parentGetDocuments);
+router.get('/documents/:id', docGuard, docCtrl.parentGetDocument);
+
 // ── Holiday Management ────────────────────────────────────────
 const holidayCtrl  = require('../controllers/holidayController');
 const holidayGuard = [...guard, requireModule('holiday')];
