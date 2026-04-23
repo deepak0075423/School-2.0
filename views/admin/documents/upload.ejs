@@ -1,0 +1,329 @@
+<style>
+#panel-class, #panel-sections, #panel-teachers { display:none; }
+.drop-zone { border:2px dashed var(--border); border-radius:10px; padding:32px; text-align:center; cursor:pointer; transition:border-color .15s; }
+.drop-zone:hover, .drop-zone.drag-over { border-color:var(--primary); }
+.file-preview-list { list-style:none; padding:0; margin:10px 0 0; }
+.file-preview-list li { display:flex; align-items:center; gap:8px; padding:6px 10px; background:var(--input-bg); border-radius:6px; margin-bottom:6px; font-size:13px; }
+.file-preview-list .remove-file { cursor:pointer; color:#ef4444; margin-left:auto; font-size:16px; }
+</style>
+
+<div class="page-header">
+    <div>
+        <h1 class="page-title"><%= editDoc ? 'Edit Document' : 'Upload Document' %></h1>
+        <p class="text-muted">Share files with your school community</p>
+    </div>
+    <a href="/admin/documents" class="btn btn-secondary">← Back</a>
+</div>
+
+<form method="POST" action="<%= editDoc ? '/admin/documents/' + editDoc._id + '/edit' : '/admin/documents/upload' %>"
+      enctype="multipart/form-data" id="uploadForm">
+
+<div style="display:grid; grid-template-columns:1fr 360px; gap:20px;">
+
+<!-- Left Column -->
+<div style="display:flex; flex-direction:column; gap:16px;">
+
+    <!-- Basic Info -->
+    <div class="card">
+        <div class="card-header"><h2 class="card-title">Document Details</h2></div>
+        <div class="card-body">
+            <div class="form-group">
+                <label class="form-label">Title <span style="color:#ef4444;">*</span></label>
+                <input type="text" name="title" class="form-control" required
+                       value="<%= editDoc ? editDoc.title : '' %>" placeholder="e.g. Chapter 5 Notes" />
+            </div>
+            <div class="form-group">
+                <label class="form-label">Description</label>
+                <textarea name="description" class="form-control" rows="2" placeholder="Optional description…"><%= editDoc ? editDoc.description : '' %></textarea>
+            </div>
+            <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px;">
+                <div class="form-group">
+                    <label class="form-label">Category <span style="color:#ef4444;">*</span></label>
+                    <select name="category" class="form-control" id="categorySelect" required>
+                        <% ['Assignment','Notes','Circular','Report','Other'].forEach(c => { %>
+                        <option value="<%= c %>" <%= editDoc && editDoc.category === c ? 'selected' : '' %>><%= c %></option>
+                        <% }) %>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Subject (optional)</label>
+                    <input type="text" name="subject" class="form-control"
+                           value="<%= editDoc ? editDoc.subject : '' %>" placeholder="e.g. Mathematics" />
+                </div>
+            </div>
+            <div class="form-group">
+                <label class="form-label">Tags (comma-separated)</label>
+                <input type="text" name="tags" class="form-control"
+                       value="<%= editDoc ? editDoc.tags.join(', ') : '' %>" placeholder="e.g. exam, chapter5" />
+            </div>
+        </div>
+    </div>
+
+    <!-- File Upload -->
+    <div class="card" id="fileCard">
+        <div class="card-header"><h2 class="card-title">Files <span style="color:#ef4444;">*</span></h2></div>
+        <div class="card-body">
+            <% if (editDoc) { %>
+            <p class="text-muted" style="font-size:13px; margin-bottom:10px;">Upload new files to replace existing ones (optional). Supported: PDF, Word, Excel, Images (max 20MB each).</p>
+            <% } else { %>
+            <p class="text-muted" style="font-size:13px; margin-bottom:10px;">Supported: PDF, Word (.docx), Excel (.xlsx), Images. Max 20 MB per file.</p>
+            <% } %>
+
+            <div class="drop-zone" id="dropZone" onclick="document.getElementById('fileInput').click()">
+                <div style="font-size:32px; margin-bottom:8px;">📎</div>
+                <p style="margin:0; color:var(--text-secondary);">Drag & drop files here or click to browse</p>
+                <p style="margin:4px 0 0; font-size:12px; color:var(--text-muted);">Multiple files allowed</p>
+            </div>
+            <input type="file" id="fileInput" name="files" multiple accept=".pdf,.doc,.docx,.xls,.xlsx,.jpg,.jpeg,.png,.gif,.webp" style="display:none;" />
+            <ul class="file-preview-list" id="fileList"></ul>
+
+            <% if (editDoc) { %>
+            <div class="form-group" style="margin-top:12px;">
+                <label class="form-label">Change Note (optional)</label>
+                <input type="text" name="changeNote" class="form-control" placeholder="What changed?" />
+            </div>
+            <% } %>
+        </div>
+    </div>
+
+    <!-- Assignment settings -->
+    <div class="card" id="assignmentCard" style="<%= editDoc && editDoc.isAssignment ? '' : '' %>">
+        <div class="card-header" style="display:flex; justify-content:space-between; align-items:center;">
+            <h2 class="card-title">Assignment Settings</h2>
+            <label style="display:flex; align-items:center; gap:8px; cursor:pointer;">
+                <input type="checkbox" name="isAssignment" id="isAssignmentCheck"
+                       <%= editDoc && editDoc.isAssignment ? 'checked' : '' %> />
+                <span style="font-size:13px;">This is an assignment</span>
+            </label>
+        </div>
+        <div class="card-body" id="assignmentFields" style="<%= editDoc && editDoc.isAssignment ? '' : 'display:none' %>">
+            <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px;">
+                <div class="form-group">
+                    <label class="form-label">Due Date</label>
+                    <input type="datetime-local" name="dueDate" class="form-control"
+                           value="<%= editDoc && editDoc.dueDate ? new Date(editDoc.dueDate).toISOString().slice(0,16) : '' %>" />
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Total Marks (optional)</label>
+                    <input type="number" name="totalMarks" class="form-control" min="0"
+                           value="<%= editDoc && editDoc.totalMarks ? editDoc.totalMarks : '' %>" placeholder="e.g. 100" />
+                </div>
+            </div>
+            <div style="display:flex; gap:20px;">
+                <label style="display:flex; align-items:center; gap:8px; cursor:pointer; font-size:13px;">
+                    <input type="checkbox" name="allowSubmission" id="allowSubmissionCheck"
+                           <%= !editDoc || editDoc.allowSubmission ? 'checked' : '' %> />
+                    Allow file submissions
+                </label>
+                <label style="display:flex; align-items:center; gap:8px; cursor:pointer; font-size:13px;">
+                    <input type="checkbox" name="marksEnabled"
+                           <%= editDoc && editDoc.marksEnabled ? 'checked' : '' %> />
+                    Enable marks
+                </label>
+            </div>
+        </div>
+    </div>
+
+</div>
+
+<!-- Right Column: Sharing -->
+<div>
+    <div class="card">
+        <div class="card-header"><h2 class="card-title">Share With</h2></div>
+        <div class="card-body">
+            <div class="form-group">
+                <label class="form-label">Target <span style="color:#ef4444;">*</span></label>
+                <select name="targetType" id="targetType" class="form-control" required>
+                    <option value="whole_school"      <%= editDoc && editDoc.targetType === 'whole_school'      ? 'selected' : '' %>>Entire School</option>
+                    <option value="all_teachers"      <%= editDoc && editDoc.targetType === 'all_teachers'      ? 'selected' : '' %>>All Teachers</option>
+                    <option value="specific_teachers" <%= editDoc && editDoc.targetType === 'specific_teachers' ? 'selected' : '' %>>Specific Teachers</option>
+                    <option value="class"             <%= editDoc && editDoc.targetType === 'class'             ? 'selected' : '' %>>Class (all sections)</option>
+                    <option value="class_sections"    <%= editDoc && editDoc.targetType === 'class_sections'    ? 'selected' : '' %>>Class — specific sections</option>
+                </select>
+            </div>
+
+            <!-- Panel: Class (all sections) -->
+            <div class="target-panel" id="panel-class">
+                <div class="form-group">
+                    <label class="form-label">Select Classes</label>
+                    <% if (!classes.length) { %>
+                    <p class="text-muted" style="font-size:12px;">No classes found for the active academic year.</p>
+                    <% } %>
+                    <% classes.forEach(cls => { %>
+                    <label style="display:flex; align-items:center; gap:8px; padding:5px 0; font-size:13px; cursor:pointer; border-bottom:1px solid var(--border);">
+                        <input type="checkbox" name="targetClasses" value="<%= cls._id %>"
+                               <%= editDoc && editDoc.targetClasses && editDoc.targetClasses.some(c => c.toString() === cls._id.toString()) ? 'checked' : '' %> />
+                        <span>Class <%= cls.classNumber %> — <%= cls.className %></span>
+                    </label>
+                    <% }) %>
+                </div>
+            </div>
+
+            <!-- Panel: Class specific sections -->
+            <div class="target-panel" id="panel-sections">
+                <div class="form-group">
+                    <label class="form-label">Select Sections</label>
+                    <% if (!sections.length) { %>
+                    <p class="text-muted" style="font-size:12px;">No sections found for the active academic year.</p>
+                    <% } %>
+                    <%
+                      // Group sections by class for display
+                      const classSectionMap = {};
+                      sections.forEach(sec => {
+                          const key = sec.class ? sec.class._id.toString() : 'none';
+                          if (!classSectionMap[key]) {
+                              classSectionMap[key] = {
+                                  label: sec.class ? `Class ${sec.class.classNumber} — ${sec.class.className}` : 'Unassigned',
+                                  sections: []
+                              };
+                          }
+                          classSectionMap[key].sections.push(sec);
+                      });
+                    %>
+                    <% Object.values(classSectionMap).forEach(group => { %>
+                    <div style="margin-bottom:10px;">
+                        <div style="font-size:11px; font-weight:700; color:var(--text-secondary); text-transform:uppercase; margin-bottom:4px;"><%= group.label %></div>
+                        <% group.sections.forEach(sec => { %>
+                        <label style="display:flex; align-items:center; gap:8px; padding:5px 8px; font-size:13px; cursor:pointer; background:var(--input-bg); border-radius:6px; margin-bottom:4px;">
+                            <input type="checkbox" name="targetSections" value="<%= sec._id %>"
+                                   <%= editDoc && editDoc.targetSections && editDoc.targetSections.some(s => s.toString() === sec._id.toString()) ? 'checked' : '' %> />
+                            <span>Section <%= sec.sectionName %></span>
+                        </label>
+                        <% }) %>
+                    </div>
+                    <% }) %>
+                </div>
+            </div>
+
+            <!-- Panel: Specific teachers -->
+            <div class="target-panel" id="panel-teachers">
+                <div class="form-group">
+                    <label class="form-label">Select Teachers</label>
+                    <% if (!teachers.length) { %>
+                    <p class="text-muted" style="font-size:12px;">No teachers found.</p>
+                    <% } %>
+                    <% teachers.forEach(t => { %>
+                    <label style="display:flex; align-items:center; gap:8px; padding:5px 0; font-size:13px; cursor:pointer; border-bottom:1px solid var(--border);">
+                        <input type="checkbox" name="targetUsers" value="<%= t._id %>"
+                               <%= editDoc && editDoc.targetUsers && editDoc.targetUsers.some(u => u.toString() === t._id.toString()) ? 'checked' : '' %> />
+                        <%= t.name %>
+                    </label>
+                    <% }) %>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <button type="submit" class="btn btn-primary" style="width:100%; margin-top:16px;">
+        <%= editDoc ? 'Update Document' : 'Upload & Share' %>
+    </button>
+</div>
+
+</div>
+</form>
+
+<script>
+const targetTypeEl = document.getElementById('targetType');
+
+const PANELS = {
+    'whole_school':      null,
+    'all_teachers':      null,
+    'specific_teachers': 'panel-teachers',
+    'class':             'panel-class',
+    'class_sections':    'panel-sections',
+};
+
+function updatePanels() {
+    // Hide all panels
+    ['panel-class', 'panel-sections', 'panel-teachers'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.style.display = 'none';
+    });
+    // Show the relevant panel
+    const panelId = PANELS[targetTypeEl.value];
+    if (panelId) {
+        const el = document.getElementById(panelId);
+        if (el) el.style.display = 'block';
+    }
+}
+
+targetTypeEl.addEventListener('change', updatePanels);
+updatePanels();
+
+// Validation before submit
+document.getElementById('uploadForm').addEventListener('submit', function (e) {
+    const type = targetTypeEl.value;
+    if (type === 'class') {
+        const checked = document.querySelectorAll('input[name="targetClasses"]:checked').length;
+        if (!checked) {
+            e.preventDefault();
+            alert('Please select at least one class.');
+            return;
+        }
+    }
+    if (type === 'class_sections') {
+        const checked = document.querySelectorAll('input[name="targetSections"]:checked').length;
+        if (!checked) {
+            e.preventDefault();
+            alert('Please select at least one section.');
+            return;
+        }
+    }
+    if (type === 'specific_teachers') {
+        const checked = document.querySelectorAll('input[name="targetUsers"]:checked').length;
+        if (!checked) {
+            e.preventDefault();
+            alert('Please select at least one teacher.');
+            return;
+        }
+    }
+});
+
+// Assignment fields toggle
+document.getElementById('isAssignmentCheck').addEventListener('change', function () {
+    document.getElementById('assignmentFields').style.display = this.checked ? '' : 'none';
+});
+
+// Drag-and-drop file handling
+const dropZone  = document.getElementById('dropZone');
+const fileInput = document.getElementById('fileInput');
+const fileList  = document.getElementById('fileList');
+let selectedFiles = [];
+
+function renderFileList() {
+    fileList.innerHTML = '';
+    selectedFiles.forEach((f, i) => {
+        const li = document.createElement('li');
+        li.innerHTML = `<span>📄</span><span>${f.name}</span><span class="text-muted">(${(f.size/1024).toFixed(1)} KB)</span><span class="remove-file" data-idx="${i}">✕</span>`;
+        fileList.appendChild(li);
+    });
+}
+
+function mergeFiles(newFiles) {
+    const names = new Set(selectedFiles.map(f => f.name));
+    for (const f of newFiles) {
+        if (!names.has(f.name)) { selectedFiles.push(f); names.add(f.name); }
+    }
+    syncInputFiles();
+    renderFileList();
+}
+
+function syncInputFiles() {
+    const dt = new DataTransfer();
+    selectedFiles.forEach(f => dt.items.add(f));
+    fileInput.files = dt.files;
+}
+
+dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('drag-over'); });
+dropZone.addEventListener('dragleave', () => dropZone.classList.remove('drag-over'));
+dropZone.addEventListener('drop', e => { e.preventDefault(); dropZone.classList.remove('drag-over'); mergeFiles([...e.dataTransfer.files]); });
+fileInput.addEventListener('change', () => { mergeFiles([...fileInput.files]); });
+fileList.addEventListener('click', e => {
+    if (e.target.classList.contains('remove-file')) {
+        selectedFiles.splice(Number(e.target.dataset.idx), 1);
+        syncInputFiles();
+        renderFileList();
+    }
+});
+</script>

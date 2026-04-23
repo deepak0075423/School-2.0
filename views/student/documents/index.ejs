@@ -1,0 +1,131 @@
+<style>
+.cat-badge { display:inline-block; padding:2px 10px; border-radius:10px; font-size:11px; font-weight:700; }
+.cat-Assignment { background:#fef3c7; color:#92400e; border:1px solid #fcd34d; }
+.cat-Notes      { background:#dbeafe; color:#1e40af; border:1px solid #93c5fd; }
+.cat-Circular   { background:#d1fae5; color:#065f46; border:1px solid #6ee7b7; }
+.cat-Report     { background:#ede9fe; color:#5b21b6; border:1px solid #c4b5fd; }
+.cat-Other      { background:#f3f4f6; color:#374151; border:1px solid #d1d5db; }
+.status-submitted { background:#ecfdf5; color:#065f46; }
+.status-late      { background:#fef2f2; color:#991b1b; }
+.status-pending   { background:#fefce8; color:#a16207; }
+.status-badge { display:inline-block; padding:2px 8px; border-radius:8px; font-size:10px; font-weight:700; }
+.tabs { display:flex; border-bottom:2px solid var(--border); margin-bottom:16px; }
+.tabs a { padding:10px 20px; font-size:13px; font-weight:600; color:var(--text-secondary); text-decoration:none; border-bottom:2px solid transparent; margin-bottom:-2px; }
+.tabs a.active { color:var(--primary); border-bottom-color:var(--primary); }
+.doc-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(280px,1fr)); gap:16px; }
+.doc-card { background:var(--card-bg); border:1px solid var(--border); border-radius:12px; padding:18px; display:flex; flex-direction:column; gap:10px; transition:box-shadow .15s; }
+.doc-card:hover { box-shadow:0 4px 16px rgba(0,0,0,.12); }
+.due-warning { background:#fef2f2; color:#991b1b; border:1px solid #fecaca; border-radius:6px; padding:6px 10px; font-size:12px; }
+.due-ok { background:#ecfdf5; color:#065f46; border:1px solid #a7f3d0; border-radius:6px; padding:6px 10px; font-size:12px; }
+</style>
+
+<div class="page-header">
+    <div>
+        <h1 class="page-title">Documents</h1>
+        <p class="text-muted">Your shared documents and assignments</p>
+    </div>
+</div>
+
+<!-- Filters -->
+<div class="card" style="margin-bottom:16px;">
+    <div class="card-body" style="padding:12px 16px;">
+        <form method="GET" action="/student/documents" style="display:flex; gap:10px; flex-wrap:wrap; align-items:flex-end;">
+            <div class="form-group" style="margin:0; min-width:150px;">
+                <label class="form-label" style="font-size:11px;">Category</label>
+                <select name="category" class="form-control form-control-sm">
+                    <option value="">All</option>
+                    <% ['Assignment','Notes','Circular','Report','Other'].forEach(c => { %>
+                    <option value="<%= c %>" <%= filters.category === c ? 'selected' : '' %>><%= c %></option>
+                    <% }) %>
+                </select>
+            </div>
+            <div class="form-group" style="margin:0; min-width:180px;">
+                <label class="form-label" style="font-size:11px;">Search</label>
+                <input type="text" name="search" class="form-control form-control-sm" value="<%= filters.search %>" placeholder="Search title…" />
+            </div>
+            <input type="hidden" name="tab" value="<%= activeTab %>" />
+            <button type="submit" class="btn btn-primary btn-sm">Filter</button>
+            <a href="/student/documents" class="btn btn-secondary btn-sm">Clear</a>
+        </form>
+    </div>
+</div>
+
+<div class="tabs">
+    <a href="/student/documents?tab=documents" class="<%= activeTab === 'documents' ? 'active' : '' %>">
+        Documents (<%= documents.length %>)
+    </a>
+    <a href="/student/documents?tab=assignments" class="<%= activeTab === 'assignments' ? 'active' : '' %>">
+        Assignments (<%= assignments.length %>)
+    </a>
+</div>
+
+<% if (activeTab === 'documents') { %>
+
+<% if (!documents.length) { %>
+<div class="card"><div class="card-body"><div class="empty-state"><div class="empty-icon">📄</div><p>No documents shared with you yet.</p></div></div></div>
+<% } else { %>
+<div class="doc-grid">
+    <% documents.forEach(doc => { %>
+    <div class="doc-card">
+        <div style="display:flex; justify-content:space-between; align-items:flex-start;">
+            <span class="cat-badge cat-<%= doc.category %>"><%= doc.category %></span>
+            <span class="text-muted" style="font-size:11px;"><%= doc.files.length %> file(s)</span>
+        </div>
+        <div>
+            <div class="fw-semibold" style="font-size:14px;"><%= doc.title %></div>
+            <% if (doc.subject) { %><div class="text-muted" style="font-size:12px;"><%= doc.subject %></div><% } %>
+        </div>
+        <div class="text-muted" style="font-size:12px;">
+            By <%= doc.uploadedBy ? doc.uploadedBy.name : '—' %> ·
+            <%= new Date(doc.createdAt).toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'}) %>
+        </div>
+        <a href="/student/documents/<%= doc._id %>" class="btn btn-sm btn-primary" style="align-self:flex-start;">View & Download</a>
+    </div>
+    <% }) %>
+</div>
+<% } %>
+
+<% } else { %>
+
+<% if (!assignments.length) { %>
+<div class="card"><div class="card-body"><div class="empty-state"><div class="empty-icon">📝</div><p>No assignments yet.</p></div></div></div>
+<% } else { %>
+<div class="doc-grid">
+    <% assignments.forEach(doc => {
+       const sub = mySubMap[doc._id.toString()];
+       const now = new Date();
+       const dueDate = doc.dueDate ? new Date(doc.dueDate) : null;
+       const isOverdue = dueDate && now > dueDate && (!sub || sub.status === 'pending');
+    %>
+    <div class="doc-card">
+        <div style="display:flex; justify-content:space-between; align-items:flex-start;">
+            <span class="cat-badge cat-Assignment">Assignment</span>
+            <% if (sub) { %>
+            <span class="status-badge status-<%= sub.status %>"><%= sub.status %></span>
+            <% } else { %>
+            <span class="status-badge status-pending">pending</span>
+            <% } %>
+        </div>
+        <div>
+            <div class="fw-semibold" style="font-size:14px;"><%= doc.title %></div>
+            <% if (doc.subject) { %><div class="text-muted" style="font-size:12px;"><%= doc.subject %></div><% } %>
+        </div>
+        <% if (dueDate) { %>
+        <div class="<%= isOverdue ? 'due-warning' : 'due-ok' %>">
+            Due: <%= dueDate.toLocaleString('en-IN',{day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'}) %>
+            <%= isOverdue ? '⚠️ Overdue' : '' %>
+        </div>
+        <% } %>
+        <div class="text-muted" style="font-size:12px;">
+            By <%= doc.uploadedBy ? doc.uploadedBy.name : '—' %> ·
+            <%= doc.totalMarks ? 'Marks: ' + doc.totalMarks : 'No marks' %>
+        </div>
+        <a href="/student/documents/<%= doc._id %>" class="btn btn-sm <%= sub && sub.status !== 'pending' ? 'btn-secondary' : 'btn-primary' %>">
+            <%= sub && sub.status !== 'pending' ? 'View Submission' : 'View & Submit' %>
+        </a>
+    </div>
+    <% }) %>
+</div>
+<% } %>
+
+<% } %>

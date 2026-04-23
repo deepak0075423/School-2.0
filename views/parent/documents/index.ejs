@@ -1,0 +1,118 @@
+<style>
+.cat-badge { display:inline-block; padding:2px 10px; border-radius:10px; font-size:11px; font-weight:700; }
+.cat-Assignment { background:#fef3c7; color:#92400e; border:1px solid #fcd34d; }
+.cat-Notes      { background:#dbeafe; color:#1e40af; border:1px solid #93c5fd; }
+.cat-Circular   { background:#d1fae5; color:#065f46; border:1px solid #6ee7b7; }
+.cat-Report     { background:#ede9fe; color:#5b21b6; border:1px solid #c4b5fd; }
+.cat-Other      { background:#f3f4f6; color:#374151; border:1px solid #d1d5db; }
+.status-submitted { background:#ecfdf5; color:#065f46; border:1px solid #a7f3d0; }
+.status-late      { background:#fef2f2; color:#991b1b; border:1px solid #fecaca; }
+.status-pending   { background:#fefce8; color:#a16207; border:1px solid #fde68a; }
+.status-badge { display:inline-block; padding:2px 8px; border-radius:8px; font-size:10px; font-weight:700; }
+.tabs { display:flex; border-bottom:2px solid var(--border); margin-bottom:16px; }
+.tabs a { padding:10px 20px; font-size:13px; font-weight:600; color:var(--text-secondary); text-decoration:none; border-bottom:2px solid transparent; margin-bottom:-2px; }
+.tabs a.active { color:var(--primary); border-bottom-color:var(--primary); }
+.doc-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(280px,1fr)); gap:16px; }
+.doc-card { background:var(--card-bg); border:1px solid var(--border); border-radius:12px; padding:18px; display:flex; flex-direction:column; gap:10px; }
+</style>
+
+<div class="page-header">
+    <div>
+        <h1 class="page-title">Documents</h1>
+        <p class="text-muted">Documents and assignments for your child</p>
+    </div>
+</div>
+
+<!-- Filters -->
+<div class="card" style="margin-bottom:16px;">
+    <div class="card-body" style="padding:12px 16px;">
+        <form method="GET" action="/parent/documents" style="display:flex; gap:10px; flex-wrap:wrap; align-items:flex-end;">
+            <div class="form-group" style="margin:0; min-width:150px;">
+                <label class="form-label" style="font-size:11px;">Category</label>
+                <select name="category" class="form-control form-control-sm">
+                    <option value="">All</option>
+                    <% ['Assignment','Notes','Circular','Report','Other'].forEach(c => { %>
+                    <option value="<%= c %>" <%= filters.category === c ? 'selected' : '' %>><%= c %></option>
+                    <% }) %>
+                </select>
+            </div>
+            <div class="form-group" style="margin:0; min-width:180px;">
+                <label class="form-label" style="font-size:11px;">Search</label>
+                <input type="text" name="search" class="form-control form-control-sm" value="<%= filters.search %>" placeholder="Search title…" />
+            </div>
+            <button type="submit" class="btn btn-primary btn-sm">Filter</button>
+            <a href="/parent/documents" class="btn btn-secondary btn-sm">Clear</a>
+        </form>
+    </div>
+</div>
+
+<!-- Documents -->
+<% if (documents.length) { %>
+<h3 style="font-size:14px; font-weight:700; margin-bottom:12px; color:var(--text-secondary);">DOCUMENTS</h3>
+<div class="doc-grid" style="margin-bottom:24px;">
+    <% documents.forEach(doc => { %>
+    <div class="doc-card">
+        <div style="display:flex; justify-content:space-between;">
+            <span class="cat-badge cat-<%= doc.category %>"><%= doc.category %></span>
+            <span class="text-muted" style="font-size:11px;"><%= doc.files.length %> file(s)</span>
+        </div>
+        <div>
+            <div class="fw-semibold" style="font-size:14px;"><%= doc.title %></div>
+            <% if (doc.subject) { %><div class="text-muted" style="font-size:12px;"><%= doc.subject %></div><% } %>
+        </div>
+        <div class="text-muted" style="font-size:12px;">
+            By <%= doc.uploadedBy ? doc.uploadedBy.name : '—' %> ·
+            <%= new Date(doc.createdAt).toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'}) %>
+        </div>
+        <a href="/parent/documents/<%= doc._id %>" class="btn btn-sm btn-primary" style="align-self:flex-start;">View</a>
+    </div>
+    <% }) %>
+</div>
+<% } %>
+
+<!-- Assignments -->
+<% if (assignments.length) { %>
+<h3 style="font-size:14px; font-weight:700; margin-bottom:12px; color:var(--text-secondary);">ASSIGNMENTS</h3>
+<div class="doc-grid">
+    <% assignments.forEach(doc => {
+       const sub = mySubMap[doc._id.toString()];
+       const dueDate = doc.dueDate ? new Date(doc.dueDate) : null;
+    %>
+    <div class="doc-card">
+        <div style="display:flex; justify-content:space-between; align-items:center;">
+            <span class="cat-badge cat-Assignment">Assignment</span>
+            <% if (sub) { %>
+            <span class="status-badge status-<%= sub.status %>"><%= sub.status %></span>
+            <% } else { %>
+            <span class="status-badge status-pending">not submitted</span>
+            <% } %>
+        </div>
+        <div>
+            <div class="fw-semibold" style="font-size:14px;"><%= doc.title %></div>
+            <% if (doc.subject) { %><div class="text-muted" style="font-size:12px;"><%= doc.subject %></div><% } %>
+        </div>
+        <% if (dueDate) { %>
+        <div class="text-muted" style="font-size:12px;">
+            Due: <%= dueDate.toLocaleString('en-IN',{day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'}) %>
+        </div>
+        <% } %>
+        <% if (sub && sub.marks !== null) { %>
+        <div style="font-size:13px;">
+            Marks: <strong><%= sub.marks %><%= doc.totalMarks ? '/' + doc.totalMarks : '' %></strong>
+            <% if (sub.student) { %> · <span class="text-muted"><%= sub.student.name %></span><% } %>
+        </div>
+        <% } %>
+        <a href="/parent/documents/<%= doc._id %>" class="btn btn-sm btn-secondary" style="align-self:flex-start;">View</a>
+    </div>
+    <% }) %>
+</div>
+<% } %>
+
+<% if (!documents.length && !assignments.length) { %>
+<div class="card"><div class="card-body">
+    <div class="empty-state">
+        <div class="empty-icon">📄</div>
+        <p>No documents available for your child yet.</p>
+    </div>
+</div></div>
+<% } %>

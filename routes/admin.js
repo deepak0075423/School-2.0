@@ -152,6 +152,23 @@ router.post('/leave/allocations/carry-forward', leaveGuard, leaveCtrl.adminPostR
 router.get('/leave/reports',                    leaveGuard, leaveCtrl.adminGetReports);
 router.get('/leave/reports/export',             leaveGuard, leaveCtrl.adminExportReports);
 
+// ── Document Sharing ──────────────────────────────────────────
+const docCtrl          = require('../controllers/documentController');
+const { uploadDocument } = require('../middleware/uploadDocument');
+const docGuard         = [...guard, requireModule('document')];
+router.get('/documents',                              docGuard, docCtrl.adminGetDocuments);
+router.get('/documents/upload',                       docGuard, docCtrl.adminGetUploadForm);
+router.post('/documents/upload',                      docGuard, uploadDocument.array('files', 10), docCtrl.adminPostUpload);
+router.get('/documents/audit',                        docGuard, docCtrl.adminGetAuditLog);
+router.post('/documents/bulk-archive',                docGuard, docCtrl.adminPostBulkArchive);
+router.post('/documents/bulk-delete',                 docGuard, docCtrl.adminPostBulkDelete);
+router.get('/documents/:id',                          docGuard, docCtrl.adminGetDocument);
+router.get('/documents/:id/edit',                     docGuard, docCtrl.adminGetUploadForm);
+router.post('/documents/:id/edit',                    docGuard, uploadDocument.array('files', 10), docCtrl.adminPostEditDocument);
+router.post('/documents/:id/delete',                  docGuard, docCtrl.adminPostDeleteDocument);
+router.post('/documents/:id/archive',                 docGuard, docCtrl.adminPostArchiveDocument);
+router.post('/documents/:docId/versions/:versionId/restore', docGuard, docCtrl.adminPostRestoreVersion);
+
 // ── Holiday Management ────────────────────────────────────────
 const holidayCtrl  = require('../controllers/holidayController');
 const uploadCsv    = require('../middleware/uploadCsv');

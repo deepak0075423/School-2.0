@@ -1,0 +1,169 @@
+<style>
+.doc-card { background:var(--card-bg); border:1px solid var(--border); border-radius:12px; padding:16px; transition:box-shadow .15s; }
+.doc-card:hover { box-shadow:0 4px 16px rgba(0,0,0,.15); }
+.cat-badge { display:inline-block; padding:2px 10px; border-radius:10px; font-size:11px; font-weight:700; }
+.cat-Assignment { background:#fef3c7; color:#92400e; border:1px solid #fcd34d; }
+.cat-Notes      { background:#dbeafe; color:#1e40af; border:1px solid #93c5fd; }
+.cat-Circular   { background:#d1fae5; color:#065f46; border:1px solid #6ee7b7; }
+.cat-Report     { background:#ede9fe; color:#5b21b6; border:1px solid #c4b5fd; }
+.cat-Other      { background:#f3f4f6; color:#374151; border:1px solid #d1d5db; }
+.bulk-bar { display:none; background:var(--card-bg); border:1px solid var(--border); border-radius:8px; padding:10px 16px; margin-bottom:12px; align-items:center; gap:12px; }
+.bulk-bar.visible { display:flex; }
+</style>
+
+<div class="page-header">
+    <div>
+        <h1 class="page-title">Documents</h1>
+        <p class="text-muted">Manage and share school documents</p>
+    </div>
+    <div style="display:flex; gap:8px;">
+        <a href="/admin/documents/audit" class="btn btn-secondary">Audit Log</a>
+        <a href="/admin/documents/upload" class="btn btn-primary">+ Upload Document</a>
+    </div>
+</div>
+
+<!-- Bulk action bar -->
+<div class="bulk-bar" id="bulkBar">
+    <span id="bulkCount">0 selected</span>
+    <form method="POST" action="/admin/documents/bulk-archive" id="bulkArchiveForm">
+        <button type="submit" class="btn btn-sm btn-secondary">Archive Selected</button>
+    </form>
+    <form method="POST" action="/admin/documents/bulk-delete" id="bulkDeleteForm" onsubmit="return confirm('Delete selected documents?')">
+        <button type="submit" class="btn btn-sm btn-danger">Delete Selected</button>
+    </form>
+</div>
+
+<!-- Filters -->
+<div class="card" style="margin-bottom:16px;">
+    <div class="card-body" style="padding:14px 16px;">
+        <form method="GET" action="/admin/documents" style="display:flex; gap:10px; flex-wrap:wrap; align-items:flex-end;">
+            <div class="form-group" style="margin:0; min-width:160px;">
+                <label class="form-label" style="font-size:11px;">Category</label>
+                <select name="category" class="form-control form-control-sm">
+                    <option value="">All Categories</option>
+                    <% ['Assignment','Notes','Circular','Report','Other'].forEach(c => { %>
+                    <option value="<%= c %>" <%= filters.category === c ? 'selected' : '' %>><%= c %></option>
+                    <% }) %>
+                </select>
+            </div>
+            <div class="form-group" style="margin:0; min-width:200px;">
+                <label class="form-label" style="font-size:11px;">Search</label>
+                <input type="text" name="search" class="form-control form-control-sm" placeholder="Search by title…" value="<%= filters.search %>" />
+            </div>
+            <div class="form-group" style="margin:0;">
+                <label class="form-label" style="font-size:11px;">Show</label>
+                <select name="archived" class="form-control form-control-sm">
+                    <option value="0" <%= filters.archived !== '1' ? 'selected' : '' %>>Active</option>
+                    <option value="1" <%= filters.archived === '1' ? 'selected' : '' %>>Archived</option>
+                </select>
+            </div>
+            <button type="submit" class="btn btn-primary btn-sm">Filter</button>
+            <a href="/admin/documents" class="btn btn-secondary btn-sm">Clear</a>
+        </form>
+    </div>
+</div>
+
+<% if (!docs.length) { %>
+<div class="card">
+    <div class="card-body">
+        <div class="empty-state">
+            <div class="empty-icon">📄</div>
+            <p>No documents found. <a href="/admin/documents/upload">Upload one</a>.</p>
+        </div>
+    </div>
+</div>
+<% } else { %>
+
+<form id="bulkForm">
+<div class="card">
+    <div class="table-wrapper">
+        <table>
+            <thead>
+                <tr>
+                    <th style="width:36px;"><input type="checkbox" id="selectAll" /></th>
+                    <th>Title</th>
+                    <th>Category</th>
+                    <th>Uploaded By</th>
+                    <th>Target</th>
+                    <th>Files</th>
+                    <th>Date</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                <% docs.forEach(doc => { %>
+                <tr>
+                    <td><input type="checkbox" class="row-check" value="<%= doc._id %>" /></td>
+                    <td>
+                        <div class="fw-semibold"><%= doc.title %></div>
+                        <% if (doc.subject) { %><div class="text-muted" style="font-size:11px;"><%= doc.subject %></div><% } %>
+                        <% if (doc.isAssignment) { %>
+                        <span class="badge badge-orange" style="font-size:10px;">Assignment</span>
+                        <% if (submissionCounts[doc._id] !== undefined) { %>
+                        <span class="text-muted" style="font-size:11px;"><%= submissionCounts[doc._id] %> submitted</span>
+                        <% } %>
+                        <% } %>
+                    </td>
+                    <td><span class="cat-badge cat-<%= doc.category %>"><%= doc.category %></span></td>
+                    <td>
+                        <div style="font-size:12px;"><%= doc.uploadedBy ? doc.uploadedBy.name : '—' %></div>
+                        <div class="text-muted" style="font-size:11px;"><%= doc.uploaderRole %></div>
+                    </td>
+                    <td style="font-size:12px;"><%= doc.targetType.replace(/_/g,' ') %></td>
+                    <td style="font-size:12px;"><%= doc.files.length %> file<%= doc.files.length !== 1 ? 's' : '' %></td>
+                    <td style="font-size:12px;"><%= new Date(doc.createdAt).toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'}) %></td>
+                    <td>
+                        <div style="display:flex; gap:4px;">
+                            <a href="/admin/documents/<%= doc._id %>" class="btn btn-sm btn-secondary">View</a>
+                            <form method="POST" action="/admin/documents/<%= doc._id %>/archive" style="display:inline;">
+                                <button type="submit" class="btn btn-sm" style="background:#6b7280;color:#fff;">
+                                    <%= doc.isArchived ? 'Restore' : 'Archive' %>
+                                </button>
+                            </form>
+                            <form method="POST" action="/admin/documents/<%= doc._id %>/delete" style="display:inline;" onsubmit="return confirm('Delete this document?')">
+                                <button type="submit" class="btn btn-sm btn-danger">Delete</button>
+                            </form>
+                        </div>
+                    </td>
+                </tr>
+                <% }) %>
+            </tbody>
+        </table>
+    </div>
+</div>
+</form>
+<% } %>
+
+<script>
+const selectAll = document.getElementById('selectAll');
+const checkboxes = () => document.querySelectorAll('.row-check');
+const bulkBar    = document.getElementById('bulkBar');
+const bulkCount  = document.getElementById('bulkCount');
+
+function syncBulk() {
+    const checked = [...checkboxes()].filter(c => c.checked).map(c => c.value);
+    bulkCount.textContent = checked.length + ' selected';
+    bulkBar.classList.toggle('visible', checked.length > 0);
+
+    // Inject hidden inputs into bulk forms
+    ['bulkArchiveForm','bulkDeleteForm'].forEach(fid => {
+        const f = document.getElementById(fid);
+        f.querySelectorAll('input[name="ids"]').forEach(el => el.remove());
+        checked.forEach(id => {
+            const inp = document.createElement('input');
+            inp.type  = 'hidden';
+            inp.name  = 'ids';
+            inp.value = id;
+            f.appendChild(inp);
+        });
+    });
+}
+
+selectAll && selectAll.addEventListener('change', e => {
+    checkboxes().forEach(c => c.checked = e.target.checked);
+    syncBulk();
+});
+document.addEventListener('change', e => {
+    if (e.target.classList.contains('row-check')) syncBulk();
+});
+</script>

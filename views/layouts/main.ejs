@@ -42,6 +42,7 @@
                     const _hasTimetable    = !!_schoolModules.timetable || (currentUser && currentUser.role === 'super_admin');
                     const _hasHoliday      = !!_schoolModules.holiday;
                     const _hasLeave        = !!_schoolModules.leave;
+                    const _hasDocument     = !!_schoolModules.document;
                     const _path = (typeof locals !== 'undefined' && locals.title) ? title : '';
                     const _unreadCount = (typeof unreadNotificationCount !== 'undefined') ? unreadNotificationCount : 0;
                 %>
@@ -186,6 +187,21 @@
                     </a>
                     <% } %>
 
+                    <% if (_hasDocument) { %>
+                    <div class="nav-section-label">Documents</div>
+                    <a href="/admin/documents"
+                        class="nav-item <%= _path === 'Documents' ? 'active' : '' %>">
+                        <span class="nav-icon">📄</span> Documents
+                    </a>
+                    <a href="/admin/documents/upload" class="nav-item">
+                        <span class="nav-icon">➕</span> Upload Document
+                    </a>
+                    <a href="/admin/documents/audit"
+                        class="nav-item <%= _path.includes('Audit Log') ? 'active' : '' %>">
+                        <span class="nav-icon">📋</span> Audit Log
+                    </a>
+                    <% } %>
+
                 <% } else if (session && session.userRole === 'teacher') { %>
                     <div class="nav-section-label">Classroom</div>
                     <a href="/teacher/dashboard"
@@ -283,6 +299,17 @@
                     </a>
                     <% } %>
 
+                    <% if (_hasDocument) { %>
+                    <div class="nav-section-label">Documents</div>
+                    <a href="/teacher/documents"
+                        class="nav-item <%= _path === 'Documents' ? 'active' : '' %>">
+                        <span class="nav-icon">📄</span> Documents
+                    </a>
+                    <a href="/teacher/documents/upload" class="nav-item">
+                        <span class="nav-icon">➕</span> Upload Document
+                    </a>
+                    <% } %>
+
                 <% } else if (session && session.userRole === 'student') { %>
                     <div class="nav-section-label">My School</div>
                     <a href="/student/dashboard"
@@ -336,6 +363,14 @@
                     </a>
                     <% } %>
 
+                    <% if (_hasDocument) { %>
+                    <div class="nav-section-label">Documents</div>
+                    <a href="/student/documents"
+                        class="nav-item <%= _path === 'Documents' ? 'active' : '' %>">
+                        <span class="nav-icon">📄</span> Documents
+                    </a>
+                    <% } %>
+
                 <% } else if (session && session.userRole === 'parent') { %>
                     <div class="nav-section-label">My Child</div>
                     <a href="/parent/dashboard"
@@ -376,6 +411,14 @@
                     <a href="/parent/child-attendance"
                         class="nav-item <%= _path.includes('Attendance') ? 'active' : '' %>">
                         <span class="nav-icon">✅</span> Child's Attendance
+                    </a>
+                    <% } %>
+
+                    <% if (_hasDocument) { %>
+                    <div class="nav-section-label">Documents</div>
+                    <a href="/parent/documents"
+                        class="nav-item <%= _path === 'Documents' ? 'active' : '' %>">
+                        <span class="nav-icon">📄</span> Documents
                     </a>
                     <% } %>
 

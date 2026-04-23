@@ -1,0 +1,380 @@
+<style>
+.cat-badge { display:inline-block; padding:2px 10px; border-radius:10px; font-size:11px; font-weight:700; }
+.cat-Assignment { background:#fef3c7; color:#92400e; border:1px solid #fcd34d; }
+.cat-Notes      { background:#dbeafe; color:#1e40af; border:1px solid #93c5fd; }
+.cat-Circular   { background:#d1fae5; color:#065f46; border:1px solid #6ee7b7; }
+.cat-Report     { background:#ede9fe; color:#5b21b6; border:1px solid #c4b5fd; }
+.cat-Other      { background:#f3f4f6; color:#374151; border:1px solid #d1d5db; }
+.status-submitted { background:#ecfdf5; color:#065f46; border:1px solid #a7f3d0; }
+.status-late      { background:#fef2f2; color:#991b1b; border:1px solid #fecaca; }
+.status-pending   { background:#fefce8; color:#a16207; border:1px solid #fde68a; }
+.status-badge { display:inline-block; padding:2px 10px; border-radius:10px; font-size:11px; font-weight:700; }
+.tab-nav { display:flex; gap:0; border-bottom:2px solid var(--border); margin-bottom:20px; }
+.tab-nav a { padding:10px 20px; font-size:13px; font-weight:600; color:var(--text-secondary); text-decoration:none; border-bottom:2px solid transparent; margin-bottom:-2px; }
+.tab-nav a.active { color:var(--primary); border-bottom-color:var(--primary); }
+.tab-content { display:none; }
+.tab-content.active { display:block; }
+.file-row { display:flex; align-items:center; gap:10px; padding:10px 14px; background:var(--input-bg); border-radius:8px; margin-bottom:8px; }
+.review-modal { display:none; position:fixed; inset:0; background:rgba(0,0,0,.5); z-index:9999; align-items:center; justify-content:center; }
+.review-modal.open { display:flex; }
+</style>
+
+<div class="page-header">
+    <div>
+        <h1 class="page-title"><%= doc.title %></h1>
+        <div style="display:flex; gap:8px; margin-top:4px; flex-wrap:wrap; align-items:center;">
+            <span class="cat-badge cat-<%= doc.category %>"><%= doc.category %></span>
+            <% if (doc.isAssignment) { %><span class="badge badge-orange">Assignment</span><% } %>
+            <% if (doc.isArchived) { %><span class="badge badge-gray">Archived</span><% } %>
+            <span class="text-muted" style="font-size:12px;">v<%= doc.currentVersion %></span>
+        </div>
+    </div>
+    <div style="display:flex; gap:8px; flex-wrap:wrap;">
+        <a href="/admin/documents/<%= doc._id %>/edit" class="btn btn-secondary">Edit</a>
+        <form method="POST" action="/admin/documents/<%= doc._id %>/archive" style="display:inline;">
+            <button class="btn btn-secondary"><%= doc.isArchived ? 'Restore' : 'Archive' %></button>
+        </form>
+        <form method="POST" action="/admin/documents/<%= doc._id %>/delete" style="display:inline;" onsubmit="return confirm('Permanently delete this document?')">
+            <button class="btn btn-danger">Delete</button>
+        </form>
+        <a href="/admin/documents" class="btn btn-secondary">← Back</a>
+    </div>
+</div>
+
+<div class="tab-nav">
+    <a href="#" class="active" onclick="switchTab('overview',this)">Overview</a>
+    <% if (doc.isAssignment) { %><a href="#" onclick="switchTab('submissions',this)">Submissions (<%= submissionStats ? submissionStats.total : 0 %>)</a><% } %>
+    <a href="#" onclick="switchTab('versions',this)">Versions (<%= versions.length %>)</a>
+    <a href="#" onclick="switchTab('edit',this)">Edit Metadata</a>
+</div>
+
+<!-- OVERVIEW -->
+<div class="tab-content active" id="tab-overview">
+<div style="display:grid; grid-template-columns:1fr 320px; gap:20px;">
+<div>
+
+    <!-- Files -->
+    <div class="card" style="margin-bottom:16px;">
+        <div class="card-header"><h2 class="card-title">Files (v<%= doc.currentVersion %>)</h2></div>
+        <div class="card-body">
+            <% if (!doc.files.length) { %>
+            <p class="text-muted">No files.</p>
+            <% } else { doc.files.forEach(f => { %>
+            <div class="file-row">
+                <span style="font-size:20px;">📄</span>
+                <div style="flex:1; min-width:0;">
+                    <div class="fw-semibold" style="font-size:13px;"><%= f.originalName %></div>
+                    <div class="text-muted" style="font-size:11px;"><%= fmtSize(f.fileSize) %> · <%= f.mimeType %></div>
+                </div>
+                <a href="<%= f.filePath %>" target="_blank" class="btn btn-sm btn-secondary">View</a>
+                <a href="<%= f.filePath %>" download="<%= f.originalName %>" class="btn btn-sm btn-primary">Download</a>
+            </div>
+            <% }) } %>
+        </div>
+    </div>
+
+    <% if (doc.description) { %>
+    <div class="card" style="margin-bottom:16px;">
+        <div class="card-body"><p style="margin:0;"><%= doc.description %></p></div>
+    </div>
+    <% } %>
+
+</div>
+<div>
+    <!-- Metadata -->
+    <div class="card" style="margin-bottom:16px;">
+        <div class="card-body">
+            <table style="width:100%; font-size:13px; border-collapse:collapse;">
+                <tr><td class="text-muted" style="padding:5px 0; width:110px;">Uploaded by</td><td><strong><%= doc.uploadedBy ? doc.uploadedBy.name : '—' %></strong></td></tr>
+                <tr><td class="text-muted" style="padding:5px 0;">Role</td><td><%= doc.uploaderRole %></td></tr>
+                <tr><td class="text-muted" style="padding:5px 0;">Subject</td><td><%= doc.subject || '—' %></td></tr>
+                <tr><td class="text-muted" style="padding:5px 0;">Target</td><td><%= doc.targetType.replace(/_/g,' ') %></td></tr>
+                <tr><td class="text-muted" style="padding:5px 0;">Date</td><td><%= new Date(doc.createdAt).toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'}) %></td></tr>
+                <% if (doc.tags && doc.tags.length) { %>
+                <tr><td class="text-muted" style="padding:5px 0;">Tags</td><td><%= doc.tags.join(', ') %></td></tr>
+                <% } %>
+            </table>
+        </div>
+    </div>
+
+    <% if (doc.isAssignment) { %>
+    <div class="card">
+        <div class="card-header"><h2 class="card-title">Assignment Info</h2></div>
+        <div class="card-body">
+            <% if (submissionStats) { %>
+            <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:12px;">
+                <div style="background:var(--input-bg); border-radius:8px; padding:10px; text-align:center;">
+                    <div style="font-size:22px; font-weight:700;"><%= submissionStats.submitted %></div>
+                    <div class="text-muted" style="font-size:11px;">Submitted</div>
+                </div>
+                <div style="background:var(--input-bg); border-radius:8px; padding:10px; text-align:center;">
+                    <div style="font-size:22px; font-weight:700; color:#ef4444;"><%= submissionStats.late %></div>
+                    <div class="text-muted" style="font-size:11px;">Late</div>
+                </div>
+            </div>
+            <% } %>
+            <table style="width:100%; font-size:13px; border-collapse:collapse;">
+                <tr><td class="text-muted" style="padding:4px 0;">Due Date</td><td><%= doc.dueDate ? new Date(doc.dueDate).toLocaleString('en-IN',{day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'}) : '—' %></td></tr>
+                <tr><td class="text-muted" style="padding:4px 0;">Submissions</td><td><%= doc.allowSubmission ? 'Allowed' : 'Disabled' %></td></tr>
+                <tr><td class="text-muted" style="padding:4px 0;">Marks</td><td><%= doc.marksEnabled ? (doc.totalMarks ? 'Out of ' + doc.totalMarks : 'Enabled') : 'Disabled' %></td></tr>
+            </table>
+        </div>
+    </div>
+    <% } %>
+</div>
+</div>
+</div>
+
+<!-- SUBMISSIONS -->
+<% if (doc.isAssignment) { %>
+<div class="tab-content" id="tab-submissions">
+    <% if (!submissions.length) { %>
+    <div class="card"><div class="card-body"><div class="empty-state"><p>No submissions yet.</p></div></div></div>
+    <% } else { %>
+    <div class="card">
+        <div class="table-wrapper">
+            <table>
+                <thead><tr><th>Student</th><th>Status</th><th>Submitted</th><th>Files</th><th>Marks</th><th>Actions</th></tr></thead>
+                <tbody>
+                <% submissions.forEach(sub => { %>
+                <tr>
+                    <td><%= sub.student ? sub.student.name : '—' %></td>
+                    <td><span class="status-badge status-<%= sub.status %>"><%= sub.status %></span></td>
+                    <td style="font-size:12px;"><%= sub.submittedAt ? new Date(sub.submittedAt).toLocaleString('en-IN',{day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'}) : '—' %></td>
+                    <td style="font-size:12px;"><%= sub.files.length %> file(s)</td>
+                    <td style="font-size:12px;"><%= sub.marks !== null ? sub.marks + (doc.totalMarks ? '/' + doc.totalMarks : '') : '—' %></td>
+                    <td>
+                        <% sub.files.forEach(f => { %>
+                        <a href="<%= f.filePath %>" target="_blank" class="btn btn-sm btn-secondary" style="margin-right:2px;"><%= f.originalName.slice(0,15) %>…</a>
+                        <% }) %>
+                    </td>
+                </tr>
+                <% }) %>
+                </tbody>
+            </table>
+        </div>
+    </div>
+    <% } %>
+</div>
+<% } %>
+
+<!-- VERSIONS -->
+<div class="tab-content" id="tab-versions">
+    <% if (!versions.length) { %>
+    <div class="card"><div class="card-body"><div class="empty-state"><p>No version history.</p></div></div></div>
+    <% } else { %>
+    <div class="card">
+        <div class="table-wrapper">
+            <table>
+                <thead><tr><th>Version</th><th>Files</th><th>Uploaded By</th><th>Note</th><th>Date</th><th>Action</th></tr></thead>
+                <tbody>
+                <% versions.forEach(v => { %>
+                <tr>
+                    <td><strong>v<%= v.versionNumber %></strong> <%= v.versionNumber === doc.currentVersion ? '<span class="badge badge-green" style="font-size:10px;">current</span>' : '' %></td>
+                    <td style="font-size:12px;"><%= v.files.length %> file(s)</td>
+                    <td style="font-size:12px;"><%= v.uploadedBy ? v.uploadedBy.name : '—' %></td>
+                    <td style="font-size:12px;"><%= v.changeNote || '—' %></td>
+                    <td style="font-size:12px;"><%= new Date(v.createdAt).toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'}) %></td>
+                    <td>
+                        <% if (v.versionNumber !== doc.currentVersion) { %>
+                        <form method="POST" action="/admin/documents/<%= doc._id %>/versions/<%= v._id %>/restore" onsubmit="return confirm('Restore version <%= v.versionNumber %>?')">
+                            <button class="btn btn-sm btn-secondary">Restore</button>
+                        </form>
+                        <% } %>
+                    </td>
+                </tr>
+                <% }) %>
+                </tbody>
+            </table>
+        </div>
+    </div>
+    <% } %>
+</div>
+
+<!-- EDIT METADATA -->
+<div class="tab-content" id="tab-edit">
+    <form method="POST" action="/admin/documents/<%= doc._id %>/edit" enctype="multipart/form-data">
+    <div style="display:grid; grid-template-columns:1fr 360px; gap:20px;">
+    <div class="card">
+        <div class="card-header"><h2 class="card-title">Edit Details</h2></div>
+        <div class="card-body">
+            <div class="form-group">
+                <label class="form-label">Title</label>
+                <input type="text" name="title" class="form-control" value="<%= doc.title %>" required />
+            </div>
+            <div class="form-group">
+                <label class="form-label">Description</label>
+                <textarea name="description" class="form-control" rows="2"><%= doc.description %></textarea>
+            </div>
+            <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px;">
+                <div class="form-group">
+                    <label class="form-label">Category</label>
+                    <select name="category" class="form-control">
+                        <% ['Assignment','Notes','Circular','Report','Other'].forEach(c => { %>
+                        <option value="<%= c %>" <%= doc.category === c ? 'selected' : '' %>><%= c %></option>
+                        <% }) %>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Subject</label>
+                    <input type="text" name="subject" class="form-control" value="<%= doc.subject %>" />
+                </div>
+            </div>
+            <div class="form-group">
+                <label class="form-label">Tags</label>
+                <input type="text" name="tags" class="form-control" value="<%= doc.tags.join(', ') %>" />
+            </div>
+            <div class="form-group">
+                <label class="form-label">Upload New Files (optional — creates new version)</label>
+                <input type="file" name="files" multiple class="form-control"
+                       accept=".pdf,.doc,.docx,.xls,.xlsx,.jpg,.jpeg,.png,.gif,.webp" />
+            </div>
+            <div class="form-group">
+                <label class="form-label">Change Note</label>
+                <input type="text" name="changeNote" class="form-control" placeholder="What changed?" />
+            </div>
+        </div>
+    </div>
+    <div>
+        <div class="card" style="margin-bottom:16px;">
+            <div class="card-header"><h2 class="card-title">Sharing</h2></div>
+            <div class="card-body">
+                <div class="form-group">
+                    <label class="form-label">Target Type</label>
+                    <select name="targetType" id="editTargetType" class="form-control">
+                        <% [['whole_school','Entire School'],['all_teachers','All Teachers'],['specific_teachers','Specific Teachers'],['class','Class (all sections)'],['class_sections','Class — specific sections']].forEach(([v,l]) => { %>
+                        <option value="<%= v %>" <%= doc.targetType === v ? 'selected' : '' %>><%= l %></option>
+                        <% }) %>
+                    </select>
+                </div>
+
+                <!-- Class picker -->
+                <div id="edit-panel-class" style="display:none;">
+                    <label class="form-label" style="font-size:12px;">Classes</label>
+                    <% classes.forEach(cls => { %>
+                    <label style="display:flex;align-items:center;gap:8px;padding:4px 0;font-size:13px;cursor:pointer;border-bottom:1px solid var(--border);">
+                        <input type="checkbox" name="targetClasses" value="<%= cls._id %>"
+                               <%= doc.targetClasses && doc.targetClasses.some(c => (c._id || c).toString() === cls._id.toString()) ? 'checked' : '' %> />
+                        Class <%= cls.classNumber %> — <%= cls.className %>
+                    </label>
+                    <% }) %>
+                </div>
+
+                <!-- Sections picker -->
+                <div id="edit-panel-sections" style="display:none;">
+                    <label class="form-label" style="font-size:12px;">Sections</label>
+                    <%
+                      const classSectionMap2 = {};
+                      sections.forEach(sec => {
+                          const key = sec.class ? sec.class._id.toString() : 'none';
+                          if (!classSectionMap2[key]) classSectionMap2[key] = { label: sec.class ? `Class ${sec.class.classNumber} — ${sec.class.className}` : 'Unassigned', sections: [] };
+                          classSectionMap2[key].sections.push(sec);
+                      });
+                    %>
+                    <% Object.values(classSectionMap2).forEach(group => { %>
+                    <div style="margin-bottom:8px;">
+                        <div style="font-size:10px;font-weight:700;color:var(--text-secondary);text-transform:uppercase;margin-bottom:3px;"><%= group.label %></div>
+                        <% group.sections.forEach(sec => { %>
+                        <label style="display:flex;align-items:center;gap:8px;padding:4px 8px;font-size:13px;cursor:pointer;background:var(--input-bg);border-radius:5px;margin-bottom:3px;">
+                            <input type="checkbox" name="targetSections" value="<%= sec._id %>"
+                                   <%= doc.targetSections && doc.targetSections.some(s => (s._id || s).toString() === sec._id.toString()) ? 'checked' : '' %> />
+                            Section <%= sec.sectionName %>
+                        </label>
+                        <% }) %>
+                    </div>
+                    <% }) %>
+                </div>
+
+                <!-- Teachers picker -->
+                <div id="edit-panel-teachers" style="display:none;">
+                    <label class="form-label" style="font-size:12px;">Teachers</label>
+                    <% teachers.forEach(t => { %>
+                    <label style="display:flex;align-items:center;gap:8px;padding:4px 0;font-size:13px;cursor:pointer;border-bottom:1px solid var(--border);">
+                        <input type="checkbox" name="targetUsers" value="<%= t._id %>"
+                               <%= doc.targetUsers && doc.targetUsers.some(u => (u._id || u).toString() === t._id.toString()) ? 'checked' : '' %> />
+                        <%= t.name %>
+                    </label>
+                    <% }) %>
+                </div>
+            </div>
+        </div>
+        <% if (doc.isAssignment) { %>
+        <div class="card" style="margin-bottom:16px;">
+            <div class="card-header"><h2 class="card-title">Assignment</h2></div>
+            <div class="card-body">
+                <div class="form-group">
+                    <label class="form-label">Due Date</label>
+                    <input type="datetime-local" name="dueDate" class="form-control"
+                           value="<%= doc.dueDate ? new Date(doc.dueDate).toISOString().slice(0,16) : '' %>" />
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Total Marks</label>
+                    <input type="number" name="totalMarks" class="form-control" value="<%= doc.totalMarks || '' %>" />
+                </div>
+                <label style="display:flex;align-items:center;gap:8px;font-size:13px;">
+                    <input type="checkbox" name="isAssignment" <%= doc.isAssignment ? 'checked' : '' %> /> Is Assignment
+                </label>
+                <label style="display:flex;align-items:center;gap:8px;font-size:13px;margin-top:6px;">
+                    <input type="checkbox" name="allowSubmission" <%= doc.allowSubmission ? 'checked' : '' %> /> Allow Submission
+                </label>
+                <label style="display:flex;align-items:center;gap:8px;font-size:13px;margin-top:6px;">
+                    <input type="checkbox" name="marksEnabled" <%= doc.marksEnabled ? 'checked' : '' %> /> Enable Marks
+                </label>
+            </div>
+        </div>
+        <% } %>
+        <button type="submit" class="btn btn-primary" style="width:100%;">Save Changes</button>
+    </div>
+    </div>
+    </form>
+</div>
+
+<script>
+function switchTab(id, el) {
+    document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.tab-nav a').forEach(a => a.classList.remove('active'));
+    document.getElementById('tab-' + id).classList.add('active');
+    el.classList.add('active');
+    return false;
+}
+
+// Edit tab: targeting panel switcher
+const editTargetType = document.getElementById('editTargetType');
+const EDIT_PANELS = {
+    'specific_teachers': 'edit-panel-teachers',
+    'class':             'edit-panel-class',
+    'class_sections':    'edit-panel-sections',
+};
+function updateEditPanels() {
+    ['edit-panel-class','edit-panel-sections','edit-panel-teachers'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.style.display = 'none';
+    });
+    const panelId = EDIT_PANELS[editTargetType ? editTargetType.value : ''];
+    if (panelId) {
+        const el = document.getElementById(panelId);
+        if (el) el.style.display = 'block';
+    }
+}
+if (editTargetType) {
+    editTargetType.addEventListener('change', updateEditPanels);
+    updateEditPanels();
+
+    // Validate before edit form submits
+    editTargetType.closest('form').addEventListener('submit', function (e) {
+        const type = editTargetType.value;
+        if (type === 'class') {
+            const checked = this.querySelectorAll('input[name="targetClasses"]:checked').length;
+            if (!checked) { e.preventDefault(); alert('Please select at least one class.'); return; }
+        }
+        if (type === 'class_sections') {
+            const checked = this.querySelectorAll('input[name="targetSections"]:checked').length;
+            if (!checked) { e.preventDefault(); alert('Please select at least one section.'); return; }
+        }
+        if (type === 'specific_teachers') {
+            const checked = this.querySelectorAll('input[name="targetUsers"]:checked').length;
+            if (!checked) { e.preventDefault(); alert('Please select at least one teacher.'); return; }
+        }
+    });
+}
+</script>
