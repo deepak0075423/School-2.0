@@ -1,0 +1,96 @@
+<div class="page-header">
+    <div>
+        <h1>📚 Book Catalogue</h1>
+        <p>Manage the school library collection</p>
+    </div>
+    <a href="/library/books/create" class="btn btn-primary">➕ Add Book</a>
+</div>
+
+<!-- Filter -->
+<div class="card" style="margin-bottom:20px;">
+    <div class="card-body" style="padding:16px 20px;">
+        <form action="/library/books" method="GET" style="display:flex; gap:12px; align-items:flex-end; flex-wrap:wrap;">
+            <div class="form-group" style="margin:0; flex:2; min-width:180px;">
+                <label class="form-label">Search</label>
+                <input type="text" name="q" value="<%= query.q %>" class="form-control" placeholder="Title, author, ISBN…" />
+            </div>
+            <div class="form-group" style="margin:0; flex:1; min-width:140px;">
+                <label class="form-label">Category</label>
+                <select name="category" class="form-control">
+                    <option value="">All Categories</option>
+                    <% categories.forEach(cat => { %>
+                    <option value="<%= cat %>" <%= query.category === cat ? 'selected' : '' %>><%= cat %></option>
+                    <% }) %>
+                </select>
+            </div>
+            <div class="form-group" style="margin:0; flex:1; min-width:140px;">
+                <label class="form-label">Availability</label>
+                <select name="availability" class="form-control">
+                    <option value="">Any</option>
+                    <option value="available" <%= query.availability === 'available' ? 'selected' : '' %>>Available</option>
+                    <option value="unavailable" <%= query.availability === 'unavailable' ? 'selected' : '' %>>Unavailable</option>
+                </select>
+            </div>
+            <div style="display:flex; gap:8px; align-items:flex-end;">
+                <button type="submit" class="btn btn-primary">Filter</button>
+                <a href="/library/books" class="btn btn-secondary">Reset</a>
+            </div>
+        </form>
+    </div>
+</div>
+
+<div class="card">
+    <div class="table-wrapper">
+        <% if (books.length === 0) { %>
+        <div class="empty-state">
+            <div class="empty-icon">📚</div>
+            <h3>No Books Found</h3>
+            <p>Try adjusting your filters or add the first book.</p>
+            <a href="/library/books/create" class="btn btn-primary">➕ Add Book</a>
+        </div>
+        <% } else { %>
+        <table>
+            <thead>
+                <tr>
+                    <th>#</th>
+                    <th>Title</th>
+                    <th>Authors</th>
+                    <th>Category</th>
+                    <th>ISBN</th>
+                    <th>Available</th>
+                    <th>Total Copies</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                <% books.forEach((book, i) => { %>
+                <tr>
+                    <td class="text-muted"><%= i + 1 %></td>
+                    <td>
+                        <a href="/library/books/<%= book._id %>" class="fw-semibold text-primary"><%= book.title %></a>
+                        <% if (book.edition) { %><br><small class="text-muted"><%= book.edition %></small><% } %>
+                    </td>
+                    <td class="text-muted"><%= book.authors.join(', ') || '—' %></td>
+                    <td>
+                        <% if (book.category) { %>
+                        <span class="badge badge-blue"><%= book.category %></span>
+                        <% } else { %>—<% } %>
+                    </td>
+                    <td class="text-muted" style="font-size:12px;"><%= book.isbn || '—' %></td>
+                    <td>
+                        <span class="badge <%= book.availableCopies > 0 ? 'badge-green' : 'badge-red' %>">
+                            <%= book.availableCopies %> available
+                        </span>
+                    </td>
+                    <td class="text-muted"><%= book.totalCopies %></td>
+                    <td>
+                        <a href="/library/books/<%= book._id %>" class="btn btn-sm btn-secondary">View</a>
+                        <a href="/library/issue?bookId=<%= book._id %>" class="btn btn-sm btn-primary">Issue</a>
+                    </td>
+                </tr>
+                <% }) %>
+            </tbody>
+        </table>
+        <% } %>
+    </div>
+</div>

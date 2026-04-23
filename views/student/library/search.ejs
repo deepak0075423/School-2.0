@@ -1,0 +1,114 @@
+<div class="page-header">
+    <div>
+        <h1>🔍 Search Books</h1>
+        <p>Browse the library catalogue</p>
+    </div>
+    <a href="<%= backUrl %>" class="btn btn-secondary">← Back</a>
+</div>
+
+<!-- Search Filter -->
+<div class="card" style="margin-bottom:20px;">
+    <div class="card-body" style="padding:16px 20px;">
+        <form action="<%= canReserve ? '/library/student/search' : '/library/teacher/search' %>" method="GET" style="display:flex; gap:12px; align-items:flex-end; flex-wrap:wrap;">
+            <div class="form-group" style="margin:0; flex:2; min-width:200px;">
+                <label class="form-label">Search</label>
+                <input type="text" name="q" value="<%= query.q %>" class="form-control" placeholder="Title, author, ISBN…" />
+            </div>
+            <div class="form-group" style="margin:0; flex:1; min-width:150px;">
+                <label class="form-label">Category</label>
+                <select name="category" class="form-control">
+                    <option value="">All Categories</option>
+                    <% categories.forEach(cat => { %>
+                    <option value="<%= cat %>" <%= query.category === cat ? 'selected' : '' %>><%= cat %></option>
+                    <% }) %>
+                </select>
+            </div>
+            <div class="form-group" style="margin:0; flex:1; min-width:150px;">
+                <label class="form-label">Availability</label>
+                <select name="availability" class="form-control">
+                    <option value="">Any</option>
+                    <option value="available" <%= query.availability === 'available' ? 'selected' : '' %>>Available Now</option>
+                </select>
+            </div>
+            <div style="display:flex; gap:8px;">
+                <button type="submit" class="btn btn-primary">Search</button>
+                <a href="/library/student/search" class="btn btn-secondary">Reset</a>
+            </div>
+        </form>
+    </div>
+</div>
+
+<% if (books.length === 0 && (query.q || query.category)) { %>
+<div class="card">
+    <div class="empty-state">
+        <div class="empty-icon">🔍</div>
+        <h3>No Books Found</h3>
+        <p>Try a different search term or category.</p>
+    </div>
+</div>
+<% } else if (books.length === 0) { %>
+<div class="card">
+    <div class="empty-state">
+        <div class="empty-icon">📚</div>
+        <h3>Search the Catalogue</h3>
+        <p>Use the search bar above to find books.</p>
+    </div>
+</div>
+<% } else { %>
+<p class="text-muted" style="margin-bottom:12px; font-size:13px;"><%= books.length %> book(s) found</p>
+<div class="card">
+    <div class="table-wrapper">
+        <table>
+            <thead>
+                <tr>
+                    <th>Title</th>
+                    <th>Authors</th>
+                    <th>Category</th>
+                    <th>Publisher</th>
+                    <th>ISBN</th>
+                    <th>Availability</th>
+                    <th>Action</th>
+                </tr>
+            </thead>
+            <tbody>
+                <% books.forEach(book => {
+                    const issued    = issuedBookIds.has(String(book._id));
+                    const reserved  = reservedBookIds.has(String(book._id));
+                    const available = book.availableCopies > 0;
+                %>
+                <tr>
+                    <td>
+                        <div class="fw-semibold"><%= book.title %></div>
+                        <% if (book.edition) { %><small class="text-muted"><%= book.edition %></small><% } %>
+                    </td>
+                    <td class="text-muted"><%= book.authors?.join(', ') || '—' %></td>
+                    <td><% if (book.category) { %><span class="badge badge-blue"><%= book.category %></span><% } else { %>—<% } %></td>
+                    <td class="text-muted"><%= book.publisher || '—' %></td>
+                    <td class="text-muted" style="font-size:12px;"><%= book.isbn || '—' %></td>
+                    <td>
+                        <span class="badge <%= available ? 'badge-green' : 'badge-red' %>">
+                            <%= available ? book.availableCopies + ' available' : 'Unavailable' %>
+                        </span>
+                    </td>
+                    <td>
+                        <% if (!canReserve) { %>
+                        <span class="text-muted" style="font-size:12px;">Browse only</span>
+                        <% } else if (issued) { %>
+                        <span class="badge badge-orange">Already Issued</span>
+                        <% } else if (reserved) { %>
+                        <span class="badge badge-blue">Already Reserved</span>
+                        <% } else if (available) { %>
+                        <span class="text-muted" style="font-size:12px;">Visit library to issue</span>
+                        <% } else { %>
+                        <form action="/library/student/books/<%= book._id %>/reserve" method="POST" style="display:inline" onsubmit="return confirm('Join the reservation queue for this book?')">
+                            <button type="submit" class="btn btn-sm btn-primary">Reserve</button>
+                        </form>
+                        <% } %>
+                    </td>
+                </tr>
+                <% }) %>
+            </tbody>
+        </table>
+    </div>
+</div>
+<% } %>

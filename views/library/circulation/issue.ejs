@@ -1,0 +1,76 @@
+<div class="page-header">
+    <div>
+        <h1>📖 Issue Book</h1>
+        <p>Assign a book copy to a student or teacher</p>
+    </div>
+    <a href="/library/dashboard" class="btn btn-secondary">← Back</a>
+</div>
+
+<div style="display:grid; grid-template-columns:1fr 320px; gap:20px; align-items:start;">
+    <form action="/library/issue" method="POST">
+        <div class="form-section">
+            <div class="form-section-header">
+                <span>👤</span>
+                <h3>Issue Details</h3>
+            </div>
+            <div class="form-section-body">
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label class="form-label">Issue To (Student or Teacher) *</label>
+                        <select name="userId" class="form-control" required>
+                            <option value="">— Select user —</option>
+                            <optgroup label="Students">
+                                <% students.forEach(s => { %>
+                                <option value="<%= s._id %>" <%= prefillUserId === String(s._id) ? 'selected' : '' %>><%= s.name %> (<%= s.email %>)</option>
+                                <% }) %>
+                            </optgroup>
+                            <optgroup label="Teachers">
+                                <% teachers.forEach(t => { %>
+                                <option value="<%= t._id %>" <%= prefillUserId === String(t._id) ? 'selected' : '' %>><%= t.name %> (<%= t.email %>)</option>
+                                <% }) %>
+                            </optgroup>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Book *</label>
+                        <select name="bookId" class="form-control" required>
+                            <option value="">— Select book —</option>
+                            <% books.forEach(b => { %>
+                            <option value="<%= b._id %>" <%= prefillBookId === String(b._id) ? 'selected' : '' %>>
+                                <%= b.title %> — <%= b.availableCopies %> copy available
+                            </option>
+                            <% }) %>
+                        </select>
+                        <small class="text-muted" style="display:block; margin-top:6px;">Only books with available copies are shown. A copy is auto-assigned atomically.</small>
+                    </div>
+                    <div class="form-group col-span-2">
+                        <label class="form-label">Notes (optional)</label>
+                        <textarea name="notes" class="form-control" rows="2" placeholder="Any special notes…"></textarea>
+                    </div>
+                </div>
+                <button type="submit" class="btn btn-primary">📖 Issue Book</button>
+            </div>
+        </div>
+    </form>
+
+    <!-- Info panel -->
+    <div class="card">
+        <div class="card-header"><div class="card-title">ℹ️ Validation Checks</div></div>
+        <div class="card-body" style="padding:16px;">
+            <ul style="list-style:none; display:flex; flex-direction:column; gap:10px;">
+                <li style="display:flex; align-items:flex-start; gap:8px; font-size:13px; color:var(--text-secondary);">
+                    <span style="color:var(--success); font-size:15px; flex-shrink:0;">✅</span> No unpaid fines on user account
+                </li>
+                <li style="display:flex; align-items:flex-start; gap:8px; font-size:13px; color:var(--text-secondary);">
+                    <span style="color:var(--success); font-size:15px; flex-shrink:0;">✅</span> User has not exceeded max books limit
+                </li>
+                <li style="display:flex; align-items:flex-start; gap:8px; font-size:13px; color:var(--text-secondary);">
+                    <span style="color:var(--success); font-size:15px; flex-shrink:0;">✅</span> User doesn't already have this book
+                </li>
+                <li style="display:flex; align-items:flex-start; gap:8px; font-size:13px; color:var(--text-secondary);">
+                    <span style="color:var(--success); font-size:15px; flex-shrink:0;">✅</span> Copy atomically reserved (race-condition safe)
+                </li>
+            </ul>
+        </div>
+    </div>
+</div>

@@ -1,0 +1,219 @@
+<div class="page-header">
+    <div>
+        <h1>📖 <%= book.title %></h1>
+        <p><%= book.authors.join(', ') || 'Unknown Author' %><% if (book.publisher) { %> · <%= book.publisher %><% } %></p>
+    </div>
+    <div style="display:flex; gap:8px; flex-wrap:wrap;">
+        <a href="/library/issue?bookId=<%= book._id %>" class="btn btn-primary">📖 Issue This Book</a>
+        <a href="/library/books/<%= book._id %>/edit" class="btn btn-secondary">✎ Edit</a>
+        <form action="/library/books/<%= book._id %>/delete" method="POST" style="display:inline" onsubmit="return confirm('Delete this book and all its copies?')">
+            <button type="submit" class="btn btn-danger">🗑️ Delete</button>
+        </form>
+    </div>
+</div>
+
+<div style="display:grid; grid-template-columns:320px 1fr; gap:20px; align-items:start; margin-bottom:20px;">
+    <!-- Book Details Card -->
+    <div class="card">
+        <div class="card-header"><div class="card-title">📋 Book Details</div></div>
+        <div class="card-body" style="padding:0;">
+            <table style="width:100%;">
+                <tbody>
+                    <tr><td style="padding:12px 16px; color:var(--text-muted); font-size:12px; font-weight:600; text-transform:uppercase; letter-spacing:.5px; width:110px; border-bottom:1px solid var(--border-light);">ISBN</td><td style="padding:12px 16px; border-bottom:1px solid var(--border-light); font-size:13.5px;"><%= book.isbn || '—' %></td></tr>
+                    <tr><td style="padding:12px 16px; color:var(--text-muted); font-size:12px; font-weight:600; text-transform:uppercase; letter-spacing:.5px; border-bottom:1px solid var(--border-light);">Category</td><td style="padding:12px 16px; border-bottom:1px solid var(--border-light);"><% if(book.category){ %><span class="badge badge-blue"><%= book.category %></span><% } else { %>—<% } %></td></tr>
+                    <tr><td style="padding:12px 16px; color:var(--text-muted); font-size:12px; font-weight:600; text-transform:uppercase; letter-spacing:.5px; border-bottom:1px solid var(--border-light);">Edition</td><td style="padding:12px 16px; border-bottom:1px solid var(--border-light); font-size:13.5px;"><%= book.edition || '—' %></td></tr>
+                    <tr><td style="padding:12px 16px; color:var(--text-muted); font-size:12px; font-weight:600; text-transform:uppercase; letter-spacing:.5px; border-bottom:1px solid var(--border-light);">Language</td><td style="padding:12px 16px; border-bottom:1px solid var(--border-light); font-size:13.5px;"><%= book.language || '—' %></td></tr>
+                    <tr><td style="padding:12px 16px; color:var(--text-muted); font-size:12px; font-weight:600; text-transform:uppercase; letter-spacing:.5px; border-bottom:1px solid var(--border-light);">Total Copies</td><td style="padding:12px 16px; border-bottom:1px solid var(--border-light); font-size:13.5px; font-weight:700;"><%= book.totalCopies %></td></tr>
+                    <tr><td style="padding:12px 16px; color:var(--text-muted); font-size:12px; font-weight:600; text-transform:uppercase; letter-spacing:.5px;">Available</td><td style="padding:12px 16px;"><span class="badge <%= book.availableCopies > 0 ? 'badge-green' : 'badge-red' %>"><%= book.availableCopies %> available</span></td></tr>
+                </tbody>
+            </table>
+            <% if (book.description) { %>
+            <div style="padding:16px; border-top:1px solid var(--border-light); color:var(--text-secondary); font-size:13px; line-height:1.6;"><%= book.description %></div>
+            <% } %>
+        </div>
+    </div>
+
+    <!-- Add Copy Form -->
+    <div class="card">
+        <div class="card-header"><div class="card-title">➕ Add Physical Copy</div></div>
+        <div class="card-body">
+            <p class="text-muted" style="font-size:12.5px; margin-bottom:16px;">A unique code (e.g. <code style="background:#f0f4ff;padding:2px 6px;border-radius:4px;color:#4f46e5;">LIB-COPY-000001</code>) will be auto-generated.</p>
+            <form action="/library/books/<%= book._id %>/copies/add" method="POST">
+                <div class="form-grid-3">
+                    <div class="form-group">
+                        <label class="form-label">Condition</label>
+                        <select name="condition" class="form-control">
+                            <option value="new">New</option>
+                            <option value="good">Good</option>
+                            <option value="fair">Fair</option>
+                            <option value="damaged">Damaged</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Rack Location</label>
+                        <input type="text" name="rackLocation" class="form-control" placeholder="e.g. A-3-Shelf2" />
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Acquisition Date</label>
+                        <input type="date" name="acquisitionDate" class="form-control" />
+                    </div>
+                </div>
+                <button type="submit" class="btn btn-primary">Add Copy</button>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Copies Table -->
+<div class="card" style="margin-bottom:20px;">
+    <div class="card-header">
+        <div class="card-title">📦 Physical Copies (<%= copies.length %>)</div>
+    </div>
+    <div class="table-wrapper">
+        <% if (copies.length === 0) { %>
+        <div class="empty-state" style="padding:40px 20px;">
+            <div class="empty-icon">📦</div>
+            <h3>No Copies Added</h3>
+            <p>Add physical copies using the form above.</p>
+        </div>
+        <% } else { %>
+        <table>
+            <thead>
+                <tr>
+                    <th>Copy Code</th>
+                    <th>Status</th>
+                    <th>Condition</th>
+                    <th>Rack</th>
+                    <th>Acquired</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                <% copies.forEach(copy => { %>
+                <tr>
+                    <td><code style="background:#f0f4ff;padding:3px 8px;border-radius:5px;font-size:12px;color:#4f46e5;font-weight:600;"><%= copy.uniqueCode %></code></td>
+                    <td>
+                        <span class="badge <%= copy.status === 'available' ? 'badge-green' : copy.status === 'issued' ? 'badge-orange' : 'badge-red' %>">
+                            <%= copy.status %>
+                        </span>
+                    </td>
+                    <td>
+                        <span class="badge <%= copy.condition === 'new' || copy.condition === 'good' ? 'badge-green' : copy.condition === 'fair' ? 'badge-orange' : 'badge-red' %>">
+                            <%= copy.condition %>
+                        </span>
+                    </td>
+                    <td class="text-muted"><%= copy.rackLocation || '—' %></td>
+                    <td class="text-muted"><%= copy.acquisitionDate ? new Date(copy.acquisitionDate).toDateString() : '—' %></td>
+                    <td>
+                        <button class="btn btn-sm btn-secondary" onclick="toggleEditCopy('<%= copy._id %>')">✎ Edit</button>
+                        <% if (copy.status === 'available') { %>
+                        <form action="/library/books/<%= book._id %>/copies/<%= copy._id %>/mark-status" method="POST" style="display:inline" onsubmit="return confirm('Mark this copy as lost?')">
+                            <input type="hidden" name="status" value="lost" />
+                            <button type="submit" class="btn btn-sm btn-danger">Lost</button>
+                        </form>
+                        <form action="/library/books/<%= book._id %>/copies/<%= copy._id %>/mark-status" method="POST" style="display:inline" onsubmit="return confirm('Mark this copy as damaged?')">
+                            <input type="hidden" name="status" value="damaged" />
+                            <button type="submit" class="btn btn-sm btn-warning">Damaged</button>
+                        </form>
+                        <% } %>
+                    </td>
+                </tr>
+                <!-- Inline edit row -->
+                <tr id="edit-copy-<%= copy._id %>" style="display:none; background:#f8faff;">
+                    <td colspan="6" style="padding:16px;">
+                        <form action="/library/books/<%= book._id %>/copies/<%= copy._id %>/edit" method="POST">
+                            <div class="form-grid-3">
+                                <div class="form-group" style="margin-bottom:0;">
+                                    <label class="form-label">Condition</label>
+                                    <select name="condition" class="form-control">
+                                        <% ['new','good','fair','damaged'].forEach(c => { %>
+                                        <option value="<%= c %>" <%= copy.condition === c ? 'selected' : '' %>><%= c %></option>
+                                        <% }) %>
+                                    </select>
+                                </div>
+                                <div class="form-group" style="margin-bottom:0;">
+                                    <label class="form-label">Rack Location</label>
+                                    <input type="text" name="rackLocation" class="form-control" value="<%= copy.rackLocation %>" />
+                                </div>
+                                <div class="form-group" style="margin-bottom:0;">
+                                    <label class="form-label">Acquisition Date</label>
+                                    <input type="date" name="acquisitionDate" class="form-control" value="<%= copy.acquisitionDate ? new Date(copy.acquisitionDate).toISOString().split('T')[0] : '' %>" />
+                                </div>
+                            </div>
+                            <div style="margin-top:12px; display:flex; gap:8px;">
+                                <button type="submit" class="btn btn-sm btn-primary">Save</button>
+                                <button type="button" class="btn btn-sm btn-secondary" onclick="toggleEditCopy('<%= copy._id %>')">Cancel</button>
+                            </div>
+                        </form>
+                    </td>
+                </tr>
+                <% }) %>
+            </tbody>
+        </table>
+        <% } %>
+    </div>
+</div>
+
+<!-- Active Issuances -->
+<% if (activeIssuances.length > 0) { %>
+<div class="card" style="margin-bottom:20px;">
+    <div class="card-header"><div class="card-title">📖 Currently Issued</div></div>
+    <div class="table-wrapper">
+        <table>
+            <thead><tr><th>User</th><th>Copy</th><th>Issued</th><th>Due</th><th>Status</th><th>Action</th></tr></thead>
+            <tbody>
+                <% activeIssuances.forEach(iss => { %>
+                <tr>
+                    <td class="fw-semibold"><%= iss.issuedTo?.name %></td>
+                    <td><code style="background:#f0f4ff;padding:2px 7px;border-radius:5px;font-size:12px;color:#4f46e5;"><%= iss.bookCopy?.uniqueCode %></code></td>
+                    <td class="text-muted"><%= new Date(iss.issueDate).toDateString() %></td>
+                    <td class="text-muted"><%= new Date(iss.dueDate).toDateString() %></td>
+                    <td><span class="badge <%= iss.status === 'overdue' ? 'badge-red' : 'badge-orange' %>"><%= iss.status %></span></td>
+                    <td><a href="/library/return?id=<%= iss._id %>" class="btn btn-sm btn-primary">Return</a></td>
+                </tr>
+                <% }) %>
+            </tbody>
+        </table>
+    </div>
+</div>
+<% } %>
+
+<!-- Reservation Queue -->
+<% if (reservationQueue.length > 0) { %>
+<div class="card">
+    <div class="card-header"><div class="card-title">🔖 Reservation Queue</div></div>
+    <div class="table-wrapper">
+        <table>
+            <thead><tr><th>#</th><th>User</th><th>Reserved At</th><th>Status</th><th>Expires</th><th>Actions</th></tr></thead>
+            <tbody>
+                <% reservationQueue.forEach(r => { %>
+                <tr>
+                    <td><strong>#<%= r.queuePosition %></strong></td>
+                    <td class="fw-semibold"><%= r.reservedBy?.name %></td>
+                    <td class="text-muted"><%= new Date(r.reservedAt).toDateString() %></td>
+                    <td><span class="badge <%= r.status === 'ready' ? 'badge-green' : 'badge-blue' %>"><%= r.status %></span></td>
+                    <td class="text-muted"><%= r.expiresAt ? new Date(r.expiresAt).toDateString() : '—' %></td>
+                    <td>
+                        <% if (r.status === 'pending') { %>
+                        <form action="/library/reservations/<%= r._id %>/mark-ready" method="POST" style="display:inline">
+                            <button type="submit" class="btn btn-sm btn-success">Mark Ready</button>
+                        </form>
+                        <% } %>
+                        <form action="/library/reservations/<%= r._id %>/cancel" method="POST" style="display:inline" onsubmit="return confirm('Cancel this reservation?')">
+                            <button type="submit" class="btn btn-sm btn-danger">Cancel</button>
+                        </form>
+                    </td>
+                </tr>
+                <% }) %>
+            </tbody>
+        </table>
+    </div>
+</div>
+<% } %>
+
+<script>
+function toggleEditCopy(id) {
+    const row = document.getElementById('edit-copy-' + id);
+    row.style.display = row.style.display === 'none' ? 'table-row' : 'none';
+}
+</script>

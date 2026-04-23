@@ -1,0 +1,92 @@
+<div class="page-header">
+    <div>
+        <h1>🔖 Reservations</h1>
+        <p>Manage the book reservation queue</p>
+    </div>
+</div>
+
+<!-- Filter -->
+<div class="card" style="margin-bottom:20px;">
+    <div class="card-body" style="padding:16px 20px;">
+        <form action="/library/reservations" method="GET" style="display:flex; gap:12px; align-items:flex-end; flex-wrap:wrap;">
+            <div class="form-group" style="margin:0; flex:1; min-width:160px;">
+                <label class="form-label">Status</label>
+                <select name="status" class="form-control">
+                    <option value="" <%= !filterStatus ? 'selected' : '' %>>Active (Pending + Ready)</option>
+                    <option value="pending"   <%= filterStatus === 'pending'   ? 'selected' : '' %>>Pending</option>
+                    <option value="ready"     <%= filterStatus === 'ready'     ? 'selected' : '' %>>Ready for Pickup</option>
+                    <option value="collected" <%= filterStatus === 'collected' ? 'selected' : '' %>>Collected</option>
+                    <option value="expired"   <%= filterStatus === 'expired'   ? 'selected' : '' %>>Expired</option>
+                    <option value="cancelled" <%= filterStatus === 'cancelled' ? 'selected' : '' %>>Cancelled</option>
+                </select>
+            </div>
+            <div style="display:flex; gap:8px;">
+                <button type="submit" class="btn btn-primary">Filter</button>
+                <a href="/library/reservations" class="btn btn-secondary">Reset</a>
+            </div>
+        </form>
+    </div>
+</div>
+
+<div class="card">
+    <div class="table-wrapper">
+        <% if (reservations.length === 0) { %>
+        <div class="empty-state">
+            <div class="empty-icon">🔖</div>
+            <h3>No Reservations</h3>
+            <p>No reservations match the selected filter.</p>
+        </div>
+        <% } else { %>
+        <table>
+            <thead>
+                <tr>
+                    <th>Queue #</th>
+                    <th>User</th>
+                    <th>Book</th>
+                    <th>Available Copies</th>
+                    <th>Reserved At</th>
+                    <th>Status</th>
+                    <th>Expires</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                <% reservations.forEach(r => { %>
+                <tr style="<%= r.status === 'ready' ? 'background:#f0fdf4;' : '' %>">
+                    <td><strong style="font-size:16px; color:var(--primary);">#<%= r.queuePosition %></strong></td>
+                    <td class="fw-semibold"><%= r.reservedBy?.name || '—' %></td>
+                    <td><a href="/library/books/<%= r.book?._id %>" class="text-primary"><%= r.book?.title || '—' %></a></td>
+                    <td>
+                        <span class="badge <%= r.book?.availableCopies > 0 ? 'badge-green' : 'badge-red' %>">
+                            <%= r.book?.availableCopies ?? '—' %> available
+                        </span>
+                    </td>
+                    <td class="text-muted"><%= new Date(r.reservedAt).toDateString() %></td>
+                    <td>
+                        <span class="badge <%= r.status === 'ready' ? 'badge-green' : r.status === 'expired' ? 'badge-red' : r.status === 'collected' ? 'badge-gray' : 'badge-blue' %>">
+                            <%= r.status %>
+                        </span>
+                    </td>
+                    <td class="text-muted"><%= r.expiresAt ? new Date(r.expiresAt).toDateString() : '—' %></td>
+                    <td>
+                        <% if (r.status === 'pending' && r.book?.availableCopies > 0) { %>
+                        <form action="/library/reservations/<%= r._id %>/mark-ready" method="POST" style="display:inline">
+                            <button type="submit" class="btn btn-sm btn-success">Mark Ready</button>
+                        </form>
+                        <% } %>
+                        <% if (['pending','ready'].includes(r.status)) { %>
+                        <form action="/library/reservations/<%= r._id %>/cancel" method="POST" style="display:inline" onsubmit="return confirm('Cancel reservation?')">
+                            <button type="submit" class="btn btn-sm btn-danger">Cancel</button>
+                        </form>
+                        <% } %>
+                        <% if (r.status === 'ready') { %>
+                        <a href="/library/issue?userId=<%= r.reservedBy?._id %>&bookId=<%= r.book?._id %>" class="btn btn-sm btn-primary">Issue Now</a>
+                        <% } %>
+                    </td>
+                </tr>
+                <% }) %>
+            </tbody>
+        </table>
+        <% } %>
+    </div>
+</div>

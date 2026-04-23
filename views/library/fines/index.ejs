@@ -1,0 +1,120 @@
+<div class="page-header">
+    <div>
+        <h1>💰 Library Fines</h1>
+        <p>Track and collect overdue and damage fines</p>
+    </div>
+</div>
+
+<div class="stats-grid" style="grid-template-columns:repeat(auto-fit, minmax(200px, 1fr)); margin-bottom:20px;">
+    <div class="stat-card">
+        <div class="stat-icon" style="background:linear-gradient(135deg,#fee2e2,#fca5a5);">⏳</div>
+        <div class="stat-info">
+            <div class="stat-value">₹<%= pendingTotal.toFixed(2) %></div>
+            <div class="stat-label">Pending Amount</div>
+        </div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-icon green">✅</div>
+        <div class="stat-info">
+            <div class="stat-value">₹<%= paidTotal.toFixed(2) %></div>
+            <div class="stat-label">Collected (All Time)</div>
+        </div>
+    </div>
+</div>
+
+<!-- Filter -->
+<div class="card" style="margin-bottom:20px;">
+    <div class="card-body" style="padding:16px 20px;">
+        <form action="/library/fines" method="GET" style="display:flex; gap:12px; align-items:flex-end; flex-wrap:wrap;">
+            <div class="form-group" style="margin:0; flex:1; min-width:140px;">
+                <label class="form-label">Status</label>
+                <select name="status" class="form-control">
+                    <option value="" <%= !filterStatus ? 'selected' : '' %>>All Fines</option>
+                    <option value="pending" <%= filterStatus === 'pending' ? 'selected' : '' %>>Pending</option>
+                    <option value="paid"    <%= filterStatus === 'paid'    ? 'selected' : '' %>>Paid</option>
+                    <option value="waived"  <%= filterStatus === 'waived'  ? 'selected' : '' %>>Waived</option>
+                </select>
+            </div>
+            <div style="display:flex; gap:8px;">
+                <button type="submit" class="btn btn-primary">Filter</button>
+                <a href="/library/fines" class="btn btn-secondary">Reset</a>
+            </div>
+        </form>
+    </div>
+</div>
+
+<div class="card">
+    <div class="table-wrapper">
+        <% if (fines.length === 0) { %>
+        <div class="empty-state">
+            <div class="empty-icon">💰</div>
+            <h3>No Fines Found</h3>
+            <p>Great — no outstanding fines!</p>
+        </div>
+        <% } else { %>
+        <table>
+            <thead>
+                <tr>
+                    <th>User</th>
+                    <th>Book</th>
+                    <th>Fine Type</th>
+                    <th>Amount</th>
+                    <th>Days Overdue</th>
+                    <th>Status</th>
+                    <th>Date</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                <% fines.forEach(fine => { %>
+                <tr>
+                    <td class="fw-semibold"><%= fine.user?.name || '—' %></td>
+                    <td class="text-muted"><%= fine.issuance?.book?.title || '—' %></td>
+                    <td>
+                        <span class="badge <%= fine.fineType === 'lost' ? 'badge-red' : fine.fineType === 'damaged' ? 'badge-orange' : 'badge-blue' %>">
+                            <%= fine.fineType.replace('_', ' ') %>
+                        </span>
+                    </td>
+                    <td><strong style="font-size:15px; color:var(--text-primary);">₹<%= fine.amount.toFixed(2) %></strong></td>
+                    <td class="text-muted"><%= fine.daysOverdue > 0 ? fine.daysOverdue + ' day(s)' : '—' %></td>
+                    <td>
+                        <span class="badge <%= fine.status === 'paid' ? 'badge-green' : fine.status === 'waived' ? 'badge-gray' : 'badge-red' %>">
+                            <%= fine.status %>
+                        </span>
+                    </td>
+                    <td class="text-muted"><%= new Date(fine.createdAt).toDateString() %></td>
+                    <td>
+                        <% if (fine.status === 'pending') { %>
+                        <form action="/library/fines/<%= fine._id %>/collect" method="POST" style="display:inline" onsubmit="return confirm('Mark fine as paid?')">
+                            <button type="submit" class="btn btn-sm btn-success">Collect</button>
+                        </form>
+                        <button class="btn btn-sm btn-secondary" onclick="toggleWaiveForm('<%= fine._id %>')">Waive</button>
+                        <% } %>
+                    </td>
+                </tr>
+                <!-- Waive reason row -->
+                <tr id="waive-<%= fine._id %>" style="display:none; background:#fffbeb;">
+                    <td colspan="8" style="padding:16px;">
+                        <form action="/library/fines/<%= fine._id %>/waive" method="POST" style="display:flex; gap:12px; align-items:flex-end;">
+                            <div class="form-group" style="margin:0; flex:1;">
+                                <label class="form-label">Reason for Waiver</label>
+                                <input type="text" name="reason" class="form-control" placeholder="e.g. Financial hardship, calculation error" required />
+                            </div>
+                            <button type="submit" class="btn btn-warning" onclick="return confirm('Waive this fine?')">Waive Fine</button>
+                            <button type="button" class="btn btn-secondary" onclick="toggleWaiveForm('<%= fine._id %>')">Cancel</button>
+                        </form>
+                    </td>
+                </tr>
+                <% }) %>
+            </tbody>
+        </table>
+        <% } %>
+    </div>
+</div>
+
+<script>
+function toggleWaiveForm(id) {
+    const row = document.getElementById('waive-' + id);
+    row.style.display = row.style.display === 'none' ? 'table-row' : 'none';
+}
+</script>

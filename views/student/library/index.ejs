@@ -1,0 +1,123 @@
+<div class="page-header">
+    <div>
+        <h1>📚 My Library</h1>
+        <p>Your issued books, reservations, and fines</p>
+    </div>
+    <div style="display:flex; gap:8px;">
+        <a href="<%= libBase %>/search" class="btn btn-primary">🔍 Search Books</a>
+        <a href="<%= libBase %>/my-books" class="btn btn-secondary">All My Books</a>
+    </div>
+</div>
+
+<!-- Pending Fines Alert -->
+<% if (pendingFines.length > 0) { %>
+<div style="background:#fff5f5; border:1.5px solid #fca5a5; border-radius:10px; padding:14px 18px; margin-bottom:20px; display:flex; align-items:center; gap:12px;">
+    <span style="font-size:22px;">⚠️</span>
+    <div>
+        <strong style="color:var(--danger);">Unpaid Fines</strong>
+        <p style="margin:2px 0 0; font-size:13px; color:var(--text-secondary);">
+            You have <strong><%= pendingFines.length %></strong> unpaid fine(s) totalling
+            <strong>₹<%= pendingFines.reduce((s, f) => s + f.amount, 0).toFixed(2) %></strong>.
+            Please visit the library to clear them — unpaid fines prevent new issuances.
+        </p>
+    </div>
+    <a href="<%= libBase %>/my-fines" class="btn btn-sm btn-danger" style="margin-left:auto; white-space:nowrap;">View Fines</a>
+</div>
+<% } %>
+
+<!-- Currently Issued -->
+<div class="card" style="margin-bottom:20px;">
+    <div class="card-header">
+        <div class="card-title">📖 Currently Issued (<%= issuedBooks.length %>)</div>
+    </div>
+    <div class="table-wrapper">
+        <% if (issuedBooks.length === 0) { %>
+        <div class="empty-state">
+            <div class="empty-icon">📭</div>
+            <h3>No Books Issued</h3>
+            <p><a href="/library/student/search" class="text-primary">Browse the catalogue</a> to find books.</p>
+        </div>
+        <% } else { %>
+        <table>
+            <thead>
+                <tr>
+                    <th>Book</th>
+                    <th>Copy Code</th>
+                    <th>Due Date</th>
+                    <th>Days Left</th>
+                    <th>Status</th>
+                </tr>
+            </thead>
+            <tbody>
+                <% issuedBooks.forEach(iss => { %>
+                <tr style="<%= iss.status === 'overdue' ? 'background:#fff5f5;' : iss.daysLeft <= 3 ? 'background:#fffbeb;' : '' %>">
+                    <td>
+                        <div class="fw-semibold"><%= iss.book?.title %></div>
+                        <small class="text-muted"><%= iss.book?.authors?.join(', ') %></small>
+                    </td>
+                    <td><code style="background:#f0f4ff;padding:2px 7px;border-radius:5px;font-size:12px;color:#4f46e5;"><%= iss.bookCopy?.uniqueCode %></code></td>
+                    <td class="text-muted"><%= new Date(iss.dueDate).toDateString() %></td>
+                    <td>
+                        <% if (iss.status === 'overdue') { %>
+                        <span style="color:var(--danger); font-weight:600; font-size:13px;"><%= Math.abs(iss.daysLeft) %> day(s) overdue</span>
+                        <% } else { %>
+                        <span style="color:<%= iss.daysLeft <= 3 ? 'var(--warning)' : 'var(--text-secondary)' %>; font-weight:600; font-size:13px;"><%= iss.daysLeft %> day(s)</span>
+                        <% } %>
+                    </td>
+                    <td>
+                        <span class="badge <%= iss.status === 'overdue' ? 'badge-red' : 'badge-orange' %>"><%= iss.status %></span>
+                    </td>
+                </tr>
+                <% }) %>
+            </tbody>
+        </table>
+        <% } %>
+    </div>
+</div>
+
+<!-- Active Reservations -->
+<div class="card">
+    <div class="card-header">
+        <div class="card-title">🔖 My Reservations (<%= reservations.length %>)</div>
+    </div>
+    <div class="table-wrapper">
+        <% if (reservations.length === 0) { %>
+        <div class="empty-state">
+            <div class="empty-icon">🔖</div>
+            <h3>No Active Reservations</h3>
+            <p>Reserve an unavailable book to join the queue.</p>
+        </div>
+        <% } else { %>
+        <table>
+            <thead>
+                <tr>
+                    <th>Book</th>
+                    <th>Queue Position</th>
+                    <th>Status</th>
+                    <th>Expires</th>
+                    <th>Action</th>
+                </tr>
+            </thead>
+            <tbody>
+                <% reservations.forEach(r => { %>
+                <tr style="<%= r.status === 'ready' ? 'background:#f0fdf4;' : '' %>">
+                    <td class="fw-semibold"><%= r.book?.title %></td>
+                    <td><strong style="font-size:16px; color:var(--primary);">#<%= r.queuePosition %></strong></td>
+                    <td>
+                        <span class="badge <%= r.status === 'ready' ? 'badge-green' : 'badge-blue' %>">
+                            <%= r.status === 'ready' ? 'Ready for Pickup!' : r.status %>
+                        </span>
+                    </td>
+                    <td class="text-muted"><%= r.expiresAt ? new Date(r.expiresAt).toDateString() : '—' %></td>
+                    <td>
+                        <form action="<%= libBase %>/reservations/<%= r._id %>/cancel" method="POST" style="display:inline" onsubmit="return confirm('Cancel reservation?')">
+                            <button type="submit" class="btn btn-sm btn-danger">Cancel</button>
+                        </form>
+                    </td>
+                </tr>
+                <% }) %>
+            </tbody>
+        </table>
+        <% } %>
+    </div>
+</div>
