@@ -755,7 +755,10 @@ const getEditUser = async (req, res) => {
         let profile = null;
         let parentUser = null;
         let parentProfile = null;
-        if (user.role === 'teacher') profile = await TeacherProfile.findOne({ user: user._id });
+        if (user.role === 'teacher') {
+            profile = await TeacherProfile.findOne({ user: user._id });
+            if (!profile) profile = await TeacherProfile.create({ user: user._id, school: user.school || req.session.schoolId });
+        }
         if (user.role === 'student') {
             profile = await StudentProfile.findOne({ user: user._id });
             if (profile && profile.parent) {
@@ -780,7 +783,11 @@ const postEditUser = async (req, res) => {
         }
         await User.findByIdAndUpdate(req.params.id, { name, email, phone });
         
-        if (user.role === 'teacher') await TeacherProfile.findOneAndUpdate({ user: user._id }, profileData);
+        if (user.role === 'teacher') {
+            if (profileData.subjects) profileData.subjects = profileData.subjects.split(',').map(s => s.trim()).filter(Boolean);
+            if (profileData.classes) profileData.classes = profileData.classes.split(',').map(c => c.trim()).filter(Boolean);
+            await TeacherProfile.findOneAndUpdate({ user: user._id }, profileData);
+        }
         if (user.role === 'student') {
             const { parentName, parentEmail, parentPhone, parentRelationship, fatherOccupation, motherOccupation, guardianOccupation, annualIncome, emergencyContact, studentClass, studentSection, ...studentUpdates } = profileData;
             studentUpdates.class = studentClass;

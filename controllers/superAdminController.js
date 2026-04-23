@@ -91,6 +91,8 @@ const postCreateUser = async (req, res) => {
             isFirstLogin: true,
             createdBy: req.session.userId,
         });
+        if (role === 'teacher') await TeacherProfile.create({ user: user._id, school: school || null });
+        if (role === 'student') await StudentProfile.create({ user: user._id, school: school || null });
         const schoolDoc = school ? await School.findById(school) : null;
         await sendWelcomeEmail({
             to: email, name, email, tempPassword, role,
@@ -563,7 +565,16 @@ const getEditUser = async (req, res) => {
             return res.redirect('/super-admin/users');
         }
         const schools = await School.find();
-        res.render('superAdmin/editUser', { title: 'Edit User', user, schools });
+        let profile = null;
+        if (user.role === 'teacher') {
+            profile = await TeacherProfile.findOne({ user: user._id });
+            if (!profile) profile = await TeacherProfile.create({ user: user._id, school: user.school?._id || user.school });
+        }
+        if (user.role === 'student') {
+            profile = await StudentProfile.findOne({ user: user._id });
+            if (!profile) profile = await StudentProfile.create({ user: user._id, school: user.school?._id || user.school });
+        }
+        res.render('superAdmin/editUser', { title: 'Edit User', user, schools, profile });
     } catch (err) {
         req.flash('error', 'Error loading user.');
         res.redirect('/super-admin/users');
@@ -572,8 +583,17 @@ const getEditUser = async (req, res) => {
 
 const postEditUser = async (req, res) => {
     try {
-        const { name, email, phone, school } = req.body;
+        const { name, email, phone, school, ...profileData } = req.body;
+        const user = await User.findById(req.params.id);
         await User.findByIdAndUpdate(req.params.id, { name, email, phone, school });
+        if (user && user.role === 'teacher') {
+            if (profileData.subjects) profileData.subjects = profileData.subjects.split(',').map(s => s.trim()).filter(Boolean);
+            if (profileData.classes) profileData.classes = profileData.classes.split(',').map(c => c.trim()).filter(Boolean);
+            await TeacherProfile.findOneAndUpdate({ user: user._id }, profileData);
+        }
+        if (user && user.role === 'student') {
+            await StudentProfile.findOneAndUpdate({ user: user._id }, profileData);
+        }
         req.flash('success', 'User updated successfully.');
         res.redirect('/super-admin/users');
     } catch (err) {

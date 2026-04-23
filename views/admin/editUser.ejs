@@ -70,13 +70,57 @@
         <% } %>
         
         <% if (user.role === 'teacher' && profile) { %>
+            <hr style="margin: 20px 0; border: 1px solid #e5e7eb;">
+            <h3 style="margin-bottom: 15px; color: #1e40af;">💼 Employment Details</h3>
             <div class="form-group">
                 <label class="form-label">Employee ID</label>
                 <input type="text" name="employeeId" class="form-control" value="<%= profile.employeeId %>">
             </div>
             <div class="form-group">
+                <label class="form-label">Designation</label>
+                <select name="designation" class="form-control">
+                    <option value="">— Select Designation —</option>
+                    <% ['Teacher','Senior Teacher','Head of Department (HOD)','Principal','Vice Principal','Librarian','Lab Assistant','Physical Education Teacher','Counselor','Administrator','Other'].forEach(d => { %>
+                        <option value="<%= d %>" <%= profile.designation === d ? 'selected' : '' %>><%= d %></option>
+                    <% }) %>
+                </select>
+            </div>
+            <div class="form-group">
                 <label class="form-label">Department</label>
                 <input type="text" name="department" class="form-control" value="<%= profile.department %>">
+            </div>
+            <div class="form-group">
+                <label class="form-label">Gender</label>
+                <select name="gender" class="form-control">
+                    <option value="">— Select —</option>
+                    <option value="Male" <%= profile.gender === 'Male' ? 'selected' : '' %>>Male</option>
+                    <option value="Female" <%= profile.gender === 'Female' ? 'selected' : '' %>>Female</option>
+                    <option value="Other" <%= profile.gender === 'Other' ? 'selected' : '' %>>Other</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label class="form-label">Date of Birth</label>
+                <input type="date" name="dob" class="form-control" value="<%= profile.dob ? profile.dob.toISOString().split('T')[0] : '' %>">
+            </div>
+            <div class="form-group">
+                <label class="form-label">Joining Date</label>
+                <input type="date" name="joiningDate" class="form-control" value="<%= profile.joiningDate ? profile.joiningDate.toISOString().split('T')[0] : '' %>">
+            </div>
+            <div class="form-group">
+                <label class="form-label">Qualification</label>
+                <input type="text" name="qualification" class="form-control" value="<%= profile.qualification %>">
+            </div>
+            <div class="form-group">
+                <label class="form-label">Experience</label>
+                <input type="text" name="experience" class="form-control" value="<%= profile.experience %>">
+            </div>
+            <div class="form-group">
+                <label class="form-label">Subjects (comma separated)</label>
+                <input type="text" name="subjects" class="form-control" value="<%= (profile.subjects || []).join(', ') %>">
+            </div>
+            <div class="form-group">
+                <label class="form-label">Classes (comma separated)</label>
+                <input type="text" name="classes" class="form-control" value="<%= (profile.classes || []).join(', ') %>">
             </div>
         <% } %>
         

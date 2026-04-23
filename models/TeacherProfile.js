@@ -31,6 +31,7 @@ const TeacherProfileSchema = new mongoose.Schema({
     },
     designation: {
         type: String,
+        enum: ['', 'Teacher', 'Senior Teacher', 'Head of Department (HOD)', 'Principal', 'Vice Principal', 'Librarian', 'Lab Assistant', 'Physical Education Teacher', 'Counselor', 'Administrator', 'Other'],
         default: '',
     },
     department: {
