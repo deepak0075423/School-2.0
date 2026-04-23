@@ -43,6 +43,7 @@
                     const _hasHoliday      = !!_schoolModules.holiday;
                     const _hasLeave        = !!_schoolModules.leave;
                     const _hasDocument     = !!_schoolModules.document;
+                    const _hasLibrary      = !!_schoolModules.library;
                     const _path = (typeof locals !== 'undefined' && locals.title) ? title : '';
                     const _unreadCount = (typeof unreadNotificationCount !== 'undefined') ? unreadNotificationCount : 0;
                 %>
@@ -202,6 +203,31 @@
                     </a>
                     <% } %>
 
+                    <% if (_hasLibrary) { %>
+                    <div class="nav-section-label">Library</div>
+                    <a href="/library/dashboard" class="nav-item <%= _path === 'Library Dashboard' ? 'active' : '' %>">
+                        <span class="nav-icon">📚</span> Library
+                    </a>
+                    <a href="/library/books" class="nav-item <%= _path.includes('Library — Books') || _path === 'Add Book' ? 'active' : '' %>">
+                        <span class="nav-icon">📖</span> Book Catalogue
+                    </a>
+                    <a href="/library/issuances" class="nav-item <%= _path.includes('Issuances') ? 'active' : '' %>">
+                        <span class="nav-icon">🔄</span> Issuances
+                    </a>
+                    <a href="/library/reservations" class="nav-item <%= _path === 'Reservations' ? 'active' : '' %>">
+                        <span class="nav-icon">🔖</span> Reservations
+                    </a>
+                    <a href="/library/fines" class="nav-item <%= _path === 'Library Fines' ? 'active' : '' %>">
+                        <span class="nav-icon">💰</span> Fines
+                    </a>
+                    <a href="/library/policy" class="nav-item <%= _path === 'Library Policy' ? 'active' : '' %>">
+                        <span class="nav-icon">⚙️</span> Policy
+                    </a>
+                    <a href="/library/audit-log" class="nav-item <%= _path === 'Library Audit Log' ? 'active' : '' %>">
+                        <span class="nav-icon">📋</span> Audit Log
+                    </a>
+                    <% } %>
+
                 <% } else if (session && session.userRole === 'teacher') { %>
                     <div class="nav-section-label">Classroom</div>
                     <a href="/teacher/dashboard"
@@ -310,6 +336,39 @@
                     </a>
                     <% } %>
 
+                    <% if (_hasLibrary && !isLibrarian) { %>
+                    <div class="nav-section-label">Library</div>
+                    <a href="/library/teacher" class="nav-item <%= _path === 'My Library' ? 'active' : '' %>">
+                        <span class="nav-icon">📚</span> My Library
+                    </a>
+                    <a href="/library/teacher/search" class="nav-item <%= _path === 'Library Search' ? 'active' : '' %>">
+                        <span class="nav-icon">🔍</span> Search Books
+                    </a>
+                    <a href="/library/teacher/my-books" class="nav-item <%= _path === 'My Books' ? 'active' : '' %>">
+                        <span class="nav-icon">📖</span> My Books
+                    </a>
+                    <% if (teacherFinesEnabled) { %>
+                    <a href="/library/teacher/my-fines" class="nav-item <%= _path === 'My Library Fines' ? 'active' : '' %>">
+                        <span class="nav-icon">💰</span> My Fines
+                    </a>
+                    <% } %>
+                    <% } %>
+                    <% if (_hasLibrary && isLibrarian) { %>
+                    <div class="nav-section-label">Library</div>
+                    <a href="/library/dashboard" class="nav-item <%= _path === 'Library Dashboard' ? 'active' : '' %>">
+                        <span class="nav-icon">📚</span> Library
+                    </a>
+                    <a href="/library/books" class="nav-item">
+                        <span class="nav-icon">📖</span> Book Catalogue
+                    </a>
+                    <a href="/library/issue" class="nav-item">
+                        <span class="nav-icon">➕</span> Issue Book
+                    </a>
+                    <a href="/library/return" class="nav-item">
+                        <span class="nav-icon">↩️</span> Return Book
+                    </a>
+                    <% } %>
+
                 <% } else if (session && session.userRole === 'student') { %>
                     <div class="nav-section-label">My School</div>
                     <a href="/student/dashboard"
@@ -371,6 +430,22 @@
                     </a>
                     <% } %>
 
+                    <% if (_hasLibrary) { %>
+                    <div class="nav-section-label">Library</div>
+                    <a href="/library/student" class="nav-item <%= _path === 'My Library' ? 'active' : '' %>">
+                        <span class="nav-icon">📚</span> My Library
+                    </a>
+                    <a href="/library/student/search" class="nav-item <%= _path === 'Library Search' ? 'active' : '' %>">
+                        <span class="nav-icon">🔍</span> Search Books
+                    </a>
+                    <a href="/library/student/my-books" class="nav-item <%= _path === 'My Books' ? 'active' : '' %>">
+                        <span class="nav-icon">📖</span> My Books
+                    </a>
+                    <a href="/library/student/my-fines" class="nav-item <%= _path === 'My Library Fines' ? 'active' : '' %>">
+                        <span class="nav-icon">💰</span> My Fines
+                    </a>
+                    <% } %>
+
                 <% } else if (session && session.userRole === 'parent') { %>
                     <div class="nav-section-label">My Child</div>
                     <a href="/parent/dashboard"
@@ -419,6 +494,13 @@
                     <a href="/parent/documents"
                         class="nav-item <%= _path === 'Documents' ? 'active' : '' %>">
                         <span class="nav-icon">📄</span> Documents
+                    </a>
+                    <% } %>
+
+                    <% if (_hasLibrary) { %>
+                    <div class="nav-section-label">Library</div>
+                    <a href="/library/parent" class="nav-item <%= _path === "Child's Library Activity" ? 'active' : '' %>">
+                        <span class="nav-icon">📚</span> Child's Library
                     </a>
                     <% } %>
 

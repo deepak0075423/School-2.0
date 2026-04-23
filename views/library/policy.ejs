@@ -1,0 +1,123 @@
+<div class="page-header">
+    <div>
+        <h1>⚙️ Library Policy</h1>
+        <p>Configure borrowing rules and fine rates for <%= session.schoolName %></p>
+    </div>
+    <a href="/library/dashboard" class="btn btn-secondary">← Back</a>
+</div>
+
+<div style="display:grid; grid-template-columns:1fr 300px; gap:20px; align-items:start;">
+    <form action="/library/policy" method="POST">
+        <div class="form-section">
+            <div class="form-section-header">
+                <span>📏</span>
+                <h3>Borrowing Rules</h3>
+            </div>
+            <div class="form-section-body">
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label class="form-label">Max Books Per User</label>
+                        <input type="number" name="maxBooksPerUser" class="form-control" value="<%= policy.maxBooksPerUser %>" min="1" max="20" required />
+                        <small class="text-muted" style="display:block; margin-top:5px;">Max books issued simultaneously per user.</small>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Issue Duration (days)</label>
+                        <input type="number" name="issueDurationDays" class="form-control" value="<%= policy.issueDurationDays %>" min="1" max="365" required />
+                        <small class="text-muted" style="display:block; margin-top:5px;">Days before the book is due.</small>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Max Renewals Per Issuance</label>
+                        <input type="number" name="maxRenewals" class="form-control" value="<%= policy.maxRenewals %>" min="0" max="10" required />
+                        <small class="text-muted" style="display:block; margin-top:5px;">Set 0 to disable renewals.</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="form-section">
+            <div class="form-section-header">
+                <span>💰</span>
+                <h3>Fine Settings</h3>
+            </div>
+            <div class="form-section-body">
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label class="form-label">Fine Per Day (₹)</label>
+                        <input type="number" name="finePerDay" class="form-control" value="<%= policy.finePerDay %>" min="0" step="0.5" required />
+                        <small class="text-muted" style="display:block; margin-top:5px;">Set 0 to disable late return fines.</small>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Grace Period (days)</label>
+                        <input type="number" name="gracePeriodDays" class="form-control" value="<%= policy.gracePeriodDays %>" min="0" max="30" required />
+                        <small class="text-muted" style="display:block; margin-top:5px;">Free days after due before fine applies.</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="form-section">
+            <div class="form-section-header">
+                <span>👩‍🏫</span>
+                <h3>Teacher Settings</h3>
+            </div>
+            <div class="form-section-body">
+                <div class="form-group">
+                    <label class="form-label" style="display:flex; align-items:center; gap:10px; cursor:pointer;">
+                        <input type="checkbox" name="teacherFinesEnabled" <%= policy.teacherFinesEnabled ? 'checked' : '' %> style="width:18px;height:18px;accent-color:var(--primary);" />
+                        Apply late-return fines to teachers
+                    </label>
+                    <small class="text-muted" style="display:block; margin-top:5px;">When enabled, teachers are charged the same fine/day and grace period as students. When disabled, no fines are generated for teacher issuances.</small>
+                </div>
+            </div>
+        </div>
+
+        <div class="form-section">
+            <div class="form-section-header">
+                <span>🔖</span>
+                <h3>Reservation Settings</h3>
+            </div>
+            <div class="form-section-body">
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label class="form-label">Reservation Expiry (days)</label>
+                        <input type="number" name="reservationExpiryDays" class="form-control" value="<%= policy.reservationExpiryDays %>" min="1" max="30" required />
+                        <small class="text-muted" style="display:block; margin-top:5px;">Days to collect after being notified.</small>
+                    </div>
+                </div>
+                <div style="margin-top:8px;">
+                    <button type="submit" class="btn btn-primary" onclick="return confirm('Update library policy?')">💾 Save Policy</button>
+                    <a href="/library/dashboard" class="btn btn-secondary" style="margin-left:8px;">Cancel</a>
+                </div>
+            </div>
+        </div>
+    </form>
+
+    <!-- Current Policy Summary -->
+    <div class="card" style="position:sticky; top:80px;">
+        <div class="card-header"><div class="card-title">📋 Current Policy</div></div>
+        <div class="card-body" style="padding:0;">
+            <table style="width:100%;">
+                <tbody>
+                    <% [
+                        ['Max Books/User', policy.maxBooksPerUser],
+                        ['Issue Duration', policy.issueDurationDays + ' days'],
+                        ['Fine/Day', '₹' + policy.finePerDay],
+                        ['Grace Period', policy.gracePeriodDays + ' day(s)'],
+                        ['Max Renewals', policy.maxRenewals],
+                        ['Reservation Expiry', policy.reservationExpiryDays + ' day(s)'],
+                        ['Teacher Fines', policy.teacherFinesEnabled ? 'Enabled' : 'Disabled']
+                    ].forEach(([label, val]) => { %>
+                    <tr>
+                        <td style="padding:11px 16px; color:var(--text-muted); font-size:12px; font-weight:600; text-transform:uppercase; letter-spacing:.5px; border-bottom:1px solid var(--border-light); width:55%;"><%= label %></td>
+                        <td style="padding:11px 16px; border-bottom:1px solid var(--border-light); font-weight:700; color:var(--primary);"><%= val %></td>
+                    </tr>
+                    <% }) %>
+                    <tr>
+                        <td style="padding:11px 16px; color:var(--text-muted); font-size:12px; font-weight:600; text-transform:uppercase; letter-spacing:.5px;">Last Updated</td>
+                        <td style="padding:11px 16px; font-size:12.5px; color:var(--text-secondary);"><%= policy.updatedAt ? new Date(policy.updatedAt).toDateString() : 'Never' %></td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>

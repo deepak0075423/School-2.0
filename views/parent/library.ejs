@@ -1,0 +1,195 @@
+<div class="page-header">
+    <div>
+        <h1>📚 Child's Library</h1>
+        <p>Monitoring: <strong><%= child.name %></strong></p>
+    </div>
+    <a href="/parent/dashboard" class="btn btn-secondary">← Back</a>
+</div>
+
+<!-- Fine Alert -->
+<% if (totalPendingFine > 0) { %>
+<div style="background:#fff5f5; border:1.5px solid #fca5a5; border-radius:10px; padding:14px 18px; margin-bottom:20px; display:flex; align-items:center; gap:12px;">
+    <span style="font-size:22px;">⚠️</span>
+    <div>
+        <strong style="color:var(--danger);">Unpaid Fines: ₹<%= totalPendingFine.toFixed(2) %></strong>
+        <p style="margin:2px 0 0; font-size:13px; color:var(--text-secondary);">
+            Please ask <%= child.name %> to visit the library to clear their fines.
+        </p>
+    </div>
+</div>
+<% } %>
+
+<!-- Currently Issued Books -->
+<div class="card" style="margin-bottom:20px;">
+    <div class="card-header">
+        <div class="card-title">📖 Currently Issued Books</div>
+    </div>
+    <div class="table-wrapper">
+        <%
+            const activeIssuances = issuedBooks.filter(i => ['issued','overdue'].includes(i.status));
+        %>
+        <% if (activeIssuances.length === 0) { %>
+        <div class="empty-state">
+            <div class="empty-icon">📭</div>
+            <h3>No Books Currently Issued</h3>
+            <p><%= child.name %> has no active issuances.</p>
+        </div>
+        <% } else { %>
+        <table>
+            <thead>
+                <tr>
+                    <th>Book</th>
+                    <th>Copy Code</th>
+                    <th>Category</th>
+                    <th>Due Date</th>
+                    <th>Status</th>
+                </tr>
+            </thead>
+            <tbody>
+                <% activeIssuances.forEach(iss => {
+                    const daysLeft = Math.ceil((new Date(iss.dueDate) - today) / (1000*60*60*24));
+                %>
+                <tr style="<%= iss.status === 'overdue' ? 'background:#fff5f5;' : daysLeft <= 3 ? 'background:#fffbeb;' : '' %>">
+                    <td>
+                        <div class="fw-semibold"><%= iss.book?.title %></div>
+                    </td>
+                    <td><code style="background:#f0f4ff;padding:2px 7px;border-radius:5px;font-size:12px;color:#4f46e5;"><%= iss.bookCopy?.uniqueCode %></code></td>
+                    <td class="text-muted"><%= iss.book?.category || '—' %></td>
+                    <td>
+                        <div><%= new Date(iss.dueDate).toDateString() %></div>
+                        <% if (daysLeft < 0) { %>
+                        <small style="color:var(--danger); font-weight:600;"><%= Math.abs(daysLeft) %> days overdue</small>
+                        <% } else if (daysLeft <= 3) { %>
+                        <small style="color:var(--warning); font-weight:600;">Due soon</small>
+                        <% } %>
+                    </td>
+                    <td>
+                        <span class="badge <%= iss.status === 'overdue' ? 'badge-red' : 'badge-orange' %>"><%= iss.status %></span>
+                    </td>
+                </tr>
+                <% }) %>
+            </tbody>
+        </table>
+        <% } %>
+    </div>
+</div>
+
+<!-- Active Reservations -->
+<% if (reservations.length > 0) { %>
+<div class="card" style="margin-bottom:20px;">
+    <div class="card-header">
+        <div class="card-title">🔖 Active Reservations</div>
+    </div>
+    <div class="table-wrapper">
+        <table>
+            <thead>
+                <tr>
+                    <th>Book</th>
+                    <th>Queue #</th>
+                    <th>Status</th>
+                    <th>Reserved At</th>
+                </tr>
+            </thead>
+            <tbody>
+                <% reservations.forEach(r => { %>
+                <tr style="<%= r.status === 'ready' ? 'background:#f0fdf4;' : '' %>">
+                    <td class="fw-semibold"><%= r.book?.title %></td>
+                    <td><strong style="font-size:15px; color:var(--primary);">#<%= r.queuePosition %></strong></td>
+                    <td>
+                        <span class="badge <%= r.status === 'ready' ? 'badge-green' : 'badge-blue' %>"><%= r.status %></span>
+                    </td>
+                    <td class="text-muted"><%= new Date(r.reservedAt).toDateString() %></td>
+                </tr>
+                <% }) %>
+            </tbody>
+        </table>
+    </div>
+</div>
+<% } %>
+
+<!-- Borrow History -->
+<div class="card" style="margin-bottom:20px;">
+    <div class="card-header">
+        <div class="card-title">🕑 Recent Borrow History</div>
+    </div>
+    <div class="table-wrapper">
+        <%
+            const history = issuedBooks.filter(i => i.status === 'returned');
+        %>
+        <% if (history.length === 0) { %>
+        <div class="empty-state">
+            <div class="empty-icon">📂</div>
+            <h3>No Return History</h3>
+            <p>No books returned yet.</p>
+        </div>
+        <% } else { %>
+        <table>
+            <thead>
+                <tr>
+                    <th>Book</th>
+                    <th>Issued</th>
+                    <th>Returned</th>
+                    <th>Status</th>
+                </tr>
+            </thead>
+            <tbody>
+                <% history.slice(0, 10).forEach(iss => { %>
+                <tr>
+                    <td class="fw-semibold"><%= iss.book?.title %></td>
+                    <td class="text-muted"><%= new Date(iss.issueDate).toDateString() %></td>
+                    <td class="text-muted"><%= iss.returnDate ? new Date(iss.returnDate).toDateString() : '—' %></td>
+                    <td><span class="badge badge-green">returned</span></td>
+                </tr>
+                <% }) %>
+            </tbody>
+        </table>
+        <% } %>
+    </div>
+</div>
+
+<!-- Fines Summary -->
+<div class="card">
+    <div class="card-header">
+        <div class="card-title">💰 Fines Summary</div>
+    </div>
+    <div class="table-wrapper">
+        <% if (fines.length === 0) { %>
+        <div class="empty-state">
+            <div class="empty-icon">✅</div>
+            <h3>No Fines on Record</h3>
+            <p><%= child.name %> has a clean fine record.</p>
+        </div>
+        <% } else { %>
+        <table>
+            <thead>
+                <tr>
+                    <th>Book</th>
+                    <th>Type</th>
+                    <th>Amount</th>
+                    <th>Status</th>
+                    <th>Date</th>
+                </tr>
+            </thead>
+            <tbody>
+                <% fines.forEach(fine => { %>
+                <tr>
+                    <td class="fw-semibold"><%= fine.issuance?.book?.title || '—' %></td>
+                    <td>
+                        <span class="badge <%= fine.fineType === 'lost' ? 'badge-red' : fine.fineType === 'damaged' ? 'badge-orange' : 'badge-blue' %>">
+                            <%= fine.fineType.replace('_', ' ') %>
+                        </span>
+                    </td>
+                    <td><strong style="color:var(--text-primary);">₹<%= fine.amount.toFixed(2) %></strong></td>
+                    <td>
+                        <span class="badge <%= fine.status === 'paid' ? 'badge-green' : fine.status === 'waived' ? 'badge-gray' : 'badge-red' %>">
+                            <%= fine.status %>
+                        </span>
+                    </td>
+                    <td class="text-muted"><%= new Date(fine.createdAt).toDateString() %></td>
+                </tr>
+                <% }) %>
+            </tbody>
+        </table>
+        <% } %>
+    </div>
+</div>

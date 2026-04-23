@@ -22,6 +22,7 @@ const MODULE_LABELS = {
     holiday:      'Holiday Management',
     leave:        'Leave Management',
     document:     'Document Sharing',
+    library:      'Library Management',
 };
 
 const requireModule = (moduleName) => (req, res, next) => {

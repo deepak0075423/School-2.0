@@ -1,0 +1,65 @@
+<div class="page-header">
+    <div>
+        <h1>✎ Edit Book</h1>
+        <p><%= book.title %></p>
+    </div>
+    <a href="/library/books/<%= book._id %>" class="btn btn-secondary">← Back</a>
+</div>
+
+<form action="/library/books/<%= book._id %>/edit" method="POST">
+    <div class="form-section">
+        <div class="form-section-header">
+            <span>📚</span>
+            <h3>Book Information</h3>
+        </div>
+        <div class="form-section-body">
+            <div class="form-grid">
+                <div class="form-group col-span-2">
+                    <label class="form-label">Title *</label>
+                    <input type="text" name="title" class="form-control" required value="<%= book.title %>" />
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Authors</label>
+                    <input type="text" name="authors" class="form-control" value="<%= book.authors.join(', ') %>" placeholder="Comma-separated" />
+                </div>
+                <div class="form-group">
+                    <label class="form-label">ISBN</label>
+                    <input type="text" name="isbn" class="form-control" value="<%= book.isbn %>" />
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Publisher</label>
+                    <input type="text" name="publisher" class="form-control" value="<%= book.publisher %>" />
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Category</label>
+                    <input type="text" name="category" class="form-control" value="<%= book.category %>" list="cat-list" />
+                    <datalist id="cat-list">
+                        <option value="Fiction"><option value="Non-Fiction"><option value="Science">
+                        <option value="Mathematics"><option value="History"><option value="Biography">
+                        <option value="Reference"><option value="Literature"><option value="Technology">
+                    </datalist>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Edition</label>
+                    <input type="text" name="edition" class="form-control" value="<%= book.edition %>" />
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Language</label>
+                    <select name="language" class="form-control">
+                        <% ['English','Hindi','Sanskrit','Other'].forEach(lang => { %>
+                        <option value="<%= lang %>" <%= book.language === lang ? 'selected' : '' %>><%= lang %></option>
+                        <% }) %>
+                    </select>
+                </div>
+                <div class="form-group col-span-2">
+                    <label class="form-label">Description</label>
+                    <textarea name="description" class="form-control" rows="3"><%= book.description %></textarea>
+                </div>
+            </div>
+            <div style="display:flex; gap:10px; margin-top:8px;">
+                <button type="submit" class="btn btn-primary">Save Changes</button>
+                <a href="/library/books/<%= book._id %>" class="btn btn-secondary">Cancel</a>
+            </div>
+        </div>
+    </div>
+</form>

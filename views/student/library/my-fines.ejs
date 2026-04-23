@@ -1,0 +1,70 @@
+<div class="page-header">
+    <div>
+        <h1>💰 My Library Fines</h1>
+        <p>Outstanding and past fines on your account</p>
+    </div>
+    <a href="<%= libBase %>" class="btn btn-secondary">← Back</a>
+</div>
+
+<!-- Summary Banner -->
+<% if (totalPending > 0) { %>
+<div style="background:#fff5f5; border:1.5px solid #fca5a5; border-radius:10px; padding:14px 18px; margin-bottom:20px; display:flex; align-items:center; gap:12px;">
+    <span style="font-size:22px;">⚠️</span>
+    <div>
+        <strong style="color:var(--danger);">₹<%= totalPending.toFixed(2) %> Pending</strong>
+        <p style="margin:2px 0 0; font-size:13px; color:var(--text-secondary);">
+            Please visit the library to clear your fines. Unpaid fines block new issuances and reservations.
+        </p>
+    </div>
+</div>
+<% } else { %>
+<div style="background:#f0fdf4; border:1.5px solid #86efac; border-radius:10px; padding:14px 18px; margin-bottom:20px; display:flex; align-items:center; gap:10px;">
+    <span style="font-size:20px;">✅</span>
+    <strong style="color:#16a34a;">No pending fines — great job!</strong>
+</div>
+<% } %>
+
+<div class="card">
+    <div class="table-wrapper">
+        <% if (fines.length === 0) { %>
+        <div class="empty-state">
+            <div class="empty-icon">💰</div>
+            <h3>No Fines on Record</h3>
+            <p>Your account is clear.</p>
+        </div>
+        <% } else { %>
+        <table>
+            <thead>
+                <tr>
+                    <th>Book</th>
+                    <th>Fine Type</th>
+                    <th>Amount</th>
+                    <th>Days Overdue</th>
+                    <th>Status</th>
+                    <th>Date</th>
+                </tr>
+            </thead>
+            <tbody>
+                <% fines.forEach(fine => { %>
+                <tr>
+                    <td class="fw-semibold"><%= fine.issuance?.book?.title || '—' %></td>
+                    <td>
+                        <span class="badge <%= fine.fineType === 'lost' ? 'badge-red' : fine.fineType === 'damaged' ? 'badge-orange' : 'badge-blue' %>">
+                            <%= fine.fineType.replace('_', ' ') %>
+                        </span>
+                    </td>
+                    <td><strong style="font-size:15px; color:var(--text-primary);">₹<%= fine.amount.toFixed(2) %></strong></td>
+                    <td class="text-muted"><%= fine.daysOverdue > 0 ? fine.daysOverdue + ' day(s)' : '—' %></td>
+                    <td>
+                        <span class="badge <%= fine.status === 'paid' ? 'badge-green' : fine.status === 'waived' ? 'badge-gray' : 'badge-red' %>">
+                            <%= fine.status %>
+                        </span>
+                    </td>
+                    <td class="text-muted"><%= new Date(fine.createdAt).toDateString() %></td>
+                </tr>
+                <% }) %>
+            </tbody>
+        </table>
+        <% } %>
+    </div>
+</div>

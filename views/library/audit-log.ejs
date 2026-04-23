@@ -1,0 +1,100 @@
+<div class="page-header">
+    <div>
+        <h1>🔍 Audit Log</h1>
+        <p>Immutable record of all library actions</p>
+    </div>
+    <a href="/library/dashboard" class="btn btn-secondary">← Back</a>
+</div>
+
+<!-- Filter -->
+<div class="card" style="margin-bottom:20px;">
+    <div class="card-body" style="padding:16px 20px;">
+        <form action="/library/audit-log" method="GET" style="display:flex; gap:12px; align-items:flex-end; flex-wrap:wrap;">
+            <div class="form-group" style="margin:0; flex:1; min-width:200px;">
+                <label class="form-label">Action Type</label>
+                <select name="actionType" class="form-control">
+                    <option value="">All Actions</option>
+                    <% [
+                        'BOOK_CREATED','BOOK_UPDATED','BOOK_DELETED',
+                        'COPY_ADDED','COPY_UPDATED','COPY_STATUS_CHANGED',
+                        'BOOK_ISSUED','BOOK_RETURNED','BOOK_RENEWED',
+                        'RESERVATION_CREATED','RESERVATION_READY','RESERVATION_COLLECTED','RESERVATION_EXPIRED','RESERVATION_CANCELLED',
+                        'FINE_GENERATED','FINE_PAID','FINE_WAIVED',
+                        'POLICY_UPDATED'
+                    ].forEach(action => { %>
+                    <option value="<%= action %>" <%= filterAction === action ? 'selected' : '' %>><%= action.replace(/_/g,' ') %></option>
+                    <% }) %>
+                </select>
+            </div>
+            <div class="form-group" style="margin:0; flex:1; min-width:160px;">
+                <label class="form-label">Entity Type</label>
+                <select name="entityType" class="form-control">
+                    <option value="">All Entities</option>
+                    <% ['Book','BookCopy','Issuance','Reservation','Fine','Policy'].forEach(e => { %>
+                    <option value="<%= e %>" <%= filterEntity === e ? 'selected' : '' %>><%= e %></option>
+                    <% }) %>
+                </select>
+            </div>
+            <div style="display:flex; gap:8px;">
+                <button type="submit" class="btn btn-primary">Filter</button>
+                <a href="/library/audit-log" class="btn btn-secondary">Reset</a>
+            </div>
+        </form>
+    </div>
+</div>
+
+<p class="text-muted" style="margin-bottom:12px; font-size:13px;">Showing <%= logs.length %> of <%= total %> entries &mdash; page <%= page %> of <%= totalPages %></p>
+
+<div class="card">
+    <div class="table-wrapper">
+        <% if (logs.length === 0) { %>
+        <div class="empty-state">
+            <div class="empty-icon">🔍</div>
+            <h3>No Entries Found</h3>
+            <p>Try adjusting the filters above.</p>
+        </div>
+        <% } else { %>
+        <table>
+            <thead>
+                <tr>
+                    <th>Timestamp</th>
+                    <th>Performed By</th>
+                    <th>Role</th>
+                    <th>Action</th>
+                    <th>Entity</th>
+                    <th>Details</th>
+                </tr>
+            </thead>
+            <tbody>
+                <% logs.forEach(log => { %>
+                <tr>
+                    <td class="text-muted" style="white-space:nowrap; font-size:12.5px;"><%= new Date(log.timestamp).toLocaleString() %></td>
+                    <td class="fw-semibold"><%= log.user?.name || 'System' %></td>
+                    <td><span class="badge badge-gray" style="font-size:11px;"><%= log.role || '—' %></span></td>
+                    <td><span class="badge badge-blue" style="font-size:11px;"><%= log.actionType.replace(/_/g,' ') %></span></td>
+                    <td class="text-muted"><%= log.entityType %></td>
+                    <td>
+                        <% if (log.newValue) { %>
+                        <details>
+                            <summary style="cursor:pointer; color:var(--primary); font-size:12.5px;">View</summary>
+                            <pre style="font-size:.72rem; margin-top:6px; background:var(--bg-secondary); padding:8px; border-radius:6px; overflow:auto; max-width:320px;"><%= JSON.stringify(log.newValue, null, 2) %></pre>
+                        </details>
+                        <% } else { %>—<% } %>
+                    </td>
+                </tr>
+                <% }) %>
+            </tbody>
+        </table>
+        <% } %>
+    </div>
+</div>
+
+<!-- Pagination -->
+<% if (totalPages > 1) { %>
+<div style="display:flex; gap:6px; margin-top:16px; flex-wrap:wrap;">
+    <% for (let i = 1; i <= totalPages; i++) { %>
+    <a href="?page=<%= i %>&actionType=<%= filterAction %>&entityType=<%= filterEntity %>"
+       class="btn btn-sm <%= i === page ? 'btn-primary' : 'btn-secondary' %>"><%= i %></a>
+    <% } %>
+</div>
+<% } %>

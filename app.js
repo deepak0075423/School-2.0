@@ -41,6 +41,25 @@ app.use(flash());
 
 // Load current user & expose to all views
 app.use(loadUser);
+
+// Expose librarian flag and teacher-fine policy for nav rendering
+const TeacherProfile = require('./models/TeacherProfile');
+const LibraryPolicy  = require('./models/LibraryPolicy');
+app.use(async (req, res, next) => {
+    res.locals.isLibrarian          = false;
+    res.locals.teacherFinesEnabled  = false;
+    if (req.session && req.session.userRole === 'teacher' && req.session.userId) {
+        try {
+            const tp = await TeacherProfile.findOne({ user: req.session.userId, school: req.session.schoolId }).select('designation');
+            res.locals.isLibrarian = !!(tp && tp.designation === 'Librarian');
+            if (!res.locals.isLibrarian) {
+                const pol = await LibraryPolicy.findOne({ school: req.session.schoolId }).select('teacherFinesEnabled');
+                res.locals.teacherFinesEnabled = !!(pol && pol.teacherFinesEnabled);
+            }
+        } catch { /* non-fatal */ }
+    }
+    next();
+});
 app.use((req, res, next) => {
     res.locals.success = req.flash('success');
     res.locals.error = req.flash('error');
@@ -74,6 +93,7 @@ app.use('/student', require('./routes/student'));
 app.use('/parent', require('./routes/parent'));
 app.use('/profile', require('./routes/profile'));
 app.use('/notifications', require('./routes/notifications'));
+app.use('/library', require('./routes/library'));
 
 // Home → redirect to login
 app.get('/', (req, res) => {

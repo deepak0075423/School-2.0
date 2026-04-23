@@ -1,0 +1,132 @@
+<div class="welcome-banner">
+    <div class="welcome-icon">📚</div>
+    <div>
+        <h2>Library Dashboard</h2>
+        <p>Manage books, circulation, reservations and fines for <%= session.schoolName %></p>
+    </div>
+    <div style="margin-left:auto; display:flex; gap:10px; flex-shrink:0;">
+        <a href="/library/issue" class="btn btn-primary" style="background:rgba(255,255,255,0.2); border:1.5px solid rgba(255,255,255,0.4); color:#fff; box-shadow:none;">📖 Issue Book</a>
+        <a href="/library/return" class="btn btn-primary" style="background:rgba(255,255,255,0.2); border:1.5px solid rgba(255,255,255,0.4); color:#fff; box-shadow:none;">↩️ Return Book</a>
+    </div>
+</div>
+
+<div class="stats-grid">
+    <div class="stat-card">
+        <div class="stat-icon blue">📚</div>
+        <div class="stat-info">
+            <div class="stat-value"><%= stats.totalBooks %></div>
+            <div class="stat-label">Total Books</div>
+        </div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-icon green">✅</div>
+        <div class="stat-info">
+            <div class="stat-value"><%= stats.availableCopies %></div>
+            <div class="stat-label">Available Copies</div>
+        </div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-icon orange">📖</div>
+        <div class="stat-info">
+            <div class="stat-value"><%= stats.activeIssuances %></div>
+            <div class="stat-label">Books Issued</div>
+        </div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-icon" style="background:linear-gradient(135deg,#fee2e2,#fca5a5);">⚠️</div>
+        <div class="stat-info">
+            <div class="stat-value"><%= stats.overdueIssuances %></div>
+            <div class="stat-label">Overdue</div>
+        </div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-icon purple">💰</div>
+        <div class="stat-info">
+            <div class="stat-value"><%= stats.pendingFines %></div>
+            <div class="stat-label">Pending Fines</div>
+        </div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-icon cyan">🔖</div>
+        <div class="stat-info">
+            <div class="stat-value"><%= stats.pendingReservations %></div>
+            <div class="stat-label">Reservations</div>
+        </div>
+    </div>
+</div>
+
+<div style="display:grid; grid-template-columns:1fr 260px; gap:20px; align-items:start;">
+
+    <!-- Recent Issuances -->
+    <div class="card">
+        <div class="card-header">
+            <div class="card-title">🕒 Recent Issuances</div>
+            <a href="/library/issuances" class="btn btn-sm btn-secondary">View All</a>
+        </div>
+        <div class="table-wrapper">
+            <% if (recentIssuances.length === 0) { %>
+            <div class="empty-state" style="padding:40px 20px;">
+                <div class="empty-icon">📭</div>
+                <h3>No Active Issuances</h3>
+                <p>Issue a book to get started.</p>
+                <a href="/library/issue" class="btn btn-primary">Issue Book</a>
+            </div>
+            <% } else { %>
+            <table>
+                <thead>
+                    <tr>
+                        <th>User</th>
+                        <th>Book</th>
+                        <th>Copy Code</th>
+                        <th>Due Date</th>
+                        <th>Status</th>
+                        <th>Action</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <% recentIssuances.forEach(iss => { %>
+                    <tr>
+                        <td class="fw-semibold"><%= iss.issuedTo ? iss.issuedTo.name : '—' %></td>
+                        <td><%= iss.book ? iss.book.title : '—' %></td>
+                        <td><code style="background:#f0f4ff;padding:2px 7px;border-radius:5px;font-size:12px;color:#4f46e5;"><%= iss.bookCopy ? iss.bookCopy.uniqueCode : '—' %></code></td>
+                        <td class="text-muted"><%= new Date(iss.dueDate).toDateString() %></td>
+                        <td>
+                            <span class="badge <%= iss.status === 'overdue' ? 'badge-red' : 'badge-orange' %>">
+                                <%= iss.status %>
+                            </span>
+                        </td>
+                        <td>
+                            <a href="/library/return?id=<%= iss._id %>" class="btn btn-sm btn-primary">Return</a>
+                        </td>
+                    </tr>
+                    <% }) %>
+                </tbody>
+            </table>
+            <% } %>
+        </div>
+    </div>
+
+    <!-- Quick Actions -->
+    <div class="card">
+        <div class="card-header">
+            <div class="card-title">⚡ Quick Actions</div>
+        </div>
+        <div class="card-body" style="display:flex; flex-direction:column; gap:10px;">
+            <div style="font-size:.72rem; font-weight:700; text-transform:uppercase; color:var(--text-muted); margin-bottom:2px;">Circulation</div>
+            <a href="/library/issue" class="btn btn-primary">📖 Issue Book</a>
+            <a href="/library/return" class="btn btn-secondary">↩️ Return Book</a>
+            <a href="/library/issuances" class="btn btn-secondary">📋 All Issuances</a>
+            <div style="font-size:.72rem; font-weight:700; text-transform:uppercase; color:var(--text-muted); margin:6px 0 2px;">Catalogue</div>
+            <a href="/library/books" class="btn btn-secondary">📚 Browse Books</a>
+            <a href="/library/books/create" class="btn btn-secondary">➕ Add Book</a>
+            <div style="font-size:.72rem; font-weight:700; text-transform:uppercase; color:var(--text-muted); margin:6px 0 2px;">Management</div>
+            <a href="/library/reservations" class="btn btn-secondary">🔖 Reservations</a>
+            <a href="/library/fines" class="btn btn-secondary">💰 Fines</a>
+            <% if (session.userRole === 'school_admin') { %>
+            <div class="separator"></div>
+            <a href="/library/policy" class="btn btn-secondary">⚙️ Policy</a>
+            <a href="/library/audit-log" class="btn btn-secondary">📋 Audit Log</a>
+            <% } %>
+        </div>
+    </div>
+</div>

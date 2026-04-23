@@ -1,0 +1,94 @@
+<div class="page-header">
+    <div>
+        <h1>📋 My Books</h1>
+        <p>Full issuance history</p>
+    </div>
+    <a href="<%= libBase %>" class="btn btn-secondary">← Back</a>
+</div>
+
+<!-- Filter -->
+<div class="card" style="margin-bottom:20px;">
+    <div class="card-body" style="padding:16px 20px;">
+        <form action="<%= libBase %>/my-books" method="GET" style="display:flex; gap:12px; align-items:flex-end; flex-wrap:wrap;">
+            <div class="form-group" style="margin:0; flex:1; min-width:160px;">
+                <label class="form-label">Status</label>
+                <select name="status" class="form-control">
+                    <option value="" <%= !filterStatus ? 'selected' : '' %>>Active (Issued + Overdue)</option>
+                    <option value="issued"   <%= filterStatus === 'issued'   ? 'selected' : '' %>>Issued</option>
+                    <option value="overdue"  <%= filterStatus === 'overdue'  ? 'selected' : '' %>>Overdue</option>
+                    <option value="returned" <%= filterStatus === 'returned' ? 'selected' : '' %>>Returned</option>
+                </select>
+            </div>
+            <div style="display:flex; gap:8px;">
+                <button type="submit" class="btn btn-primary">Filter</button>
+                <a href="/library/student/my-books" class="btn btn-secondary">Reset</a>
+            </div>
+        </form>
+    </div>
+</div>
+
+<div class="card">
+    <div class="table-wrapper">
+        <% if (issuances.length === 0) { %>
+        <div class="empty-state">
+            <div class="empty-icon">📭</div>
+            <h3>No Records Found</h3>
+            <p>No books match the selected filter.</p>
+        </div>
+        <% } else { %>
+        <table>
+            <thead>
+                <tr>
+                    <th>Book</th>
+                    <th>Copy Code</th>
+                    <th>Category</th>
+                    <th>Issued On</th>
+                    <th>Due Date</th>
+                    <th>Returned</th>
+                    <th>Renewals</th>
+                    <th>Status</th>
+                    <th>Fine</th>
+                </tr>
+            </thead>
+            <tbody>
+                <% issuances.forEach(iss => {
+                    const isActive = ['issued','overdue'].includes(iss.status);
+                    const daysLeft = Math.ceil((new Date(iss.dueDate) - today) / (1000*60*60*24));
+                %>
+                <tr style="<%= iss.status === 'overdue' ? 'background:#fff5f5;' : '' %>">
+                    <td>
+                        <div class="fw-semibold"><%= iss.book?.title %></div>
+                        <small class="text-muted"><%= iss.book?.authors?.join(', ') %></small>
+                    </td>
+                    <td><code style="background:#f0f4ff;padding:2px 7px;border-radius:5px;font-size:12px;color:#4f46e5;"><%= iss.bookCopy?.uniqueCode %></code></td>
+                    <td class="text-muted"><%= iss.book?.category || '—' %></td>
+                    <td class="text-muted"><%= new Date(iss.issueDate).toDateString() %></td>
+                    <td>
+                        <div><%= new Date(iss.dueDate).toDateString() %></div>
+                        <% if (isActive) { %>
+                        <small style="color:<%= daysLeft < 0 ? 'var(--danger)' : daysLeft <= 3 ? 'var(--warning)' : 'var(--text-muted)' %>; font-weight:600;">
+                            <%= daysLeft < 0 ? Math.abs(daysLeft) + ' days overdue' : daysLeft + ' days left' %>
+                        </small>
+                        <% } %>
+                    </td>
+                    <td class="text-muted"><%= iss.returnDate ? new Date(iss.returnDate).toDateString() : '—' %></td>
+                    <td class="text-muted"><%= iss.renewalCount %></td>
+                    <td>
+                        <span class="badge <%= iss.status === 'returned' ? 'badge-green' : iss.status === 'overdue' ? 'badge-red' : iss.status === 'lost' ? 'badge-red' : 'badge-orange' %>">
+                            <%= iss.status %>
+                        </span>
+                    </td>
+                    <td>
+                        <% if (iss.fine) { %>
+                        <span class="badge <%= iss.fine.status === 'paid' ? 'badge-green' : iss.fine.status === 'waived' ? 'badge-gray' : 'badge-red' %>">
+                            ₹<%= iss.fine.amount %> (<%= iss.fine.status %>)
+                        </span>
+                        <% } else { %>—<% } %>
+                    </td>
+                </tr>
+                <% }) %>
+            </tbody>
+        </table>
+        <% } %>
+    </div>
+</div>

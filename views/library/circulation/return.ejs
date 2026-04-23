@@ -1,0 +1,103 @@
+<div class="page-header">
+    <div>
+        <h1>↩️ Return Book</h1>
+        <p>Process a book return and calculate fines</p>
+    </div>
+    <a href="/library/dashboard" class="btn btn-secondary">← Back</a>
+</div>
+
+<div style="display:grid; grid-template-columns:1fr 300px; gap:20px; align-items:start;">
+    <form action="/library/return" method="POST">
+        <div class="form-section">
+            <div class="form-section-header">
+                <span>↩️</span>
+                <h3>Return Details</h3>
+            </div>
+            <div class="form-section-body">
+                <div class="form-grid">
+                    <div class="form-group col-span-2">
+                        <label class="form-label">Select Issuance *</label>
+                        <select name="issuanceId" class="form-control" required id="issuanceSelect" onchange="updateReturnInfo(this)">
+                            <option value="">— Select active issuance —</option>
+                            <% activeIssuances.forEach(iss => {
+                                const overdue = new Date(iss.dueDate) < new Date();
+                            %>
+                            <option value="<%= iss._id %>"
+                                data-due="<%= new Date(iss.dueDate).toDateString() %>"
+                                data-status="<%= iss.status %>"
+                                data-user="<%= iss.issuedTo?.name %>"
+                                data-book="<%= iss.book?.title %>"
+                                data-copy="<%= iss.bookCopy?.uniqueCode %>"
+                                <%= prefillId === String(iss._id) ? 'selected' : '' %>>
+                                <%= iss.issuedTo?.name %> — <%= iss.book?.title %> (<%= iss.bookCopy?.uniqueCode %>) — Due: <%= new Date(iss.dueDate).toDateString() %><%= overdue ? ' ⚠️ OVERDUE' : '' %>
+                            </option>
+                            <% }) %>
+                        </select>
+                    </div>
+
+                    <!-- Info strip shown after selection -->
+                    <div id="issInfo" class="col-span-2" style="display:none; background:#f0f4ff; border:1.5px solid #c7d2fe; border-radius:10px; padding:14px 16px;">
+                        <div style="display:grid; grid-template-columns:1fr 1fr; gap:6px 24px;">
+                            <div style="font-size:12.5px;"><span class="text-muted">User: </span><strong id="infoUser"></strong></div>
+                            <div style="font-size:12.5px;"><span class="text-muted">Copy: </span><strong id="infoCopy" style="color:#4f46e5;"></strong></div>
+                            <div style="font-size:12.5px;"><span class="text-muted">Book: </span><strong id="infoBook"></strong></div>
+                            <div style="font-size:12.5px;"><span class="text-muted">Due: </span><strong id="infoDue"></strong> — <strong id="infoStatus"></strong></div>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">Book Condition on Return</label>
+                        <select name="condition" class="form-control" id="conditionSelect">
+                            <option value="good">Good</option>
+                            <option value="fair">Fair</option>
+                            <option value="damaged">Damaged (stays out of circulation)</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Return Type</label>
+                        <select name="lostOrDamaged" class="form-control" onchange="toggleCondition(this)">
+                            <option value="">Normal Return</option>
+                            <option value="damaged">Mark as Damaged (additional fine)</option>
+                            <option value="lost">Report as Lost (full fine)</option>
+                        </select>
+                    </div>
+                </div>
+                <button type="submit" class="btn btn-primary" onclick="return confirm('Confirm return?')">↩️ Process Return</button>
+            </div>
+        </div>
+    </form>
+
+    <div class="card">
+        <div class="card-header"><div class="card-title">💰 Fine Formula</div></div>
+        <div class="card-body" style="font-size:13px; color:var(--text-secondary); line-height:1.8;">
+            <p><strong>Late Return:</strong><br>(Return Date − Due Date − Grace Period) × Fine/Day</p>
+            <div class="separator"></div>
+            <p><strong>Damaged:</strong><br>Late fine + 10× daily rate</p>
+            <div class="separator"></div>
+            <p><strong>Lost:</strong><br>30× daily rate (flat penalty)</p>
+            <div class="separator"></div>
+            <p class="text-muted" style="font-size:12px;">Fine rates are set in <a href="/library/policy">Library Policy</a>.</p>
+        </div>
+    </div>
+</div>
+
+<script>
+function updateReturnInfo(select) {
+    const opt = select.options[select.selectedIndex];
+    const box = document.getElementById('issInfo');
+    if (!opt.value) { box.style.display = 'none'; return; }
+    box.style.display = 'block';
+    document.getElementById('infoUser').textContent   = opt.dataset.user;
+    document.getElementById('infoBook').textContent   = opt.dataset.book;
+    document.getElementById('infoCopy').textContent   = opt.dataset.copy;
+    document.getElementById('infoDue').textContent    = opt.dataset.due;
+    document.getElementById('infoStatus').textContent = opt.dataset.status;
+}
+function toggleCondition(select) {
+    document.getElementById('conditionSelect').disabled = !!select.value;
+}
+window.onload = () => {
+    const sel = document.getElementById('issuanceSelect');
+    if (sel.value) updateReturnInfo(sel);
+};
+</script>
