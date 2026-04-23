@@ -1,12 +1,16 @@
-const LibraryBook       = require('../models/LibraryBook');
-const LibraryBookCopy   = require('../models/LibraryBookCopy');
-const LibraryPolicy     = require('../models/LibraryPolicy');
-const LibraryIssuance   = require('../models/LibraryIssuance');
+const LibraryBook        = require('../models/LibraryBook');
+const LibraryBookCopy    = require('../models/LibraryBookCopy');
+const LibraryPolicy      = require('../models/LibraryPolicy');
+const LibraryIssuance    = require('../models/LibraryIssuance');
 const LibraryReservation = require('../models/LibraryReservation');
-const LibraryFine       = require('../models/LibraryFine');
-const LibraryAuditLog   = require('../models/LibraryAuditLog');
-const User              = require('../models/User');
-const TeacherProfile    = require('../models/TeacherProfile');
+const LibraryFine        = require('../models/LibraryFine');
+const LibraryAuditLog    = require('../models/LibraryAuditLog');
+const User               = require('../models/User');
+const TeacherProfile     = require('../models/TeacherProfile');
+const StudentProfile     = require('../models/StudentProfile');
+const Notification       = require('../models/Notification');
+const NotificationReceipt = require('../models/NotificationReceipt');
+const sseClients         = require('../utils/sseClients');
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
 
@@ -16,6 +20,34 @@ async function audit(school, user, role, actionType, entityType, entityId, oldVa
     } catch (e) {
         console.error('Library audit log failed:', e.message);
     }
+}
+
+async function notify(schoolId, senderUserId, senderRole, title, body, recipientIds) {
+    try {
+        const ids = [...new Set(recipientIds.map(id => id.toString()).filter(Boolean))];
+        if (ids.length === 0) return;
+        const notif = await Notification.create({
+            title, body,
+            sender: senderUserId,
+            senderRole,
+            school: schoolId,
+            channels: { inApp: true, email: false },
+            target: { type: 'individual', schools: [] },
+            recipientCount: ids.length,
+        });
+        await NotificationReceipt.insertMany(
+            ids.map(rid => ({ notification: notif._id, recipient: rid, school: schoolId })),
+            { ordered: false }
+        );
+        sseClients.pushMany(ids, 'notification', { title, body, senderRole, createdAt: notif.createdAt });
+    } catch (e) {
+        console.error('[Library] Notification failed:', e.message);
+    }
+}
+
+async function getParentId(schoolId, studentUserId) {
+    const profile = await StudentProfile.findOne({ school: schoolId, user: studentUserId }).select('parent');
+    return profile?.parent ? profile.parent.toString() : null;
 }
 
 async function getOrCreatePolicy(schoolId) {
@@ -430,6 +462,11 @@ exports.postIssueBook = async (req, res) => {
         await reindexQueue(bookId, schoolId);
 
         await audit(schoolId, req.session.userId, req.session.userRole, 'BOOK_ISSUED', 'Issuance', issuance._id, null, { user: user.name, book: book.title, copy: copy.uniqueCode, dueDate });
+        await notify(schoolId, req.session.userId, req.session.userRole,
+            '📚 Book Issued',
+            `"${book.title}" has been issued to you (copy: ${copy.uniqueCode}). Please return it by ${dueDate.toDateString()}.`,
+            [userId]
+        );
         req.flash('success', `"${book.title}" (${copy.uniqueCode}) issued to ${user.name}. Due: ${dueDate.toDateString()}.`);
         res.redirect('/library/issuances');
     } catch (err) {
@@ -541,6 +578,16 @@ exports.postReturnBook = async (req, res) => {
         if (fineRecord) {
             issuance.fine = fineRecord._id;
             await audit(schoolId, req.session.userId, req.session.userRole, 'FINE_GENERATED', 'Fine', fineRecord._id, null, { amount: fineRecord.amount, type: fineRecord.fineType, user: issuance.issuedTo.name });
+            const fineRecipients = [issuance.issuedTo._id.toString()];
+            if (issuance.issuedToRole === 'student') {
+                const parentId = await getParentId(schoolId, issuance.issuedTo._id);
+                if (parentId) fineRecipients.push(parentId);
+            }
+            await notify(schoolId, req.session.userId, req.session.userRole,
+                '⚠️ Library Fine Generated',
+                `A ₹${fineRecord.amount.toFixed(2)} fine has been raised for "${issuance.book.title}" (${fineRecord.fineType.replace('_', ' ')}). Please visit the library to clear it.`,
+                fineRecipients
+            );
         }
         await issuance.save();
 
@@ -600,6 +647,11 @@ exports.postRenewBook = async (req, res) => {
         await audit(schoolId, req.session.userId, req.session.userRole, 'BOOK_RENEWED', 'Issuance', issuance._id,
             { dueDate: oldDue, renewalCount: issuance.renewalCount - 1 },
             { dueDate: newDue, renewalCount: issuance.renewalCount }
+        );
+        await notify(schoolId, req.session.userId, req.session.userRole,
+            '🔄 Book Renewed',
+            `"${issuance.book.title}" has been renewed for you. New due date: ${newDue.toDateString()}.`,
+            [issuance.issuedTo._id.toString()]
         );
         req.flash('success', `"${issuance.book.title}" renewed for ${issuance.issuedTo.name}. New due: ${newDue.toDateString()}.`);
         res.redirect('/library/issuances');
@@ -708,6 +760,11 @@ exports.postMarkReservationReady = async (req, res) => {
         await reservation.save();
 
         await audit(schoolId, req.session.userId, req.session.userRole, 'RESERVATION_READY', 'Reservation', reservation._id, { status: 'pending' }, { status: 'ready', expiresAt });
+        await notify(schoolId, req.session.userId, req.session.userRole,
+            '🔖 Book Ready for Pickup',
+            `"${reservation.book.title}" is ready for you to collect from the library. Please pick it up by ${expiresAt.toDateString()} or your reservation will expire.`,
+            [reservation.reservedBy._id.toString()]
+        );
         req.flash('success', `${reservation.reservedBy.name} notified — must collect "${reservation.book.title}" by ${expiresAt.toDateString()}.`);
         res.redirect('/library/reservations');
     } catch (err) {
@@ -719,14 +776,21 @@ exports.postMarkReservationReady = async (req, res) => {
 exports.postCancelReservation = async (req, res) => {
     try {
         const schoolId = req.session.schoolId;
-        const reservation = await LibraryReservation.findOne({ _id: req.params.id, school: schoolId, status: { $in: ['pending', 'ready'] } });
+        const reservation = await LibraryReservation.findOne({ _id: req.params.id, school: schoolId, status: { $in: ['pending', 'ready'] } })
+            .populate('reservedBy', 'name')
+            .populate('book', 'title');
         if (!reservation) { req.flash('error', 'Reservation not found.'); return res.redirect('/library/reservations'); }
 
         reservation.status = 'cancelled';
         await reservation.save();
-        await reindexQueue(reservation.book, schoolId);
+        await reindexQueue(reservation.book._id, schoolId);
 
         await audit(schoolId, req.session.userId, req.session.userRole, 'RESERVATION_CANCELLED', 'Reservation', reservation._id, { status: 'pending' }, { status: 'cancelled' });
+        await notify(schoolId, req.session.userId, req.session.userRole,
+            '❌ Reservation Cancelled',
+            `Your reservation for "${reservation.book.title}" has been cancelled by the library.`,
+            [reservation.reservedBy._id.toString()]
+        );
         req.flash('success', 'Reservation cancelled.');
         res.redirect('/library/reservations');
     } catch (err) {
@@ -802,6 +866,11 @@ exports.postWaiveFine = async (req, res) => {
         await fine.save();
 
         await audit(schoolId, req.session.userId, req.session.userRole, 'FINE_WAIVED', 'Fine', fine._id, { status: 'pending', amount: fine.amount }, { status: 'waived', reason: fine.waiverReason });
+        await notify(schoolId, req.session.userId, req.session.userRole,
+            '✅ Library Fine Waived',
+            `Your library fine of ₹${fine.amount.toFixed(2)} has been waived. Reason: ${fine.waiverReason || 'Not specified'}.`,
+            [fine.user._id.toString()]
+        );
         req.flash('success', `Fine waived for ${fine.user.name}.`);
         res.redirect('/library/fines');
     } catch (err) {
