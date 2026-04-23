@@ -26,6 +26,7 @@ const NotificationSchema = new mongoose.Schema({
                 'section_students', // school_admin / teacher → students in a section
                 'section_parents',  // school_admin / teacher → parents of students in a section
                 'section_all',      // teacher → students + parents in their section
+                'individual',       // system / module → specific named recipients
             ],
             required: true,
         },
