@@ -24,7 +24,7 @@ async function audit(school, user, role, actionType, entityType, entityId, oldVa
 
 async function notify(schoolId, senderUserId, senderRole, title, body, recipientIds) {
     try {
-        const ids = [...new Set(recipientIds.map(id => id.toString()).filter(Boolean))];
+        const ids = [...new Set(recipientIds.map(id => id ? id.toString() : null).filter(Boolean))];
         if (ids.length === 0) return;
         const notif = await Notification.create({
             title, body,
@@ -41,7 +41,7 @@ async function notify(schoolId, senderUserId, senderRole, title, body, recipient
         );
         sseClients.pushMany(ids, 'notification', { title, body, senderRole, createdAt: notif.createdAt });
     } catch (e) {
-        console.error('[Library] Notification failed:', e.message);
+        console.error('[Library] Notification failed:', e.message, e.stack);
     }
 }
 
@@ -760,11 +760,13 @@ exports.postMarkReservationReady = async (req, res) => {
         await reservation.save();
 
         await audit(schoolId, req.session.userId, req.session.userRole, 'RESERVATION_READY', 'Reservation', reservation._id, { status: 'pending' }, { status: 'ready', expiresAt });
-        await notify(schoolId, req.session.userId, req.session.userRole,
-            '🔖 Book Ready for Pickup',
-            `"${reservation.book.title}" is ready for you to collect from the library. Please pick it up by ${expiresAt.toDateString()} or your reservation will expire.`,
-            [reservation.reservedBy._id.toString()]
-        );
+        if (reservation.reservedBy?._id) {
+            await notify(schoolId, req.session.userId, req.session.userRole,
+                '🔖 Book Ready for Pickup',
+                `"${reservation.book.title}" is ready for you to collect from the library. Please pick it up by ${expiresAt.toDateString()} or your reservation will expire.`,
+                [reservation.reservedBy._id.toString()]
+            );
+        }
         req.flash('success', `${reservation.reservedBy.name} notified — must collect "${reservation.book.title}" by ${expiresAt.toDateString()}.`);
         res.redirect('/library/reservations');
     } catch (err) {
@@ -964,6 +966,102 @@ exports.getAuditLog = async (req, res) => {
     } catch (err) {
         req.flash('error', err.message);
         res.redirect('/library/dashboard');
+    }
+};
+
+// ─── Bulk Upload ──────────────────────────────────────────────────────────────
+
+exports.getBulkUpload = async (req, res) => {
+    res.render('library/books/bulk-upload', {
+        title: 'Bulk Upload Books',
+        layout: 'layouts/main',
+    });
+};
+
+exports.getBulkUploadTemplate = (req, res) => {
+    const xlsx = require('xlsx');
+    const headers = ['Title', 'Authors', 'ISBN', 'Category', 'Publisher', 'Edition', 'Language', 'Description', 'Total Copies'];
+    const sample = [
+        ['The Great Gatsby', 'F. Scott Fitzgerald', '9780743273565', 'Fiction', 'Scribner', '1st Edition', 'English', 'A novel set in the Jazz Age.', 3],
+        ['Introduction to Algorithms', 'Thomas H. Cormen, Charles E. Leiserson', '9780262033848', 'Computer Science', 'MIT Press', '4th Edition', 'English', '', 2],
+    ];
+    const ws = xlsx.utils.aoa_to_sheet([headers, ...sample]);
+    ws['!cols'] = headers.map(() => ({ wch: 22 }));
+    const wb = xlsx.utils.book_new();
+    xlsx.utils.book_append_sheet(wb, ws, 'Books');
+    const buf = xlsx.write(wb, { type: 'buffer', bookType: 'xlsx' });
+    res.setHeader('Content-Disposition', 'attachment; filename="library_books_template.xlsx"');
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    res.send(buf);
+};
+
+exports.postBulkUpload = async (req, res) => {
+    if (!req.file) {
+        req.flash('error', 'No file uploaded.');
+        return res.redirect('/library/books/bulk-upload');
+    }
+    try {
+        const xlsx = require('xlsx');
+        const schoolId = req.session.schoolId;
+        const wb = xlsx.read(req.file.buffer, { type: 'buffer' });
+        const ws = wb.Sheets[wb.SheetNames[0]];
+        const rows = xlsx.utils.sheet_to_json(ws, { defval: '' });
+
+        if (rows.length === 0) {
+            req.flash('error', 'The file is empty or has no data rows.');
+            return res.redirect('/library/books/bulk-upload');
+        }
+
+        let created = 0, skipped = 0;
+        const errors = [];
+
+        for (let i = 0; i < rows.length; i++) {
+            const row = rows[i];
+            const rowNum = i + 2; // 1-indexed + header
+            const title = (row['Title'] || '').toString().trim();
+            if (!title) { errors.push(`Row ${rowNum}: Title is required.`); skipped++; continue; }
+
+            const authors = (row['Authors'] || '').toString().split(',').map(a => a.trim()).filter(Boolean);
+            const isbn    = (row['ISBN'] || '').toString().trim() || null;
+            const category = (row['Category'] || '').toString().trim() || null;
+            const publisher = (row['Publisher'] || '').toString().trim() || null;
+            const edition   = (row['Edition'] || '').toString().trim() || null;
+            const language  = (row['Language'] || 'English').toString().trim() || 'English';
+            const description = (row['Description'] || '').toString().trim() || null;
+            const totalCopiesRaw = parseInt(row['Total Copies'] || row['Copies'] || 0);
+            const totalCopies = isNaN(totalCopiesRaw) ? 0 : Math.max(0, totalCopiesRaw);
+
+            // Skip exact duplicate (same school + title + isbn)
+            const existing = await LibraryBook.findOne({ school: schoolId, title, ...(isbn ? { isbn } : {}) });
+            if (existing) {
+                errors.push(`Row ${rowNum}: "${title}" already exists — skipped.`);
+                skipped++;
+                continue;
+            }
+
+            const book = await LibraryBook.create({
+                school: schoolId,
+                title, authors, isbn, category, publisher, edition, language, description,
+                totalCopies, availableCopies: totalCopies,
+            });
+
+            // Create physical copies if count > 0
+            for (let c = 0; c < totalCopies; c++) {
+                const code = await nextCopyCode(schoolId);
+                await LibraryBookCopy.create({ school: schoolId, book: book._id, uniqueCode: code });
+            }
+
+            await audit(schoolId, req.session.userId, req.session.userRole, 'BOOK_CREATED', 'Book', book._id, null, { title, authors, totalCopies });
+            created++;
+        }
+
+        const msg = `Bulk upload complete: ${created} book(s) created, ${skipped} skipped.`;
+        if (errors.length) req.flash('error', errors.slice(0, 5).join(' | ') + (errors.length > 5 ? ` …and ${errors.length - 5} more.` : ''));
+        req.flash('success', msg);
+        res.redirect('/library/books');
+    } catch (err) {
+        req.flash('error', 'Upload failed: ' + err.message);
+        res.redirect('/library/books/bulk-upload');
     }
 };
 
