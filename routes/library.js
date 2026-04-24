@@ -1,11 +1,21 @@
 const express        = require('express');
 const router         = express.Router();
+const multer         = require('multer');
 const { isAuthenticated, requireRole, requirePasswordReset } = require('../middleware/auth');
 const requireModule  = require('../middleware/requireModule');
 const TeacherProfile = require('../models/TeacherProfile');
 const libCtrl        = require('../controllers/libraryController');
 const stuCtrl        = require('../controllers/libraryStudentController');
 const parCtrl        = require('../controllers/libraryParentController');
+
+const upload = multer({
+    storage: multer.memoryStorage(),
+    limits: { fileSize: 5 * 1024 * 1024 }, // 5 MB
+    fileFilter(req, file, cb) {
+        const ok = /\.(xlsx|xls|csv)$/i.test(file.originalname);
+        cb(ok ? null : new Error('Only .xlsx, .xls, or .csv files are allowed.'), ok);
+    },
+});
 
 // ─── Middleware helpers ────────────────────────────────────────────────────────
 
@@ -40,6 +50,9 @@ router.get('/dashboard', librarianGuard, libCtrl.getDashboard);
 
 // Books
 router.get('/books',              librarianGuard, libCtrl.getBooks);
+router.get('/books/bulk-upload',          librarianGuard, libCtrl.getBulkUpload);
+router.get('/books/bulk-upload/template', librarianGuard, libCtrl.getBulkUploadTemplate);
+router.post('/books/bulk-upload',         librarianGuard, upload.single('file'), libCtrl.postBulkUpload);
 router.get('/books/create',       librarianGuard, libCtrl.getCreateBook);
 router.post('/books/create',      librarianGuard, libCtrl.postCreateBook);
 router.get('/books/:id',          librarianGuard, libCtrl.getBookDetail);

@@ -1,0 +1,102 @@
+<div class="page-header">
+    <div>
+        <h1>📤 Bulk Upload Books</h1>
+        <p>Import multiple books at once from an Excel or CSV file</p>
+    </div>
+    <div style="display:flex; gap:8px;">
+        <a href="/library/books" class="btn btn-secondary">← Back to Books</a>
+    </div>
+</div>
+
+<div style="display:grid; grid-template-columns:1fr 340px; gap:20px; align-items:start;">
+
+    <!-- Upload Form -->
+    <form action="/library/books/bulk-upload" method="POST" enctype="multipart/form-data">
+        <div class="form-section">
+            <div class="form-section-header">
+                <span>📄</span>
+                <h3>Upload File</h3>
+            </div>
+            <div class="form-section-body">
+                <div class="form-group">
+                    <label class="form-label">Select File (.xlsx, .xls, .csv) *</label>
+                    <input type="file" name="file" accept=".xlsx,.xls,.csv" class="form-control" required />
+                    <small class="text-muted" style="display:block; margin-top:5px;">Max file size: 5 MB. First row must be the header row.</small>
+                </div>
+                <div style="margin-top:4px;">
+                    <button type="submit" class="btn btn-primary" onclick="return confirm('Upload and create books from this file?')">📤 Upload & Import</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="form-section">
+            <div class="form-section-header">
+                <span>📋</span>
+                <h3>Column Reference</h3>
+            </div>
+            <div class="form-section-body" style="padding:0;">
+                <table style="width:100%; font-size:13px;">
+                    <thead>
+                        <tr>
+                            <th style="padding:10px 16px; border-bottom:1px solid var(--border-light); font-size:11px; text-transform:uppercase; letter-spacing:.5px; color:var(--text-muted);">Column Name</th>
+                            <th style="padding:10px 16px; border-bottom:1px solid var(--border-light); font-size:11px; text-transform:uppercase; letter-spacing:.5px; color:var(--text-muted);">Required</th>
+                            <th style="padding:10px 16px; border-bottom:1px solid var(--border-light); font-size:11px; text-transform:uppercase; letter-spacing:.5px; color:var(--text-muted);">Notes</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <% [
+                            ['Title',         true,  'Book title'],
+                            ['Authors',       false, 'Comma-separated, e.g. John Doe, Jane Smith'],
+                            ['ISBN',          false, '10 or 13 digit ISBN'],
+                            ['Category',      false, 'e.g. Science, Fiction, Math'],
+                            ['Publisher',     false, 'Publisher name'],
+                            ['Edition',       false, 'e.g. 3rd Edition'],
+                            ['Language',      false, 'Defaults to English'],
+                            ['Description',   false, 'Short description'],
+                            ['Total Copies',  false, 'Number of physical copies to create (default 0)'],
+                        ].forEach(([col, req, note]) => { %>
+                        <tr>
+                            <td style="padding:9px 16px; border-bottom:1px solid var(--border-light); font-weight:600; color:var(--text-primary);">
+                                <%= col %><%= req ? ' *' : '' %>
+                            </td>
+                            <td style="padding:9px 16px; border-bottom:1px solid var(--border-light);">
+                                <span class="badge <%= req ? 'badge-red' : 'badge-gray' %>"><%= req ? 'Yes' : 'No' %></span>
+                            </td>
+                            <td style="padding:9px 16px; border-bottom:1px solid var(--border-light); color:var(--text-muted); font-size:12px;"><%= note %></td>
+                        </tr>
+                        <% }) %>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </form>
+
+    <!-- Template & Rules -->
+    <div>
+        <div class="card" style="margin-bottom:16px;">
+            <div class="card-header"><div class="card-title">⬇️ Download Template</div></div>
+            <div class="card-body">
+                <p style="font-size:13px; color:var(--text-secondary); margin-bottom:12px;">
+                    Download a pre-formatted Excel template with the correct column headers and sample rows.
+                </p>
+                <a href="/library/books/bulk-upload/template" class="btn btn-secondary" style="width:100%; text-align:center; display:block;">
+                    📥 Download Excel Template
+                </a>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header"><div class="card-title">ℹ️ Import Rules</div></div>
+            <div class="card-body" style="font-size:13px; color:var(--text-secondary); line-height:1.8;">
+                <ul style="padding-left:16px; margin:0;">
+                    <li>The first row must contain exact column header names.</li>
+                    <li>Books with the same <strong>Title + ISBN</strong> are skipped to prevent duplicates.</li>
+                    <li>If <strong>Total Copies</strong> > 0, physical copy records are created automatically with unique codes (LIB-COPY-XXXXXX).</li>
+                    <li>Authors must be comma-separated in a single cell.</li>
+                    <li>Up to 5 row-level errors are shown after import.</li>
+                    <li>Successfully imported books appear immediately in the catalogue.</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
