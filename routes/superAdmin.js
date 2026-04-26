@@ -41,6 +41,13 @@ router.post('/notifications/send',  guard, notifCtrl.postSendNotification);
 
 // ── Holiday Audit Log (all schools) ──────────────────────────
 const holidayCtrl = require('../controllers/holidayController');
-router.get('/holidays/audit', guard, holidayCtrl.superAdminGetAuditLog);
+router.get('/holidays/audit',        guard, holidayCtrl.superAdminGetAuditLog);
+router.get('/holidays/audit/export', guard, holidayCtrl.superAdminExportAuditLogCSV);
+
+// ── Unified Logs Dashboard ────────────────────────────────────
+const logsCtrl = require('../controllers/logsController');
+router.get('/logs',        guard, logsCtrl.getLogs);
+router.get('/logs/more',   guard, logsCtrl.getLogsMore);
+router.get('/logs/export', guard, logsCtrl.exportLogsCSV);
 
 module.exports = router;

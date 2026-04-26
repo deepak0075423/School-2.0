@@ -87,10 +87,10 @@
                         <span class="nav-icon">📢</span> Send Notification
                     </a>
 
-                    <div class="nav-section-label">Audit</div>
-                    <a href="/super-admin/holidays/audit"
-                        class="nav-item <%= _path.includes('Holiday Audit') ? 'active' : '' %>">
-                        <span class="nav-icon">📋</span> Holiday Audit
+                    <div class="nav-section-label">Logs</div>
+                    <a href="/super-admin/logs"
+                        class="nav-item <%= _path === 'Logs' ? 'active' : '' %>">
+                        <span class="nav-icon">🗂</span> Logs
                     </a>
 
                 <% } else if (session && session.userRole === 'school_admin') { %>

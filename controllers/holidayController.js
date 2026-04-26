@@ -621,8 +621,32 @@ const superAdminGetAuditLog = async (req, res) => {
         const skip  = (page - 1) * limit;
 
         const filter = { entityType: 'Holiday' };
-        if (req.query.school)  filter.school     = req.query.school;
-        if (req.query.action)  filter.actionType = req.query.action;
+        if (req.query.school)      filter.school     = req.query.school;
+        if (req.query.action)      filter.actionType = req.query.action;
+        if (req.query.holidayType) {
+            filter.$or = [
+                { 'newValue.type': req.query.holidayType },
+                { 'oldValue.type': req.query.holidayType },
+            ];
+        }
+        if (req.query.dateFrom || req.query.dateTo) {
+            filter.createdAt = {};
+            if (req.query.dateFrom) filter.createdAt.$gte = new Date(req.query.dateFrom);
+            if (req.query.dateTo) {
+                const to = new Date(req.query.dateTo);
+                to.setHours(23, 59, 59, 999);
+                filter.createdAt.$lte = to;
+            }
+        }
+        if (req.query.userSearch) {
+            const matchedUsers = await User.find({
+                $or: [
+                    { name:  { $regex: req.query.userSearch, $options: 'i' } },
+                    { email: { $regex: req.query.userSearch, $options: 'i' } },
+                ],
+            }).select('_id');
+            filter.user = { $in: matchedUsers.map(u => u._id) };
+        }
 
         const [logs, total, schools] = await Promise.all([
             ActivityLog.find(filter)
@@ -636,20 +660,118 @@ const superAdminGetAuditLog = async (req, res) => {
         ]);
 
         res.render('superAdmin/holidayAudit', {
-            title:        'Holiday Audit Log — All Schools',
-            layout:       'layouts/main',
+            title:             'Holiday Audit Log — All Schools',
+            layout:            'layouts/main',
             logs,
             page,
-            totalPages:   Math.ceil(total / limit),
+            totalPages:        Math.ceil(total / limit),
             total,
             schools,
-            schoolFilter: req.query.school || '',
-            actionFilter: req.query.action || '',
+            schoolFilter:      req.query.school      || '',
+            actionFilter:      req.query.action      || '',
+            holidayTypeFilter: req.query.holidayType || '',
+            dateFromFilter:    req.query.dateFrom    || '',
+            dateToFilter:      req.query.dateTo      || '',
+            userSearchFilter:  req.query.userSearch  || '',
         });
     } catch (err) {
         console.error(err);
         req.flash('error', 'Failed to load audit log.');
         res.redirect('/super-admin/dashboard');
+    }
+};
+
+/* ─────────────────────────────────────────────────────────────
+   AUDIT LOG EXPORT — SUPER ADMIN (CSV)
+───────────────────────────────────────────────────────────── */
+
+const superAdminExportAuditLogCSV = async (req, res) => {
+    try {
+        const filter = { entityType: 'Holiday' };
+        if (req.query.school)      filter.school     = req.query.school;
+        if (req.query.action)      filter.actionType = req.query.action;
+        if (req.query.holidayType) {
+            filter.$or = [
+                { 'newValue.type': req.query.holidayType },
+                { 'oldValue.type': req.query.holidayType },
+            ];
+        }
+        if (req.query.dateFrom || req.query.dateTo) {
+            filter.createdAt = {};
+            if (req.query.dateFrom) filter.createdAt.$gte = new Date(req.query.dateFrom);
+            if (req.query.dateTo) {
+                const to = new Date(req.query.dateTo);
+                to.setHours(23, 59, 59, 999);
+                filter.createdAt.$lte = to;
+            }
+        }
+        if (req.query.userSearch) {
+            const matchedUsers = await User.find({
+                $or: [
+                    { name:  { $regex: req.query.userSearch, $options: 'i' } },
+                    { email: { $regex: req.query.userSearch, $options: 'i' } },
+                ],
+            }).select('_id');
+            filter.user = { $in: matchedUsers.map(u => u._id) };
+        }
+
+        const logs = await ActivityLog.find(filter)
+            .populate('user',   'name email role')
+            .populate('school', 'name')
+            .sort({ createdAt: -1 })
+            .limit(5000);
+
+        const actionLabels = {
+            CREATE_HOLIDAY:  'Created',
+            UPDATE_HOLIDAY:  'Updated',
+            DELETE_HOLIDAY:  'Deleted',
+            IMPORT_HOLIDAYS: 'Imported',
+        };
+
+        const rows = logs.map(log => {
+            const snapshot = log.newValue || log.oldValue || {};
+            const dt = new Date(log.createdAt);
+            const holidayName = log.actionType === 'IMPORT_HOLIDAYS'
+                ? `Bulk Import (${log.newValue?.imported || 0} created, ${log.newValue?.skipped || 0} skipped)`
+                : (snapshot.name || '—');
+            const changes = log.actionType === 'UPDATE_HOLIDAY' && log.oldValue && log.newValue
+                ? ['name','type','startDate','endDate','scope']
+                    .filter(k => String(log.oldValue[k]||'') !== String(log.newValue[k]||''))
+                    .map(k => `${k}: ${log.oldValue[k]} → ${log.newValue[k]}`)
+                    .join('; ') || 'Minor update'
+                : '';
+            return {
+                'Action':        actionLabels[log.actionType] || log.actionType,
+                'School':        log.school?.name || '—',
+                'Holiday Name':  holidayName,
+                'Holiday Type':  snapshot.type ? snapshot.type.replace(/_/g, ' ') : '—',
+                'Start Date':    snapshot.startDate ? fmtDate(snapshot.startDate) : '—',
+                'End Date':      snapshot.endDate   ? fmtDate(snapshot.endDate)   : '—',
+                'Performed By':  log.user?.name  || '—',
+                'User Email':    log.user?.email || '—',
+                'Role':          log.user?.role?.replace(/_/g, ' ') || '—',
+                'Date':          dt.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }),
+                'Time':          dt.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' }),
+                'Changes':       changes,
+            };
+        });
+
+        const ws = xlsx.utils.json_to_sheet(rows);
+        ws['!cols'] = [
+            {wch:12},{wch:28},{wch:36},{wch:18},{wch:14},{wch:14},
+            {wch:22},{wch:28},{wch:16},{wch:16},{wch:10},{wch:40},
+        ];
+        const wb = xlsx.utils.book_new();
+        xlsx.utils.book_append_sheet(wb, ws, 'Holiday Audit Log');
+        const buf = xlsx.write(wb, { type: 'buffer', bookType: 'csv' });
+
+        res.setHeader('Content-Disposition', 'attachment; filename="holiday-audit-log.csv"');
+        res.setHeader('Content-Type', 'text/csv');
+        res.send(buf);
+    } catch (err) {
+        console.error(err);
+        req.flash('error', 'Failed to export audit log.');
+        res.redirect('/super-admin/holidays/audit');
     }
 };
 
@@ -816,6 +938,7 @@ module.exports = {
     adminGetImportTemplate,
     adminGetAuditLog,
     superAdminGetAuditLog,
+    superAdminExportAuditLogCSV,
     teacherGetHolidays,
     studentGetHolidays,
     parentGetHolidays,

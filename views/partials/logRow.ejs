@@ -1,0 +1,31 @@
+<%
+const _dt   = log.timestamp ? new Date(log.timestamp) : null;
+const _date = _dt ? _dt.toLocaleDateString('en-IN', {day:'2-digit', month:'short', year:'numeric'}) : '—';
+const _time = _dt ? _dt.toLocaleTimeString('en-IN', {hour:'2-digit', minute:'2-digit'}) : '';
+const _mod  = log.module || 'Other';
+%>
+<tr data-module="<%= _mod %>">
+    <td>
+        <span class="module-badge mod-<%= _mod %>"><%= _mod %></span>
+    </td>
+    <td>
+        <span class="action-chip"><%= log.actionType %></span>
+    </td>
+    <td style="font-size:13px; color:var(--text-muted);">
+        <%= log.entityType || '—' %>
+    </td>
+    <td style="font-size:13px; font-weight:600; color:var(--text);">
+        <%= log.schoolName %>
+    </td>
+    <td>
+        <div style="font-weight:600; font-size:13px; color:var(--text);"><%= log.userName %></div>
+        <div style="font-size:11px; color:var(--text-muted);"><%= log.userRole %></div>
+    </td>
+    <td style="white-space:nowrap; font-size:13px; color:var(--text);">
+        <%= _date %>
+        <div style="font-size:11px; color:var(--text-muted);"><%= _time %></div>
+    </td>
+    <td style="font-size:12px; color:var(--text-muted); max-width:200px; word-break:break-word;">
+        <%= log.details || '' %>
+    </td>
+</tr>

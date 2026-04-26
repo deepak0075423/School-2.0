@@ -19,6 +19,32 @@
 .diff-label { font-weight: 600; color: var(--text-muted); min-width: 72px; flex-shrink: 0; }
 .diff-old { color: #ef4444; text-decoration: line-through; }
 .diff-new { color: #10b981; font-weight: 500; }
+
+.filter-bar {
+    background: var(--card-bg);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 16px 20px;
+    margin-bottom: 20px;
+}
+.filter-row {
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
+    align-items: flex-end;
+}
+.filter-group {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+.filter-group label {
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
 </style>
 
 <div class="page-header">
@@ -49,25 +75,81 @@
 </div>
 
 <!-- Filters -->
-<form method="GET" action="/super-admin/holidays/audit" style="display:flex; gap:12px; flex-wrap:wrap; align-items:center; margin-bottom:20px;">
-    <select name="school" class="form-control" style="max-width:220px;" onchange="this.form.submit()">
-        <option value="">All Schools</option>
-        <% schools.forEach(s => { %>
-        <option value="<%= s._id %>" <%= schoolFilter === s._id.toString() ? 'selected' : '' %>><%= s.name %></option>
-        <% }) %>
-    </select>
-    <select name="action" class="form-control" style="max-width:180px;" onchange="this.form.submit()">
-        <option value="">All Actions</option>
-        <option value="CREATE_HOLIDAY"  <%= actionFilter === 'CREATE_HOLIDAY'  ? 'selected' : '' %>>Created</option>
-        <option value="UPDATE_HOLIDAY"  <%= actionFilter === 'UPDATE_HOLIDAY'  ? 'selected' : '' %>>Updated</option>
-        <option value="DELETE_HOLIDAY"  <%= actionFilter === 'DELETE_HOLIDAY'  ? 'selected' : '' %>>Deleted</option>
-        <option value="IMPORT_HOLIDAYS" <%= actionFilter === 'IMPORT_HOLIDAYS' ? 'selected' : '' %>>Imported</option>
-    </select>
-    <% if (schoolFilter || actionFilter) { %>
-    <a href="/super-admin/holidays/audit" class="btn btn-secondary btn-sm">✕ Clear Filters</a>
-    <% } %>
-    <span style="font-size:13px; color:var(--text-muted); margin-left:auto;"><%= total %> record<%= total !== 1 ? 's' : '' %></span>
-</form>
+<div class="filter-bar">
+    <form method="GET" action="/super-admin/holidays/audit" id="filterForm">
+        <div class="filter-row">
+            <div class="filter-group">
+                <label>School</label>
+                <select name="school" class="form-control" style="min-width:200px;" onchange="this.form.submit()">
+                    <option value="">All Schools</option>
+                    <% schools.forEach(s => { %>
+                    <option value="<%= s._id %>" <%= schoolFilter === s._id.toString() ? 'selected' : '' %>><%= s.name %></option>
+                    <% }) %>
+                </select>
+            </div>
+            <div class="filter-group">
+                <label>Action</label>
+                <select name="action" class="form-control" style="min-width:150px;" onchange="this.form.submit()">
+                    <option value="">All Actions</option>
+                    <option value="CREATE_HOLIDAY"  <%= actionFilter === 'CREATE_HOLIDAY'  ? 'selected' : '' %>>Created</option>
+                    <option value="UPDATE_HOLIDAY"  <%= actionFilter === 'UPDATE_HOLIDAY'  ? 'selected' : '' %>>Updated</option>
+                    <option value="DELETE_HOLIDAY"  <%= actionFilter === 'DELETE_HOLIDAY'  ? 'selected' : '' %>>Deleted</option>
+                    <option value="IMPORT_HOLIDAYS" <%= actionFilter === 'IMPORT_HOLIDAYS' ? 'selected' : '' %>>Imported</option>
+                </select>
+            </div>
+            <div class="filter-group">
+                <label>Holiday Type</label>
+                <select name="holidayType" class="form-control" style="min-width:170px;" onchange="this.form.submit()">
+                    <option value="">All Types</option>
+                    <option value="public"          <%= holidayTypeFilter === 'public'          ? 'selected' : '' %>>Public</option>
+                    <option value="school_specific" <%= holidayTypeFilter === 'school_specific' ? 'selected' : '' %>>School Specific</option>
+                    <option value="optional"        <%= holidayTypeFilter === 'optional'        ? 'selected' : '' %>>Optional</option>
+                    <option value="exam_break"      <%= holidayTypeFilter === 'exam_break'      ? 'selected' : '' %>>Exam Break</option>
+                </select>
+            </div>
+            <div class="filter-group">
+                <label>From Date</label>
+                <input type="date" name="dateFrom" class="form-control" style="min-width:140px;"
+                    value="<%= dateFromFilter %>" onchange="this.form.submit()">
+            </div>
+            <div class="filter-group">
+                <label>To Date</label>
+                <input type="date" name="dateTo" class="form-control" style="min-width:140px;"
+                    value="<%= dateToFilter %>" onchange="this.form.submit()">
+            </div>
+            <div class="filter-group">
+                <label>Performed By</label>
+                <input type="text" name="userSearch" class="form-control" style="min-width:180px;"
+                    value="<%= userSearchFilter %>" placeholder="Name or email…">
+            </div>
+            <div class="filter-group" style="justify-content:flex-end;">
+                <label>&nbsp;</label>
+                <div style="display:flex; gap:8px;">
+                    <button type="submit" class="btn btn-primary btn-sm">Search</button>
+                    <% if (schoolFilter || actionFilter || holidayTypeFilter || dateFromFilter || dateToFilter || userSearchFilter) { %>
+                    <a href="/super-admin/holidays/audit" class="btn btn-secondary btn-sm">✕ Clear</a>
+                    <% } %>
+                </div>
+            </div>
+        </div>
+    </form>
+</div>
+
+<!-- Record count + Export -->
+<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px; flex-wrap:wrap; gap:10px;">
+    <span style="font-size:13px; color:var(--text-muted);"><%= total %> record<%= total !== 1 ? 's' : '' %> found</span>
+    <% const exportQS = new URLSearchParams({
+        school:      schoolFilter,
+        action:      actionFilter,
+        holidayType: holidayTypeFilter,
+        dateFrom:    dateFromFilter,
+        dateTo:      dateToFilter,
+        userSearch:  userSearchFilter,
+    }).toString(); %>
+    <a href="/super-admin/holidays/audit/export?<%= exportQS %>" class="btn btn-secondary btn-sm" title="Export current filtered results as CSV">
+        ⬇ Export CSV
+    </a>
+</div>
 
 <% if (logs.length === 0) { %>
 <div class="empty-state">
@@ -185,13 +267,14 @@
 
 <!-- Pagination -->
 <% if (totalPages > 1) { %>
+<% const pgQS = (p) => `?page=${p}&school=${schoolFilter}&action=${actionFilter}&holidayType=${holidayTypeFilter}&dateFrom=${dateFromFilter}&dateTo=${dateToFilter}&userSearch=${encodeURIComponent(userSearchFilter)}`; %>
 <div style="display:flex; justify-content:center; align-items:center; gap:8px; margin-top:24px; flex-wrap:wrap;">
     <% if (page > 1) { %>
-    <a href="?page=<%= page-1 %>&school=<%= schoolFilter %>&action=<%= actionFilter %>" class="btn btn-secondary btn-sm">← Prev</a>
+    <a href="<%= pgQS(page-1) %>" class="btn btn-secondary btn-sm">← Prev</a>
     <% } %>
     <span style="font-size:13px; color:var(--text-muted);">Page <%= page %> of <%= totalPages %></span>
     <% if (page < totalPages) { %>
-    <a href="?page=<%= page+1 %>&school=<%= schoolFilter %>&action=<%= actionFilter %>" class="btn btn-secondary btn-sm">Next →</a>
+    <a href="<%= pgQS(page+1) %>" class="btn btn-secondary btn-sm">Next →</a>
     <% } %>
 </div>
 <% } %>

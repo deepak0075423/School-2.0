@@ -1,0 +1,364 @@
+<style>
+/* ── Module badges ── */
+.module-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 2px 9px;
+    border-radius: 10px;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.3px;
+    white-space: nowrap;
+}
+.mod-Holiday    { background:#ecfdf5; color:#065f46; border:1px solid #a7f3d0; }
+.mod-Document   { background:#eff6ff; color:#1e40af; border:1px solid #bfdbfe; }
+.mod-Leave      { background:#fffbeb; color:#92400e; border:1px solid #fde68a; }
+.mod-Class      { background:#f5f3ff; color:#5b21b6; border:1px solid #ddd6fe; }
+.mod-Library    { background:#ecfeff; color:#0e7490; border:1px solid #a5f3fc; }
+.mod-Payroll    { background:#fdf4ff; color:#7e22ce; border:1px solid #e9d5ff; }
+.mod-Attendance { background:#fff7ed; color:#c2410c; border:1px solid #fed7aa; }
+.mod-Exam       { background:#fef9c3; color:#854d0e; border:1px solid #fde047; }
+.mod-Other      { background:#f1f5f9; color:#475569; border:1px solid #cbd5e1; }
+
+/* ── Action chip ── */
+.action-chip {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 8px;
+    font-size: 11px;
+    font-weight: 600;
+    background: var(--card-bg);
+    border: 1px solid var(--border);
+    color: var(--text-muted);
+    font-family: monospace;
+    white-space: nowrap;
+    max-width: 200px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* ── Filter bar ── */
+.filter-bar {
+    background: var(--card-bg);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 16px 20px;
+    margin-bottom: 20px;
+}
+.filter-row { display:flex; gap:12px; flex-wrap:wrap; align-items:flex-end; }
+.filter-group { display:flex; flex-direction:column; gap:4px; }
+.filter-group label {
+    font-size:11px; font-weight:600; color:var(--text-muted);
+    text-transform:uppercase; letter-spacing:0.5px;
+}
+
+/* ── Stats grid ── */
+.stat-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+    gap: 12px;
+    margin-bottom: 22px;
+}
+
+/* ── Skeleton rows ── */
+@keyframes shimmer {
+    0%   { background-position: -600px 0; }
+    100% { background-position: 600px 0; }
+}
+.skeleton-row td {
+    padding: 10px 14px;
+}
+.skeleton-cell {
+    height: 14px;
+    border-radius: 6px;
+    background: linear-gradient(90deg, var(--border) 25%, var(--card-bg) 50%, var(--border) 75%);
+    background-size: 600px 100%;
+    animation: shimmer 1.4s infinite linear;
+}
+
+/* ── Scroll sentinel ── */
+#scroll-sentinel {
+    height: 1px;
+    margin-top: 8px;
+}
+#load-status {
+    text-align: center;
+    padding: 20px 0 8px;
+    font-size: 13px;
+    color: var(--text-muted);
+    display: none;
+}
+</style>
+
+<div class="page-header">
+    <div>
+        <h1>🗂 Logs</h1>
+        <p>Unified audit trail across all modules and schools.</p>
+    </div>
+</div>
+
+<!-- Per-module stats (counts on current loaded set, updated by JS) -->
+<div class="stat-grid" id="stats-grid">
+    <div class="stat-card">
+        <div class="stat-value" id="stat-total">—</div>
+        <div class="stat-label">Loaded</div>
+    </div>
+    <% allModules.forEach(mod => { %>
+    <div class="stat-card">
+        <div class="stat-value" id="stat-<%= mod %>">—</div>
+        <div class="stat-label"><%= moduleIcons[mod] %> <%= mod %></div>
+    </div>
+    <% }) %>
+</div>
+
+<!-- Filters -->
+<div class="filter-bar">
+    <form method="GET" action="/super-admin/logs" id="filterForm">
+        <div class="filter-row">
+            <div class="filter-group">
+                <label>School</label>
+                <select name="school" class="form-control" style="min-width:180px;" onchange="this.form.submit()">
+                    <option value="">All Schools</option>
+                    <% schools.forEach(s => { %>
+                    <option value="<%= s._id %>" <%= schoolFilter === s._id.toString() ? 'selected' : '' %>>
+                        <%= s.name %>
+                    </option>
+                    <% }) %>
+                </select>
+            </div>
+            <div class="filter-group">
+                <label>Module</label>
+                <select name="module" class="form-control" style="min-width:145px;" onchange="this.form.submit()">
+                    <option value="">All Modules</option>
+                    <% allModules.forEach(mod => { %>
+                    <option value="<%= mod %>" <%= moduleFilter === mod ? 'selected' : '' %>>
+                        <%= moduleIcons[mod] %> <%= mod %>
+                    </option>
+                    <% }) %>
+                </select>
+            </div>
+            <div class="filter-group">
+                <label>From</label>
+                <input type="date" name="dateFrom" class="form-control" style="min-width:135px;"
+                    value="<%= dateFromFilter %>" onchange="this.form.submit()">
+            </div>
+            <div class="filter-group">
+                <label>To</label>
+                <input type="date" name="dateTo" class="form-control" style="min-width:135px;"
+                    value="<%= dateToFilter %>" onchange="this.form.submit()">
+            </div>
+            <div class="filter-group">
+                <label>Performed By</label>
+                <input type="text" name="userSearch" class="form-control" style="min-width:170px;"
+                    value="<%= userSearchFilter %>" placeholder="Name or email…">
+            </div>
+            <div class="filter-group">
+                <label>&nbsp;</label>
+                <div style="display:flex; gap:8px;">
+                    <button type="submit" class="btn btn-primary btn-sm">Search</button>
+                    <% if (schoolFilter || moduleFilter || dateFromFilter || dateToFilter || userSearchFilter) { %>
+                    <a href="/super-admin/logs" class="btn btn-secondary btn-sm">✕ Clear</a>
+                    <% } %>
+                </div>
+            </div>
+        </div>
+    </form>
+</div>
+
+<!-- Toolbar -->
+<%
+const exportQS = new URLSearchParams({
+    school:     schoolFilter,
+    module:     moduleFilter,
+    dateFrom:   dateFromFilter,
+    dateTo:     dateToFilter,
+    userSearch: userSearchFilter,
+}).toString();
+%>
+<div style="display:flex; justify-content:flex-end; margin-bottom:12px;">
+    <a href="/super-admin/logs/export?<%= exportQS %>" class="btn btn-secondary btn-sm">⬇ Export CSV</a>
+</div>
+
+<% if (logs.length === 0) { %>
+<div class="empty-state">
+    <div class="empty-icon">🗂</div>
+    <h3>No log records found</h3>
+    <p>Try adjusting filters or check if modules have been used.</p>
+</div>
+<% } else { %>
+
+<div class="table-wrapper">
+    <table class="data-table" id="logs-table">
+        <thead>
+            <tr>
+                <th>Module</th>
+                <th>Action</th>
+                <th>Entity</th>
+                <th>School</th>
+                <th>Performed By</th>
+                <th>When</th>
+                <th>Details</th>
+            </tr>
+        </thead>
+        <tbody id="logs-tbody">
+        <% logs.forEach(log => { %>
+        <%- include('../partials/logRow', { log }) %>
+        <% }) %>
+        </tbody>
+    </table>
+</div>
+
+<!-- Scroll sentinel + status -->
+<div id="scroll-sentinel"></div>
+<div id="load-status">Loading…</div>
+
+<% } %>
+
+<!-- Embed state for JS -->
+<script>
+(function () {
+    const STATE = {
+        cursor:     '<%= nextCursor %>',
+        hasMore:    <%- hasMore %>,
+        loading:    false,
+        params: new URLSearchParams({
+            school:     '<%= schoolFilter %>',
+            module:     '<%= moduleFilter %>',
+            dateFrom:   '<%= dateFromFilter %>',
+            dateTo:     '<%= dateToFilter %>',
+            userSearch: '<%= userSearchFilter.replace(/'/g, "\\'") %>',
+        }),
+    };
+
+    /* ── Stats counter ── */
+    const statEls  = {};
+    const modCounts = {};
+    '<%= allModules.join(",") %>'.split(',').forEach(m => {
+        statEls[m] = document.getElementById('stat-' + m);
+        modCounts[m] = 0;
+    });
+    const totalEl = document.getElementById('stat-total');
+
+    function countRow(module) {
+        modCounts[module] = (modCounts[module] || 0) + 1;
+        if (statEls[module]) statEls[module].textContent = modCounts[module];
+        totalEl.textContent = Object.values(modCounts).reduce((a, b) => a + b, 0);
+    }
+
+    // Count initial rows
+    document.querySelectorAll('#logs-tbody tr[data-module]').forEach(tr => countRow(tr.dataset.module));
+
+    /* ── Row builder ── */
+    function buildRow(log) {
+        const dt = log.timestamp ? new Date(log.timestamp) : null;
+        const date = dt ? dt.toLocaleDateString('en-IN', {day:'2-digit', month:'short', year:'numeric'}) : '—';
+        const time = dt ? dt.toLocaleTimeString('en-IN', {hour:'2-digit', minute:'2-digit'}) : '';
+        const mod  = log.module || 'Other';
+
+        const tr = document.createElement('tr');
+        tr.dataset.module = mod;
+        tr.innerHTML = `
+            <td><span class="module-badge mod-${mod}">${mod}</span></td>
+            <td><span class="action-chip">${esc(log.actionType)}</span></td>
+            <td style="font-size:13px;color:var(--text-muted);">${esc(log.entityType || '—')}</td>
+            <td style="font-size:13px;font-weight:600;color:var(--text);">${esc(log.schoolName)}</td>
+            <td>
+                <div style="font-weight:600;font-size:13px;color:var(--text);">${esc(log.userName)}</div>
+                <div style="font-size:11px;color:var(--text-muted);">${esc(log.userRole)}</div>
+            </td>
+            <td style="white-space:nowrap;font-size:13px;color:var(--text);">
+                ${date}
+                <div style="font-size:11px;color:var(--text-muted);">${time}</div>
+            </td>
+            <td style="font-size:12px;color:var(--text-muted);max-width:200px;word-break:break-word;">${esc(log.details)}</td>
+        `;
+        return tr;
+    }
+
+    function esc(str) {
+        return String(str || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+    }
+
+    /* ── Skeleton rows ── */
+    function showSkeletons(n) {
+        const tbody = document.getElementById('logs-tbody');
+        for (let i = 0; i < n; i++) {
+            const tr = document.createElement('tr');
+            tr.classList.add('skeleton-row');
+            tr.dataset.skeleton = '1';
+            tr.innerHTML = `
+                <td><div class="skeleton-cell" style="width:70px;"></div></td>
+                <td><div class="skeleton-cell" style="width:120px;"></div></td>
+                <td><div class="skeleton-cell" style="width:90px;"></div></td>
+                <td><div class="skeleton-cell" style="width:110px;"></div></td>
+                <td><div class="skeleton-cell" style="width:100px;"></div></td>
+                <td><div class="skeleton-cell" style="width:80px;"></div></td>
+                <td><div class="skeleton-cell" style="width:140px;"></div></td>
+            `;
+            tbody.appendChild(tr);
+        }
+    }
+
+    function removeSkeletons() {
+        document.querySelectorAll('[data-skeleton]').forEach(el => el.remove());
+    }
+
+    /* ── Fetch next batch ── */
+    async function loadMore() {
+        if (STATE.loading || !STATE.hasMore) return;
+        STATE.loading = true;
+
+        const status = document.getElementById('load-status');
+        if (status) status.style.display = 'block';
+        showSkeletons(8);
+
+        try {
+            STATE.params.set('before', STATE.cursor);
+            const url = '/super-admin/logs/more?' + STATE.params.toString();
+            const res  = await fetch(url, { credentials: 'same-origin' });
+            if (!res.ok) throw new Error('Network error');
+            const data = await res.json();
+
+            removeSkeletons();
+
+            const tbody = document.getElementById('logs-tbody');
+            data.logs.forEach(log => {
+                const tr = buildRow(log);
+                tbody.appendChild(tr);
+                countRow(log.module || 'Other');
+            });
+
+            STATE.hasMore = data.hasMore;
+            if (data.logs.length > 0) {
+                STATE.cursor = data.logs[data.logs.length - 1].timestamp;
+            }
+        } catch (e) {
+            removeSkeletons();
+            console.error('Failed to load more logs', e);
+        } finally {
+            STATE.loading = false;
+            const status = document.getElementById('load-status');
+            if (status) {
+                if (STATE.hasMore) {
+                    status.style.display = 'none';
+                } else {
+                    status.textContent = 'All records loaded.';
+                }
+            }
+        }
+    }
+
+    /* ── IntersectionObserver ── */
+    const sentinel = document.getElementById('scroll-sentinel');
+    if (sentinel && STATE.hasMore) {
+        const observer = new IntersectionObserver(entries => {
+            if (entries[0].isIntersecting) loadMore();
+        }, { rootMargin: '200px' });
+        observer.observe(sentinel);
+    } else if (sentinel && !STATE.hasMore) {
+        const status = document.getElementById('load-status');
+        if (status) { status.textContent = 'All records loaded.'; status.style.display = 'block'; }
+    }
+})();
+</script>
