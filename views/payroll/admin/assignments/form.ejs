@@ -1,0 +1,342 @@
+<div style="display:flex;align-items:center;gap:12px;margin-bottom:20px;">
+    <a href="/payroll/admin/assignments" class="btn btn-secondary btn-sm">← Back</a>
+    <h2 style="margin:0;"><%= assignment ? '✏️ Edit' : '👤 Assign' %> Salary</h2>
+</div>
+
+<% if (error && error.length) { %><div class="alert alert-error"><%= error %></div><% } %>
+
+<form method="POST" action="/payroll/admin/assignments/<%= assignment ? assignment._id + '/edit' : 'assign' %>">
+
+    <!-- Basic Info -->
+    <div class="card" style="margin-bottom:16px;">
+        <div class="card-header"><div class="card-title">Assignment Details</div></div>
+        <div class="card-body">
+            <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;margin-bottom:16px;">
+                <div class="form-group" style="margin:0;">
+                    <label class="form-label">Employee <span style="color:red;">*</span></label>
+                    <select name="employee" class="form-control" required <%= assignment ? 'disabled' : '' %>>
+                        <option value="">Select employee…</option>
+                        <% teachers.forEach(t => { %>
+                        <option value="<%= t._id %>"
+                            <%= (assignment && assignment.employee && assignment.employee._id.toString() === t._id.toString()) ? 'selected' : '' %>>
+                            <%= t.name %> — <%= t.email %>
+                        </option>
+                        <% }) %>
+                    </select>
+                    <% if (assignment) { %>
+                    <input type="hidden" name="employee" value="<%= assignment.employee._id %>">
+                    <% } %>
+                </div>
+
+                <div class="form-group" style="margin:0;">
+                    <label class="form-label">Salary Structure <span style="color:red;">*</span></label>
+                    <select name="structure" id="structureSelect" class="form-control" required onchange="onStructureChange()">
+                        <option value="">Select structure…</option>
+                        <% structures.forEach(s => { %>
+                        <option value="<%= s._id %>"
+                            <%= (assignment && assignment.structure && (assignment.structure._id || assignment.structure).toString() === s._id.toString()) ? 'selected' : '' %>>
+                            <%= s.name %>
+                        </option>
+                        <% }) %>
+                    </select>
+                </div>
+
+                <div class="form-group" style="margin:0;">
+                    <label class="form-label">Effective Date <span style="color:red;">*</span></label>
+                    <input type="date" name="effectiveDate" class="form-control" required
+                        value="<%= assignment ? new Date(assignment.effectiveDate).toISOString().split('T')[0] : '' %>">
+                </div>
+            </div>
+
+            <!-- CTC — the key field -->
+            <div style="background:#EFF6FF;border:2px solid #93C5FD;border-radius:8px;padding:16px;margin-bottom:16px;">
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;align-items:end;">
+                    <div class="form-group" style="margin:0;">
+                        <label class="form-label" style="font-size:1rem;font-weight:700;color:#1D4ED8;">
+                            💰 Annual CTC (₹) <span style="color:red;">*</span>
+                        </label>
+                        <div style="font-size:0.78rem;color:#3B82F6;margin-bottom:6px;">
+                            Enter the employee's yearly Cost to Company. Monthly salary = Annual CTC ÷ 12.
+                            All percentage-based components (Basic, HRA, etc.) are computed from the monthly figure.
+                        </div>
+                        <input type="number" name="ctc" id="ctcInput" class="form-control"
+                            value="<%= assignment ? (assignment.ctc || 0) : '' %>"
+                            style="font-size:1.1rem;font-weight:700;"
+                            step="0.01" min="0" required placeholder="e.g. 600000"
+                            oninput="recalculate(); updateMonthlyHint();">
+                        <div id="monthlyHint" style="font-size:0.8rem;color:#3B82F6;margin-top:4px;display:none;">
+                            Monthly salary: <strong id="monthlyVal">—</strong>
+                        </div>
+                    </div>
+                    <div>
+                        <button type="button" class="btn btn-primary" onclick="recalculate()" id="recalcBtn" style="display:none;width:100%;">
+                            🔄 Recalculate Components from CTC
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="form-group" style="margin:0;">
+                <label class="form-label">Notes</label>
+                <input type="text" name="notes" class="form-control"
+                    value="<%= assignment ? assignment.notes : '' %>"
+                    placeholder="e.g. Revised salary from April 2026">
+            </div>
+        </div>
+    </div>
+
+    <!-- Salary Components breakdown -->
+    <div class="card" id="componentsCard" style="margin-bottom:16px;display:none;">
+        <div class="card-header">
+            <div class="card-title">💼 Salary Components Breakdown</div>
+            <span style="font-size:0.78rem;color:var(--text-muted);">
+                Auto-calculated from CTC. You can manually override any amount.
+            </span>
+        </div>
+
+        <div id="earningsSection" style="display:none;">
+            <div style="padding:8px 16px;background:#F0FDF4;font-weight:700;font-size:0.78rem;color:#166534;letter-spacing:.5px;border-top:1px solid #e2e8f0;">
+                EARNINGS
+            </div>
+            <div id="earningsRows"></div>
+        </div>
+
+        <div id="deductionsSection" style="display:none;">
+            <div style="padding:8px 16px;background:#FEF2F2;font-weight:700;font-size:0.78rem;color:#991B1B;letter-spacing:.5px;border-top:1px solid #e2e8f0;">
+                DEDUCTIONS
+            </div>
+            <div id="deductionsRows"></div>
+        </div>
+
+        <div id="loadingMsg" style="padding:20px;text-align:center;color:var(--text-muted);display:none;">
+            Loading…
+        </div>
+    </div>
+
+    <!-- Net preview -->
+    <div id="previewCard" style="display:none;margin-bottom:16px;">
+        <div class="card" style="background:#F0FDF4;border-color:#86EFAC;">
+            <div class="card-body" style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;">
+                <div>
+                    <div style="font-size:0.72rem;color:#166534;text-transform:uppercase;font-weight:700;">Estimated Net Salary</div>
+                    <div style="font-size:1.5rem;font-weight:800;color:#15803D;" id="previewNet">₹ 0</div>
+                </div>
+                <div style="font-size:0.85rem;text-align:right;">
+                    Gross: &nbsp;<strong id="previewGross" style="color:#16a34a;">₹ 0</strong><br>
+                    Deductions: &nbsp;<strong id="previewDed" style="color:#dc2626;">₹ 0</strong>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div style="display:flex;gap:12px;">
+        <button type="submit" class="btn btn-primary">💾 <%= assignment ? 'Save Changes' : 'Assign Salary' %></button>
+        <a href="/payroll/admin/assignments" class="btn btn-secondary">Cancel</a>
+    </div>
+</form>
+
+<script>
+// CTC aliases that map to the ctcInput (must match server-side aliases in calcComponents)
+const CTC_ALIASES = [
+    'total salary', 'ctc', 'gross', 'total', 'cost to company',
+    'package', 'monthly ctc', 'annual ctc', 'total ctc', 'monthly salary',
+];
+
+// Existing saved overrides for edit mode
+const existingOverrides = {};
+<% if (assignment && assignment.componentOverrides) { %>
+<% assignment.componentOverrides.forEach(o => { %>
+existingOverrides['<%= o.componentName %>'] = <%= o.value %>;
+<% }) %>
+<% } %>
+
+let loadedComponents = [];
+
+function onStructureChange() {
+    const val = document.getElementById('structureSelect').value;
+    if (val) loadComponents(val);
+    else {
+        document.getElementById('componentsCard').style.display = 'none';
+        document.getElementById('previewCard').style.display    = 'none';
+    }
+}
+
+async function loadComponents(structureId) {
+    const card    = document.getElementById('componentsCard');
+    const loading = document.getElementById('loadingMsg');
+    card.style.display = '';
+    loading.style.display = 'block';
+    document.getElementById('earningsSection').style.display   = 'none';
+    document.getElementById('deductionsSection').style.display = 'none';
+    document.getElementById('earningsRows').innerHTML   = '';
+    document.getElementById('deductionsRows').innerHTML = '';
+
+    const res  = await fetch(`/payroll/api/structures/${structureId}/components`);
+    const data = await res.json();
+    loading.style.display = 'none';
+
+    if (!data.ok || !data.components || !data.components.length) {
+        loading.textContent = 'This structure has no components yet. Edit the structure to add components.';
+        loading.style.display = 'block';
+        return;
+    }
+
+    loadedComponents = data.components;
+    document.getElementById('recalcBtn').style.display = '';
+    renderComponents();
+}
+
+function renderComponents() {
+    const ctc = parseFloat(document.getElementById('ctcInput').value) || 0;
+    const monthlyCTC = Math.round((ctc / 12) * 100) / 100;
+
+    // Seed CTC aliases with MONTHLY value — matches server-side calcComponents
+    const computed = {};
+    CTC_ALIASES.forEach(k => { computed[k] = monthlyCTC; });
+
+    // Pass 1: fixed components
+    loadedComponents.filter(c => c.calculationType === 'fixed').forEach(c => {
+        const val = existingOverrides[c.name] !== undefined ? existingOverrides[c.name] : (c.value || 0);
+        computed[c.name.toLowerCase()] = val;
+    });
+
+    // Pass 2: percentage components (multi-pass)
+    const resolved = new Set();
+    let changed = true, passes = 0;
+    while (changed && passes < 10) {
+        changed = false;
+        loadedComponents.filter(c => c.calculationType === 'percentage').forEach(c => {
+            if (resolved.has(c.name)) return;
+            const baseKey = (c.percentageOf || '').toLowerCase();
+            const base = computed[baseKey]
+                ?? Object.entries(computed).find(([k]) => k.includes(baseKey) || baseKey.includes(k))?.[1];
+            if (base === undefined) return;
+            const override = existingOverrides[c.name];
+            const amt = override !== undefined
+                ? override
+                : Math.round((c.percentage / 100) * base * 100) / 100;
+            computed[c.name.toLowerCase()] = amt;
+            resolved.add(c.name);
+            changed = true;
+        });
+        passes++;
+    }
+
+    // Render
+    const earningsBody  = document.getElementById('earningsRows');
+    const dedBody       = document.getElementById('deductionsRows');
+    earningsBody.innerHTML = '';
+    dedBody.innerHTML      = '';
+    let hasE = false, hasD = false;
+
+    loadedComponents.forEach(comp => {
+        const isPct    = comp.calculationType === 'percentage';
+        const amount   = computed[comp.name.toLowerCase()] ?? 0;
+        const hint     = isPct
+            ? `${comp.percentage}% of <em>${comp.percentageOf}</em>`
+            : 'Fixed amount';
+        const badgeColor = comp.type === 'earning' ? '#16a34a' : '#dc2626';
+
+        const row = document.createElement('div');
+        row.dataset.componentName = comp.name;
+        row.dataset.calcType      = comp.calculationType;
+        row.dataset.pct           = comp.percentage;
+        row.dataset.pctof         = comp.percentageOf;
+        row.dataset.compType      = comp.type;
+        row.style.cssText = 'display:grid;grid-template-columns:1fr 220px;gap:12px;align-items:center;padding:10px 16px;border-bottom:1px solid #f1f5f9;';
+        row.innerHTML = `
+            <div>
+                <span style="font-weight:600;font-size:0.92rem;">${comp.name}</span>
+                <span style="font-size:0.72rem;color:var(--text-muted);margin-left:8px;">${hint}</span>
+            </div>
+            <div style="display:flex;align-items:center;gap:6px;">
+                <span style="color:var(--text-muted);">₹</span>
+                <input type="number"
+                    class="form-control comp-value"
+                    value="${amount.toFixed(2)}"
+                    step="0.01" min="0"
+                    style="font-weight:600;color:${badgeColor};"
+                    oninput="updatePreview()"
+                    readonly>
+            </div>
+        `;
+
+        if (comp.type === 'earning') { earningsBody.appendChild(row); hasE = true; }
+        else                         { dedBody.appendChild(row);      hasD = true; }
+    });
+
+    document.getElementById('earningsSection').style.display   = hasE ? '' : 'none';
+    document.getElementById('deductionsSection').style.display = hasD ? '' : 'none';
+    document.getElementById('previewCard').style.display = '';
+    updatePreview();
+}
+
+function recalculate() {
+    // Re-derive all percentage components from current CTC + fixed values
+    const ctc = parseFloat(document.getElementById('ctcInput').value) || 0;
+    const monthlyCTC = Math.round((ctc / 12) * 100) / 100;
+    const computed = {};
+    CTC_ALIASES.forEach(k => { computed[k] = monthlyCTC; });
+
+    // Read current fixed values
+    document.querySelectorAll('[data-component-name]').forEach(row => {
+        if (row.dataset.calcType !== 'fixed') return;
+        computed[row.dataset.componentName.toLowerCase()] = parseFloat(row.querySelector('.comp-value').value) || 0;
+    });
+
+    // Recompute percentage rows
+    let changed = true, passes = 0;
+    const resolved = new Set();
+    while (changed && passes < 10) {
+        changed = false;
+        document.querySelectorAll('[data-component-name]').forEach(row => {
+            if (row.dataset.calcType !== 'percentage') return;
+            if (resolved.has(row.dataset.componentName)) return;
+            const baseKey = (row.dataset.pctof || '').toLowerCase();
+            const base = computed[baseKey]
+                ?? Object.entries(computed).find(([k]) => k.includes(baseKey) || baseKey.includes(k))?.[1];
+            if (base === undefined) return;
+            const amt = Math.round((parseFloat(row.dataset.pct) / 100) * base * 100) / 100;
+            row.querySelector('.comp-value').value = amt.toFixed(2);
+            computed[row.dataset.componentName.toLowerCase()] = amt;
+            resolved.add(row.dataset.componentName);
+            changed = true;
+        });
+        passes++;
+    }
+
+    updatePreview();
+}
+
+function updatePreview() {
+    let gross = 0, totalDed = 0;
+    document.querySelectorAll('[data-component-name]').forEach(row => {
+        const amt = parseFloat(row.querySelector('.comp-value').value) || 0;
+        if (row.dataset.compType === 'earning') gross += amt;
+        else totalDed += amt;
+    });
+    const net = gross - totalDed;
+    const fmt = n => '₹ ' + n.toLocaleString('en-IN', {minimumFractionDigits:2, maximumFractionDigits:2});
+    document.getElementById('previewGross').textContent = fmt(gross);
+    document.getElementById('previewDed').textContent   = fmt(totalDed);
+    document.getElementById('previewNet').textContent   = fmt(net);
+}
+
+function updateMonthlyHint() {
+    const ctc = parseFloat(document.getElementById('ctcInput').value) || 0;
+    const hint = document.getElementById('monthlyHint');
+    const val  = document.getElementById('monthlyVal');
+    if (ctc > 0) {
+        val.textContent = '₹ ' + (ctc / 12).toLocaleString('en-IN', {maximumFractionDigits: 0});
+        hint.style.display = '';
+    } else {
+        hint.style.display = 'none';
+    }
+}
+
+window.addEventListener('DOMContentLoaded', () => {
+    const sel = document.getElementById('structureSelect');
+    if (sel.value) loadComponents(sel.value);
+    updateMonthlyHint();
+});
+</script>

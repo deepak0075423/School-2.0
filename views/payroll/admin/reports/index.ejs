@@ -1,0 +1,107 @@
+<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;">
+    <h2 style="margin:0;">📊 Payroll Reports</h2>
+    <form method="GET" action="/payroll/admin/reports" style="display:flex;gap:8px;align-items:center;">
+        <select name="year" class="form-control" style="width:110px;" onchange="this.form.submit()">
+            <% years.forEach(y => { %>
+            <option value="<%= y %>" <%= y === year ? 'selected' : '' %>><%= y %></option>
+            <% }) %>
+        </select>
+    </form>
+</div>
+
+<% if (error && error.length) { %><div class="alert alert-error"><%= error %></div><% } %>
+
+<!-- Annual Summary -->
+<div class="card" style="margin-bottom:20px;">
+    <div class="card-header"><div class="card-title">📅 Monthly Summary — <%= year %></div></div>
+    <div class="table-wrapper">
+        <% if (!runs.length) { %>
+        <div class="empty-state" style="padding:30px;"><p>No published payroll data for <%= year %>.</p></div>
+        <% } else { %>
+        <table>
+            <thead>
+                <tr>
+                    <th>Month</th>
+                    <th>Employees</th>
+                    <th>Gross (₹)</th>
+                    <th>Deductions (₹)</th>
+                    <th>Net Payroll (₹)</th>
+                    <th>Published On</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+                <% let annualGross=0, annualDed=0, annualNet=0; %>
+                <% runs.forEach(run => {
+                    annualGross += run.totalGross || 0;
+                    annualDed   += run.totalDeductions || 0;
+                    annualNet   += run.totalNet || 0;
+                %>
+                <tr>
+                    <td><strong><%= MONTH_NAMES[run.month] %></strong></td>
+                    <td><%= run.totalEmployees %></td>
+                    <td>₹<%= (run.totalGross || 0).toLocaleString('en-IN') %></td>
+                    <td style="color:#dc2626;">₹<%= (run.totalDeductions || 0).toLocaleString('en-IN') %></td>
+                    <td style="color:#16a34a;font-weight:600;">₹<%= (run.totalNet || 0).toLocaleString('en-IN') %></td>
+                    <td style="font-size:0.82rem;color:var(--text-muted);">
+                        <%= run.publishedAt ? new Date(run.publishedAt).toLocaleDateString('en-IN') : '—' %>
+                    </td>
+                    <td><a href="/payroll/admin/runs/<%= run._id %>" class="btn btn-secondary btn-sm">View</a></td>
+                </tr>
+                <% }) %>
+            </tbody>
+            <tfoot>
+                <tr style="font-weight:700;background:#f0f4f8;">
+                    <td>Annual Total</td>
+                    <td>—</td>
+                    <td>₹<%= annualGross.toLocaleString('en-IN') %></td>
+                    <td style="color:#dc2626;">₹<%= annualDed.toLocaleString('en-IN') %></td>
+                    <td style="color:#16a34a;">₹<%= annualNet.toLocaleString('en-IN') %></td>
+                    <td colspan="2"></td>
+                </tr>
+            </tfoot>
+        </table>
+        <% } %>
+    </div>
+</div>
+
+<!-- Department-wise breakdown -->
+<div class="card">
+    <div class="card-header">
+        <div class="card-title">🏢 Department-wise Expense
+            <% if (lastPublished) { %>
+            <span style="font-size:0.75rem;font-weight:400;color:var(--text-muted);">
+                (from <%= MONTH_NAMES[lastPublished.month] %> <%= lastPublished.year %> run)
+            </span>
+            <% } %>
+        </div>
+    </div>
+    <div class="table-wrapper">
+        <% if (!deptReport.length) { %>
+        <div class="empty-state" style="padding:30px;"><p>No department data available.</p></div>
+        <% } else { %>
+        <table>
+            <thead>
+                <tr>
+                    <th>Department</th>
+                    <th>Employees</th>
+                    <th>Total Net Salary (₹)</th>
+                    <th>Avg per Employee (₹)</th>
+                </tr>
+            </thead>
+            <tbody>
+                <% deptReport.forEach(d => { %>
+                <tr>
+                    <td><strong><%= d.dept %></strong></td>
+                    <td><%= d.employees %></td>
+                    <td style="color:#16a34a;font-weight:600;">₹<%= (d.totalNet || 0).toLocaleString('en-IN') %></td>
+                    <td style="color:var(--text-muted);">
+                        ₹<%= d.employees ? Math.round(d.totalNet / d.employees).toLocaleString('en-IN') : 0 %>
+                    </td>
+                </tr>
+                <% }) %>
+            </tbody>
+        </table>
+        <% } %>
+    </div>
+</div>

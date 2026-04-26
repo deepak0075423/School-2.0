@@ -94,6 +94,7 @@ app.use('/parent', require('./routes/parent'));
 app.use('/profile', require('./routes/profile'));
 app.use('/notifications', require('./routes/notifications'));
 app.use('/library', require('./routes/library'));
+app.use('/payroll', require('./routes/payroll'));
 
 // Home → redirect to login
 app.get('/', (req, res) => {

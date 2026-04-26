@@ -69,6 +69,10 @@ const SchoolSchema = new mongoose.Schema({
             type: Boolean,
             default: false,
         },
+        payroll: {
+            type: Boolean,
+            default: false,
+        },
     },
     leaveSettings: {
         saturdayWorking: {

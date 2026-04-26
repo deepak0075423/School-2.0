@@ -1,0 +1,60 @@
+<div style="display:flex;align-items:center;gap:12px;margin-bottom:20px;">
+    <a href="/payroll/admin/dashboard" class="btn btn-secondary btn-sm">← Dashboard</a>
+    <h2 style="margin:0;">📋 Payroll Audit Log</h2>
+</div>
+
+<div class="card">
+    <div class="table-wrapper">
+        <% if (!logs.length) { %>
+        <div class="empty-state" style="padding:30px;"><p>No audit entries yet.</p></div>
+        <% } else { %>
+        <table>
+            <thead>
+                <tr>
+                    <th>Timestamp</th>
+                    <th>User</th>
+                    <th>Action</th>
+                    <th>Entity</th>
+                    <th>Details</th>
+                </tr>
+            </thead>
+            <tbody>
+                <% logs.forEach(log => { %>
+                <tr>
+                    <td style="font-size:0.8rem;white-space:nowrap;">
+                        <%= new Date(log.timestamp).toLocaleString('en-IN') %>
+                    </td>
+                    <td style="font-size:0.85rem;">
+                        <%= log.user ? log.user.name : '—' %>
+                        <% if (log.role) { %><br><span style="font-size:0.75rem;color:var(--text-muted);">(<%= log.role %>)</span><% } %>
+                    </td>
+                    <td>
+                        <span class="badge badge-<%=
+                            log.actionType.includes('PUBLISH') ? 'success' :
+                            log.actionType.includes('APPROV')  ? 'info'    :
+                            log.actionType.includes('DELETE') || log.actionType.includes('DEACTIVAT') ? 'warning' :
+                            'secondary'
+                        %>" style="font-size:0.75rem;"><%= log.actionType %></span>
+                    </td>
+                    <td style="font-size:0.82rem;"><%= log.entityType || '—' %></td>
+                    <td style="font-size:0.78rem;color:var(--text-muted);max-width:260px;word-break:break-all;">
+                        <% if (log.newValue) { %>
+                            <%= JSON.stringify(log.newValue).substring(0, 120) %><% if (JSON.stringify(log.newValue).length > 120) { %>…<% } %>
+                        <% } else { %>—<% } %>
+                    </td>
+                </tr>
+                <% }) %>
+            </tbody>
+        </table>
+        <% } %>
+    </div>
+</div>
+
+<!-- Pagination -->
+<% if (totalPages > 1) { %>
+<div style="display:flex;justify-content:center;gap:6px;margin-top:16px;">
+    <% for (let p = 1; p <= totalPages; p++) { %>
+    <a href="?page=<%= p %>" class="btn btn-<%= p === page ? 'primary' : 'secondary' %> btn-sm"><%= p %></a>
+    <% } %>
+</div>
+<% } %>

@@ -1,0 +1,96 @@
+<div style="display:flex;align-items:center;gap:12px;margin-bottom:20px;">
+    <a href="/payroll/teacher/payslips" class="btn btn-secondary btn-sm">← My Salary Slips</a>
+    <h2 style="margin:0;">📄 Salary Slip — <%= MONTH_NAMES[payslip.month] %> <%= payslip.year %></h2>
+    <a href="/payroll/teacher/payslips/<%= payslip._id %>/download" class="btn btn-success btn-sm">⬇ Download PDF</a>
+</div>
+
+<% if (error && error.length) { %><div class="alert alert-error"><%= error %></div><% } %>
+
+<!-- Payslip preview card -->
+<div class="card" style="max-width:720px;margin:0 auto;">
+
+    <!-- Header -->
+    <div style="background:#1E3A5F;color:#fff;padding:22px 28px;border-radius:8px 8px 0 0;text-align:center;">
+        <div style="font-size:1.5rem;font-weight:700;"><%= payslip.schoolSnapshot && payslip.schoolSnapshot.name || 'School' %></div>
+        <div style="font-size:0.95rem;color:#93C5FD;margin-top:4px;letter-spacing:2px;">SALARY SLIP</div>
+        <div style="font-size:0.82rem;color:#BFDBFE;margin-top:2px;">For the period: <%= MONTH_NAMES[payslip.month] %> <%= payslip.year %></div>
+    </div>
+
+    <!-- Employee details -->
+    <div style="background:#F0F4F8;padding:16px 28px;display:grid;grid-template-columns:1fr 1fr;gap:12px;border-bottom:1px solid #CBD5E1;">
+        <% const emp = payslip.employeeSnapshot || {}; %>
+        <div>
+            <div style="font-size:0.72rem;font-weight:700;color:#64748B;text-transform:uppercase;">Employee Name</div>
+            <div style="font-weight:600;"><%= emp.name || '—' %></div>
+        </div>
+        <div>
+            <div style="font-size:0.72rem;font-weight:700;color:#64748B;text-transform:uppercase;">Employee ID</div>
+            <div><%= emp.employeeId || '—' %></div>
+        </div>
+        <div>
+            <div style="font-size:0.72rem;font-weight:700;color:#64748B;text-transform:uppercase;">Designation</div>
+            <div><%= emp.designation || '—' %></div>
+        </div>
+        <div>
+            <div style="font-size:0.72rem;font-weight:700;color:#64748B;text-transform:uppercase;">Department</div>
+            <div><%= emp.department || '—' %></div>
+        </div>
+    </div>
+
+    <!-- Earnings & Deductions table -->
+    <div style="display:grid;grid-template-columns:1fr 1fr;">
+        <!-- Earnings column -->
+        <div style="border-right:1px solid #CBD5E1;">
+            <div style="background:#3B82F6;color:#fff;padding:8px 16px;font-weight:700;font-size:0.85rem;text-align:center;">EARNINGS</div>
+            <% (payslip.earnings || []).forEach((e, i) => { %>
+            <div style="display:flex;justify-content:space-between;padding:8px 16px;background:<%= i%2===0?'#fff':'#F8FAFC' %>;border-bottom:1px solid #F1F5F9;">
+                <span style="font-size:0.85rem;"><%= e.name %></span>
+                <span style="font-weight:600;color:#16a34a;font-size:0.85rem;">₹<%= (e.amount||0).toLocaleString('en-IN') %></span>
+            </div>
+            <% }) %>
+            <div style="display:flex;justify-content:space-between;padding:10px 16px;background:#EFF6FF;font-weight:700;border-top:2px solid #CBD5E1;">
+                <span>Gross Earnings</span>
+                <span style="color:#16a34a;">₹<%= (payslip.grossSalary||0).toLocaleString('en-IN') %></span>
+            </div>
+        </div>
+        <!-- Deductions column -->
+        <div>
+            <div style="background:#1D4ED8;color:#fff;padding:8px 16px;font-weight:700;font-size:0.85rem;text-align:center;">DEDUCTIONS</div>
+            <% (payslip.deductions || []).forEach((d, i) => { %>
+            <div style="display:flex;justify-content:space-between;padding:8px 16px;background:<%= i%2===0?'#fff':'#F8FAFC' %>;border-bottom:1px solid #F1F5F9;">
+                <span style="font-size:0.85rem;"><%= d.name %></span>
+                <span style="font-weight:600;color:#dc2626;font-size:0.85rem;">₹<%= (d.amount||0).toLocaleString('en-IN') %></span>
+            </div>
+            <% }) %>
+            <% if ((payslip.lopDays || 0) > 0) { %>
+            <div style="display:flex;justify-content:space-between;padding:8px 16px;background:#FEF2F2;border-bottom:1px solid #F1F5F9;">
+                <span style="font-size:0.85rem;">LOP (<%= payslip.lopDays %> days)</span>
+                <span style="font-weight:600;color:#dc2626;font-size:0.85rem;">₹<%= (payslip.lopAmount||0).toLocaleString('en-IN') %></span>
+            </div>
+            <% } %>
+            <div style="display:flex;justify-content:space-between;padding:10px 16px;background:#EFF6FF;font-weight:700;border-top:2px solid #CBD5E1;">
+                <span>Total Deductions</span>
+                <span style="color:#dc2626;">₹<%= (payslip.totalDeductions||0).toLocaleString('en-IN') %></span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Net salary band -->
+    <div style="background:#1D4ED8;color:#fff;padding:16px 28px;display:flex;justify-content:space-between;align-items:center;">
+        <span style="font-size:1.1rem;font-weight:700;letter-spacing:1px;">NET SALARY</span>
+        <span style="font-size:1.25rem;font-weight:800;color:#FCD34D;">₹<%= (payslip.netSalary||0).toLocaleString('en-IN') %></span>
+    </div>
+
+    <% if ((payslip.arrears||0) > 0 || (payslip.bonus||0) > 0) { %>
+    <div style="padding:10px 28px;background:#FFFBEB;border-top:1px solid #FDE68A;font-size:0.83rem;text-align:center;color:#92400E;">
+        Arrears: ₹<%= (payslip.arrears||0).toLocaleString('en-IN') %> &nbsp;|&nbsp;
+        Bonus: ₹<%= (payslip.bonus||0).toLocaleString('en-IN') %>
+    </div>
+    <% } %>
+
+    <!-- Footer -->
+    <div style="padding:10px 28px;background:#F8FAFC;border-radius:0 0 8px 8px;text-align:center;font-size:0.75rem;color:#64748B;border-top:1px solid #CBD5E1;">
+        Generated on: <%= new Date(payslip.generatedAt).toLocaleDateString('en-IN') %>
+        &nbsp;|&nbsp; This is a computer-generated payslip and does not require a signature.
+    </div>
+</div>

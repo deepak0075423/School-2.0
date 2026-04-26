@@ -1,0 +1,123 @@
+<div style="display:flex;align-items:center;gap:12px;margin-bottom:20px;">
+    <a href="/payroll/admin/assignments" class="btn btn-secondary btn-sm">← Assignments</a>
+    <div>
+        <h2 style="margin:0;">📈 CTC History — <%= assignment.employee.name %></h2>
+        <div style="font-size:0.82rem;color:var(--text-muted);"><%= assignment.employee.email %></div>
+    </div>
+    <a href="/payroll/admin/assignments/<%= assignment._id %>/update-ctc" class="btn btn-primary btn-sm" style="margin-left:auto;">
+        💰 Update CTC
+    </a>
+</div>
+
+<% if (success && success.length) { %><div class="alert alert-success"><%= success %></div><% } %>
+<% if (error && error.length) { %><div class="alert alert-error"><%= error %></div><% } %>
+
+<!-- Current CTC summary -->
+<div class="stats-grid" style="margin-bottom:20px;">
+    <div class="stat-card">
+        <div class="stat-icon blue">💰</div>
+        <div class="stat-info">
+            <div class="stat-value">₹<%= (assignment.ctc || 0).toLocaleString('en-IN') %></div>
+            <div class="stat-label">Annual CTC</div>
+        </div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-icon green">📅</div>
+        <div class="stat-info">
+            <div class="stat-value">₹<%= assignment.ctc ? Math.round(assignment.ctc / 12).toLocaleString('en-IN') : 0 %></div>
+            <div class="stat-label">Monthly Salary</div>
+        </div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-icon purple" style="background:rgba(147,51,234,0.15);color:#9333ea;">🔄</div>
+        <div class="stat-info">
+            <div class="stat-value"><%= revisions.length %></div>
+            <div class="stat-label">Total Revisions</div>
+        </div>
+    </div>
+</div>
+
+<!-- Timeline -->
+<div class="card">
+    <div class="card-header"><div class="card-title">📋 Revision Timeline</div></div>
+    <div class="card-body" style="padding:0;">
+        <% if (!revisions.length) { %>
+        <div class="empty-state" style="padding:40px;">
+            <p>No CTC revisions recorded yet.</p>
+            <a href="/payroll/admin/assignments/<%= assignment._id %>/update-ctc" class="btn btn-primary">Set First CTC</a>
+        </div>
+        <% } else { %>
+        <div style="padding:20px 24px;position:relative;">
+            <!-- Vertical line -->
+            <div style="position:absolute;left:44px;top:30px;bottom:30px;width:2px;background:#e2e8f0;"></div>
+
+            <% revisions.forEach((r, i) => {
+                const isPositive = r.annualCtc >= r.previousCtc;
+                const changeAmt  = r.annualCtc - (r.previousCtc || 0);
+                const changePct  = r.previousCtc > 0 ? ((changeAmt / r.previousCtc) * 100).toFixed(1) : null;
+                const isInitial  = r.incrementType === 'initial';
+                const dotColor   = isInitial ? '#3B82F6' : (isPositive ? '#16a34a' : '#dc2626');
+                const dotIcon    = isInitial ? '🏁' : (isPositive ? '📈' : '📉');
+                const typeLabel  = {
+                    initial: 'Initial CTC',
+                    increment_pct: `${r.incrementValue}% hike`,
+                    increment_value: `₹${(r.incrementValue||0).toLocaleString('en-IN')} increment`,
+                    manual: 'Manual revision',
+                }[r.incrementType] || 'Revision';
+            %>
+            <div style="display:flex;gap:16px;margin-bottom:28px;position:relative;z-index:1;">
+                <!-- Dot -->
+                <div style="width:36px;height:36px;border-radius:50%;background:<%= dotColor %>;display:flex;align-items:center;justify-content:center;font-size:1rem;flex-shrink:0;box-shadow:0 0 0 4px #fff;">
+                    <%= dotIcon %>
+                </div>
+
+                <!-- Content card -->
+                <div style="flex:1;background:#fff;border:1px solid #e2e8f0;border-radius:8px;padding:14px 16px;box-shadow:0 1px 3px rgba(0,0,0,0.06);">
+                    <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:6px;">
+                        <div>
+                            <div style="font-size:1.1rem;font-weight:700;color:#1E293B;">
+                                ₹<%= r.annualCtc.toLocaleString('en-IN') %> / year
+                            </div>
+                            <div style="font-size:0.8rem;color:var(--text-muted);">
+                                Monthly: ₹<%= Math.round(r.annualCtc / 12).toLocaleString('en-IN') %>
+                            </div>
+                        </div>
+                        <div style="text-align:right;">
+                            <div style="font-size:0.82rem;font-weight:600;color:<%= dotColor %>;">
+                                <%= typeLabel %>
+                                <% if (changePct && !isInitial) { %>
+                                    (<%= isPositive ? '+' : '' %><%= changePct %>%)
+                                <% } %>
+                            </div>
+                            <div style="font-size:0.75rem;color:var(--text-muted);">
+                                Effective: <strong><%= MONTH_NAMES[r.effectiveMonth] %> <%= r.effectiveYear %></strong>
+                            </div>
+                        </div>
+                    </div>
+
+                    <% if (!isInitial && r.previousCtc > 0) { %>
+                    <div style="margin-top:8px;padding:6px 10px;background:<%= isPositive ? '#F0FDF4' : '#FEF2F2' %>;border-radius:6px;font-size:0.8rem;">
+                        Previous: ₹<%= r.previousCtc.toLocaleString('en-IN') %> →
+                        <span style="font-weight:700;color:<%= dotColor %>;">
+                            <%= isPositive ? '+' : '' %>₹<%= Math.abs(changeAmt).toLocaleString('en-IN') %>
+                            <% if (changePct) { %>(<%= isPositive ? '+' : '' %><%= changePct %>%)<% } %>
+                        </span>
+                    </div>
+                    <% } %>
+
+                    <div style="margin-top:8px;display:flex;justify-content:space-between;font-size:0.75rem;color:var(--text-muted);">
+                        <span>
+                            <% if (r.note) { %>📝 <%= r.note %><% } %>
+                        </span>
+                        <span>
+                            Updated by <%= r.updatedBy ? r.updatedBy.name : 'System' %>
+                            on <%= new Date(r.updatedAt).toLocaleDateString('en-IN') %>
+                        </span>
+                    </div>
+                </div>
+            </div>
+            <% }) %>
+        </div>
+        <% } %>
+    </div>
+</div>
