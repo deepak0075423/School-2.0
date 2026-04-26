@@ -1,0 +1,53 @@
+<div class="welcome-banner" style="margin-bottom:20px;">
+    <div class="welcome-icon">💰</div>
+    <div>
+        <h2>My Salary Slips</h2>
+        <p>View and download your monthly payslips.</p>
+    </div>
+</div>
+
+<% if (error && error.length) { %><div class="alert alert-error"><%= error %></div><% } %>
+
+<div class="card">
+    <div class="table-wrapper">
+        <% if (!payslips.length) { %>
+        <div class="empty-state" style="padding:50px;">
+            <div style="font-size:3rem;">📄</div>
+            <p>No salary slips available yet.</p>
+            <p style="font-size:0.85rem;color:var(--text-muted);">Your salary slips will appear here once payroll is processed and published by admin.</p>
+        </div>
+        <% } else { %>
+        <table>
+            <thead>
+                <tr>
+                    <th>Period</th>
+                    <th>Gross Salary (₹)</th>
+                    <th>Total Deductions (₹)</th>
+                    <th>Net Salary (₹)</th>
+                    <th>Generated On</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                <% payslips.forEach(slip => { %>
+                <tr>
+                    <td><strong><%= MONTH_NAMES[slip.month] %> <%= slip.year %></strong></td>
+                    <td>₹<%= (slip.grossSalary || 0).toLocaleString('en-IN') %></td>
+                    <td style="color:#dc2626;">₹<%= (slip.totalDeductions || 0).toLocaleString('en-IN') %></td>
+                    <td style="color:#16a34a;font-weight:700;">₹<%= (slip.netSalary || 0).toLocaleString('en-IN') %></td>
+                    <td style="font-size:0.82rem;color:var(--text-muted);">
+                        <%= new Date(slip.generatedAt).toLocaleDateString('en-IN') %>
+                    </td>
+                    <td>
+                        <div style="display:flex;gap:6px;">
+                            <a href="/payroll/teacher/payslips/<%= slip._id %>" class="btn btn-secondary btn-sm">👁 View</a>
+                            <a href="/payroll/teacher/payslips/<%= slip._id %>/download" class="btn btn-success btn-sm">📄 PDF</a>
+                        </div>
+                    </td>
+                </tr>
+                <% }) %>
+            </tbody>
+        </table>
+        <% } %>
+    </div>
+</div>

@@ -1,0 +1,169 @@
+<div style="display:flex;align-items:center;gap:12px;margin-bottom:20px;">
+    <a href="/payroll/admin/structures" class="btn btn-secondary btn-sm">← Back</a>
+    <h2 style="margin:0;"><%= structure ? '✏️ Edit' : '🏗️ Create' %> Salary Structure</h2>
+</div>
+
+<% if (error && error.length) { %><div class="alert alert-error"><%= error %></div><% } %>
+
+<form method="POST" action="/payroll/admin/structures/<%= structure ? structure._id + '/edit' : 'create' %>" id="structureForm">
+
+    <div class="card" style="margin-bottom:16px;">
+        <div class="card-header"><div class="card-title">Basic Info</div></div>
+        <div class="card-body">
+            <div style="display:grid;grid-template-columns:1fr 2fr;gap:16px;">
+                <div class="form-group">
+                    <label class="form-label">Structure Name <span style="color:red;">*</span></label>
+                    <input type="text" name="name" class="form-control" required
+                        value="<%= structure ? structure.name : '' %>" placeholder="e.g. Teaching Staff Structure">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Description</label>
+                    <input type="text" name="description" class="form-control"
+                        value="<%= structure ? structure.description : '' %>" placeholder="Optional description">
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Components Table -->
+    <div class="card">
+        <div class="card-header" style="justify-content:space-between;">
+            <div class="card-title">💼 Salary Components</div>
+            <div style="display:flex;gap:8px;">
+                <button type="button" class="btn btn-success btn-sm" onclick="addRow('earning')">+ Add Earning</button>
+                <button type="button" class="btn btn-danger btn-sm" onclick="addRow('deduction')">+ Add Deduction</button>
+            </div>
+        </div>
+        <div class="table-wrapper" style="overflow-x:auto;">
+            <table id="componentTable" style="min-width:800px;">
+                <thead>
+                    <tr>
+                        <th style="width:30px;">#</th>
+                        <th>Component Name</th>
+                        <th style="width:100px;">Type</th>
+                        <th style="width:120px;">Calculation</th>
+                        <th style="width:110px;">Fixed Value (₹)</th>
+                        <th style="width:100px;">Percentage (%)</th>
+                        <th style="width:140px;">% of Component</th>
+                        <th style="width:70px;">Order</th>
+                        <th style="width:70px;">Remove</th>
+                    </tr>
+                </thead>
+                <tbody id="componentRows">
+                    <% if (structure && structure.components.length) { %>
+                        <% structure.components.forEach((c, i) => { %>
+                        <tr>
+                            <td style="color:var(--text-muted);font-size:0.8rem;"><%= i+1 %></td>
+                            <td><input type="text" name="components[name][]" class="form-control" value="<%= c.name %>" required placeholder="e.g. Basic Salary"></td>
+                            <td>
+                                <select name="components[type][]" class="form-control type-select" onchange="updateRowStyle(this)">
+                                    <option value="earning"   <%= c.type==='earning'   ? 'selected':'' %>>Earning</option>
+                                    <option value="deduction" <%= c.type==='deduction' ? 'selected':'' %>>Deduction</option>
+                                </select>
+                            </td>
+                            <td>
+                                <select name="components[calculationType][]" class="form-control calc-select" onchange="toggleCalcFields(this)">
+                                    <option value="fixed"      <%= c.calculationType==='fixed'      ? 'selected':'' %>>Fixed</option>
+                                    <option value="percentage" <%= c.calculationType==='percentage' ? 'selected':'' %>>Percentage</option>
+                                </select>
+                            </td>
+                            <td class="fixed-col" <%= c.calculationType==='percentage' ? 'style="opacity:0.4;"' : '' %>>
+                                <input type="number" name="components[value][]" class="form-control" value="<%= c.value %>" step="0.01" min="0" placeholder="0">
+                            </td>
+                            <td class="pct-col" <%= c.calculationType==='fixed' ? 'style="opacity:0.4;"' : '' %>>
+                                <input type="number" name="components[percentage][]" class="form-control" value="<%= c.percentage %>" step="0.01" min="0" max="100" placeholder="0">
+                            </td>
+                            <td class="pctof-col" <%= c.calculationType==='fixed' ? 'style="opacity:0.4;"' : '' %>>
+                                <input type="text" name="components[percentageOf][]" class="form-control" value="<%= c.percentageOf || 'Basic Salary' %>" placeholder="Basic Salary">
+                            </td>
+                            <td><input type="number" name="components[order][]" class="form-control" value="<%= c.order %>" min="0"></td>
+                            <td><button type="button" class="btn btn-danger btn-sm" onclick="removeRow(this)">✕</button></td>
+                        </tr>
+                        <% }) %>
+                    <% } %>
+                </tbody>
+            </table>
+            <div id="emptyMsg" style="padding:20px;text-align:center;color:var(--text-muted);<%= (structure && structure.components.length) ? 'display:none;' : '' %>">
+                No components yet. Add earnings and deductions above.
+            </div>
+        </div>
+    </div>
+
+    <div style="display:flex;gap:12px;margin-top:16px;">
+        <button type="submit" class="btn btn-primary">💾 <%= structure ? 'Save Changes' : 'Create Structure' %></button>
+        <a href="/payroll/admin/structures" class="btn btn-secondary">Cancel</a>
+    </div>
+</form>
+
+<template id="rowTemplate">
+    <tr>
+        <td style="color:var(--text-muted);font-size:0.8rem;" class="row-num">—</td>
+        <td><input type="text" name="components[name][]" class="form-control" required placeholder="e.g. HRA"></td>
+        <td>
+            <select name="components[type][]" class="form-control type-select" onchange="updateRowStyle(this)">
+                <option value="earning">Earning</option>
+                <option value="deduction">Deduction</option>
+            </select>
+        </td>
+        <td>
+            <select name="components[calculationType][]" class="form-control calc-select" onchange="toggleCalcFields(this)">
+                <option value="fixed">Fixed</option>
+                <option value="percentage">Percentage</option>
+            </select>
+        </td>
+        <td class="fixed-col"><input type="number" name="components[value][]" class="form-control" value="0" step="0.01" min="0" placeholder="0"></td>
+        <td class="pct-col" style="opacity:0.4;"><input type="number" name="components[percentage][]" class="form-control" value="0" step="0.01" min="0" max="100" placeholder="0"></td>
+        <td class="pctof-col" style="opacity:0.4;"><input type="text" name="components[percentageOf][]" class="form-control" value="Basic Salary" placeholder="Basic Salary"></td>
+        <td><input type="number" name="components[order][]" class="form-control" value="0" min="0"></td>
+        <td><button type="button" class="btn btn-danger btn-sm" onclick="removeRow(this)">✕</button></td>
+    </tr>
+</template>
+
+<script>
+function addRow(type) {
+    const tmpl = document.getElementById('rowTemplate');
+    const clone = tmpl.content.cloneNode(true);
+    const row = clone.querySelector('tr');
+    const typeSelect = row.querySelector('.type-select');
+    if (type === 'deduction') typeSelect.value = 'deduction';
+    updateRowStyle(typeSelect);
+    document.getElementById('componentRows').appendChild(row);
+    updateRowNumbers();
+    document.getElementById('emptyMsg').style.display = 'none';
+}
+
+function removeRow(btn) {
+    btn.closest('tr').remove();
+    updateRowNumbers();
+    const rows = document.getElementById('componentRows').querySelectorAll('tr');
+    if (!rows.length) document.getElementById('emptyMsg').style.display = '';
+}
+
+function updateRowNumbers() {
+    document.querySelectorAll('#componentRows tr').forEach((row, i) => {
+        const num = row.querySelector('.row-num');
+        if (num) num.textContent = i + 1;
+    });
+}
+
+function toggleCalcFields(sel) {
+    const row = sel.closest('tr');
+    const isPct = sel.value === 'percentage';
+    row.querySelector('.fixed-col').style.opacity  = isPct ? '0.4' : '1';
+    row.querySelector('.pct-col').style.opacity    = isPct ? '1'   : '0.4';
+    row.querySelector('.pctof-col').style.opacity  = isPct ? '1'   : '0.4';
+}
+
+function updateRowStyle(sel) {
+    const row = sel.closest('tr');
+    row.style.background = sel.value === 'deduction' ? 'rgba(220,38,38,0.04)' : '';
+}
+
+// Init existing rows
+document.querySelectorAll('#componentRows tr').forEach(row => {
+    const typeSelect = row.querySelector('.type-select');
+    const calcSelect = row.querySelector('.calc-select');
+    if (typeSelect) updateRowStyle(typeSelect);
+    if (calcSelect) toggleCalcFields(calcSelect);
+});
+</script>

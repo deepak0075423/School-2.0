@@ -1,0 +1,73 @@
+<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;">
+    <h2 style="margin:0;">👤 Salary Assignments</h2>
+    <a href="/payroll/admin/assignments/assign" class="btn btn-primary">+ Assign Salary</a>
+</div>
+
+<% if (success && success.length) { %><div class="alert alert-success"><%= success %></div><% } %>
+<% if (error && error.length) { %><div class="alert alert-error"><%= error %></div><% } %>
+
+<div class="card">
+    <div class="table-wrapper">
+        <% if (!assignments.length) { %>
+        <div class="empty-state" style="padding:40px;">
+            <div style="font-size:2.5rem;">👤</div>
+            <p>No salary assignments yet. Assign a salary structure to employees.</p>
+            <a href="/payroll/admin/assignments/assign" class="btn btn-primary">Assign Now</a>
+        </div>
+        <% } else { %>
+        <table>
+            <thead>
+                <tr>
+                    <th>Employee</th>
+                    <th>Structure</th>
+                    <th>Annual CTC</th>
+                    <th>Effective Date</th>
+                    <th>Notes</th>
+                    <th>Status</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                <% assignments.forEach(a => { %>
+                <tr style="<%= !a.isActive ? 'opacity:0.55;' : '' %>">
+                    <td>
+                        <strong><%= a.employee ? a.employee.name : 'Unknown' %></strong><br>
+                        <span style="font-size:0.78rem;color:var(--text-muted);"><%= a.employee ? a.employee.email : '' %></span>
+                    </td>
+                    <td><%= a.structure ? a.structure.name : '—' %></td>
+                    <td>
+                        <% if (a.ctc) { %>
+                        <span style="font-weight:600;color:#1D4ED8;">₹<%= (a.ctc).toLocaleString('en-IN') %></span>
+                        <% } else { %>
+                        <span style="color:#dc2626;font-size:0.82rem;">⚠ Not set</span>
+                        <% } %>
+                    </td>
+                    <td><%= a.effectiveDate ? new Date(a.effectiveDate).toLocaleDateString('en-IN') : '—' %></td>
+                    <td style="font-size:0.82rem;color:var(--text-muted);"><%= a.notes || '—' %></td>
+                    <td>
+                        <span class="badge badge-<%= a.isActive ? 'success' : 'warning' %>">
+                            <%= a.isActive ? 'Active' : 'Inactive' %>
+                        </span>
+                    </td>
+                    <td>
+                        <% if (a.isActive) { %>
+                        <div style="display:flex;gap:6px;flex-wrap:wrap;">
+                            <a href="/payroll/admin/assignments/<%= a._id %>/ctc-history" class="btn btn-secondary btn-sm">📈 CTC History</a>
+                            <a href="/payroll/admin/assignments/<%= a._id %>/update-ctc" class="btn btn-primary btn-sm">💰 Update CTC</a>
+                            <a href="/payroll/admin/assignments/<%= a._id %>/edit" class="btn btn-secondary btn-sm">Edit</a>
+                            <form method="POST" action="/payroll/admin/assignments/<%= a._id %>/deactivate" style="display:inline;">
+                                <button type="submit" class="btn btn-warning btn-sm"
+                                    onclick="return confirm('Deactivate this assignment?')">Deactivate</button>
+                            </form>
+                        </div>
+                        <% } else { %>
+                        <span style="font-size:0.8rem;color:var(--text-muted);">Inactive</span>
+                        <% } %>
+                    </td>
+                </tr>
+                <% }) %>
+            </tbody>
+        </table>
+        <% } %>
+    </div>
+</div>

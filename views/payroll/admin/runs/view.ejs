@@ -1,0 +1,213 @@
+<div style="display:flex;align-items:center;gap:12px;margin-bottom:20px;">
+    <a href="/payroll/admin/runs" class="btn btn-secondary btn-sm">← Back</a>
+    <h2 style="margin:0;">📋 Payroll — <%= MONTH_NAMES[run.month] %> <%= run.year %></h2>
+    <span class="badge badge-<%=
+        run.status === 'published' ? 'success' :
+        run.status === 'approved'  ? 'info'    :
+        run.status === 'reviewed'  ? 'warning' : 'secondary'
+    %>" style="font-size:0.85rem;padding:4px 10px;">
+        <%= run.status.charAt(0).toUpperCase() + run.status.slice(1) %>
+    </span>
+</div>
+
+<% if (success && success.length) { %><div class="alert alert-success"><%= success %></div><% } %>
+<% if (error && error.length) { %><div class="alert alert-error"><%= error %></div><% } %>
+
+<!-- Summary cards -->
+<div class="stats-grid" style="margin-bottom:20px;">
+    <div class="stat-card">
+        <div class="stat-icon blue">👥</div>
+        <div class="stat-info">
+            <div class="stat-value"><%= run.totalEmployees %></div>
+            <div class="stat-label">Employees</div>
+        </div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-icon green">📈</div>
+        <div class="stat-info">
+            <div class="stat-value">₹<%= (run.totalGross || 0).toLocaleString('en-IN') %></div>
+            <div class="stat-label">Total Gross</div>
+        </div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-icon orange">📉</div>
+        <div class="stat-info">
+            <div class="stat-value" style="color:#dc2626;">₹<%= (run.totalDeductions || 0).toLocaleString('en-IN') %></div>
+            <div class="stat-label">Total Deductions</div>
+        </div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-icon purple" style="background:rgba(22,163,74,0.15);color:#16a34a;">💰</div>
+        <div class="stat-info">
+            <div class="stat-value" style="color:#16a34a;">₹<%= (run.totalNet || 0).toLocaleString('en-IN') %></div>
+            <div class="stat-label">Net Payroll</div>
+        </div>
+    </div>
+</div>
+
+<!-- Workflow actions -->
+<% if (run.status !== 'published') { %>
+<div class="card" style="margin-bottom:16px;">
+    <div class="card-header"><div class="card-title">🔄 Workflow Actions</div></div>
+    <div class="card-body" style="display:flex;gap:12px;flex-wrap:wrap;align-items:center;">
+        <% if (run.status === 'draft') { %>
+        <form method="POST" action="/payroll/admin/runs/<%= run._id %>/status">
+            <input type="hidden" name="action" value="review">
+            <button type="submit" class="btn btn-warning" onclick="return confirm('Mark this payroll as Reviewed?')">🔍 Mark as Reviewed</button>
+        </form>
+        <% } %>
+        <% if (run.status === 'reviewed') { %>
+        <form method="POST" action="/payroll/admin/runs/<%= run._id %>/status">
+            <input type="hidden" name="action" value="approve">
+            <button type="submit" class="btn btn-info" onclick="return confirm('Approve this payroll?')">✅ Approve Payroll</button>
+        </form>
+        <% } %>
+        <% if (run.status === 'approved') { %>
+        <form method="POST" action="/payroll/admin/runs/<%= run._id %>/publish">
+            <button type="submit" class="btn btn-success" onclick="return confirm('Publish payroll? This will generate payslips and notify all employees. This action is irreversible.')">
+                📤 Publish & Generate Payslips
+            </button>
+        </form>
+        <% } %>
+        <div style="font-size:0.82rem;color:var(--text-muted);">
+            <% if (run.reviewedBy)  { %> Reviewed by <strong><%= run.reviewedBy.name %></strong> on <%= new Date(run.reviewedAt).toLocaleDateString('en-IN') %> &nbsp;|<% } %>
+            <% if (run.approvedBy)  { %> Approved by <strong><%= run.approvedBy.name %></strong> on <%= new Date(run.approvedAt).toLocaleDateString('en-IN') %> <% } %>
+        </div>
+    </div>
+</div>
+<% } else { %>
+<div class="card" style="margin-bottom:16px;background:#F0FDF4;border-color:#86EFAC;">
+    <div class="card-body">
+        ✅ Published by <strong><%= run.publishedBy ? run.publishedBy.name : '—' %></strong>
+        on <%= run.publishedAt ? new Date(run.publishedAt).toLocaleDateString('en-IN') : '—' %>.
+        Payslips have been generated and employees notified.
+    </div>
+</div>
+<% } %>
+
+<!-- Payroll entries table -->
+<div class="card">
+    <div class="card-header">
+        <div class="card-title">👨‍💼 Employee Entries</div>
+        <% if (run.status !== 'published') { %>
+        <span style="font-size:0.78rem;color:var(--text-muted);">Click "Edit" on any row to adjust LOP / bonus</span>
+        <% } %>
+    </div>
+    <div class="table-wrapper" style="overflow-x:auto;">
+        <% if (!entries.length) { %>
+        <div class="empty-state" style="padding:30px;"><p>No entries found.</p></div>
+        <% } else { %>
+        <table style="min-width:900px;">
+            <thead>
+                <tr>
+                    <th>Employee</th>
+                    <th>Gross (₹)</th>
+                    <th>Deductions (₹)</th>
+                    <th>LOP Days</th>
+                    <th>LOP Amt (₹)</th>
+                    <th>Arrears (₹)</th>
+                    <th>Bonus (₹)</th>
+                    <th>Net Salary (₹)</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                <% entries.forEach(entry => { %>
+                <tr id="row-<%= entry._id %>">
+                    <td>
+                        <strong><%= entry.employee ? entry.employee.name : 'Unknown' %></strong>
+                    </td>
+                    <td><%= (entry.grossSalary || 0).toLocaleString('en-IN') %></td>
+                    <td style="color:#dc2626;"><%= ((entry.totalDeductions || 0) + (entry.lopAmount || 0)).toLocaleString('en-IN') %></td>
+                    <td class="lop-days-<%= entry._id %>"><%= entry.lopDays || 0 %></td>
+                    <td class="lop-amt-<%= entry._id %>"><%= (entry.lopAmount || 0).toLocaleString('en-IN') %></td>
+                    <td class="arrears-<%= entry._id %>"><%= (entry.arrears || 0).toLocaleString('en-IN') %></td>
+                    <td class="bonus-<%= entry._id %>"><%= (entry.bonus || 0).toLocaleString('en-IN') %></td>
+                    <td style="font-weight:700;color:#16a34a;" class="net-<%= entry._id %>">
+                        <%= (entry.netSalary || 0).toLocaleString('en-IN') %>
+                    </td>
+                    <td>
+                        <div style="display:flex;gap:6px;">
+                            <% if (run.status !== 'published') { %>
+                            <button class="btn btn-secondary btn-sm" onclick="openEdit('<%= entry._id %>', <%= entry.lopDays||0 %>, <%= entry.lopAmount||0 %>, <%= entry.arrears||0 %>, <%= entry.bonus||0 %>)">Edit</button>
+                            <% } %>
+                            <% if (run.status === 'published' && entry.payslip) { %>
+                            <a href="/payroll/admin/payslips/<%= entry.payslip %>/download" class="btn btn-success btn-sm">📄 PDF</a>
+                            <% } %>
+                        </div>
+                    </td>
+                </tr>
+                <% }) %>
+            </tbody>
+        </table>
+        <% } %>
+    </div>
+</div>
+
+<!-- Edit modal -->
+<div id="editModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.4);z-index:9999;align-items:center;justify-content:center;">
+    <div style="background:#fff;border-radius:10px;padding:24px;width:380px;max-width:95vw;">
+        <h3 style="margin:0 0 16px;">✏️ Adjust Entry</h3>
+        <div class="form-group">
+            <label class="form-label">LOP Days</label>
+            <input type="number" id="editLopDays" class="form-control" min="0" step="0.5">
+        </div>
+        <div class="form-group">
+            <label class="form-label">LOP Amount (₹)</label>
+            <input type="number" id="editLopAmt" class="form-control" min="0" step="0.01">
+        </div>
+        <div class="form-group">
+            <label class="form-label">Arrears (₹)</label>
+            <input type="number" id="editArrears" class="form-control" min="0" step="0.01">
+        </div>
+        <div class="form-group">
+            <label class="form-label">Bonus (₹)</label>
+            <input type="number" id="editBonus" class="form-control" min="0" step="0.01">
+        </div>
+        <div id="editError" style="color:#dc2626;font-size:0.82rem;display:none;margin-bottom:10px;"></div>
+        <div style="display:flex;gap:10px;">
+            <button class="btn btn-primary" onclick="saveEdit()">Save</button>
+            <button class="btn btn-secondary" onclick="closeModal()">Cancel</button>
+        </div>
+    </div>
+</div>
+
+<script>
+let currentEntryId = null;
+const runId = '<%= run._id %>';
+
+function openEdit(id, lopDays, lopAmt, arrears, bonus) {
+    currentEntryId = id;
+    document.getElementById('editLopDays').value = lopDays;
+    document.getElementById('editLopAmt').value  = lopAmt;
+    document.getElementById('editArrears').value = arrears;
+    document.getElementById('editBonus').value   = bonus;
+    document.getElementById('editError').style.display = 'none';
+    document.getElementById('editModal').style.display = 'flex';
+}
+function closeModal() { document.getElementById('editModal').style.display = 'none'; }
+
+async function saveEdit() {
+    const body = new URLSearchParams({
+        lopDays:   document.getElementById('editLopDays').value,
+        lopAmount: document.getElementById('editLopAmt').value,
+        arrears:   document.getElementById('editArrears').value,
+        bonus:     document.getElementById('editBonus').value,
+    });
+    const res = await fetch(`/payroll/admin/runs/${runId}/entries/${currentEntryId}`, {
+        method: 'POST', body, headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
+    });
+    const data = await res.json();
+    if (!data.ok) {
+        document.getElementById('editError').textContent = data.message;
+        document.getElementById('editError').style.display = 'block';
+        return;
+    }
+    document.querySelector(`.lop-days-${currentEntryId}`).textContent = document.getElementById('editLopDays').value;
+    document.querySelector(`.lop-amt-${currentEntryId}`).textContent  = parseFloat(document.getElementById('editLopAmt').value).toLocaleString('en-IN');
+    document.querySelector(`.arrears-${currentEntryId}`).textContent  = parseFloat(document.getElementById('editArrears').value).toLocaleString('en-IN');
+    document.querySelector(`.bonus-${currentEntryId}`).textContent    = parseFloat(document.getElementById('editBonus').value).toLocaleString('en-IN');
+    document.querySelector(`.net-${currentEntryId}`).textContent      = data.netSalary.toLocaleString('en-IN');
+    closeModal();
+}
+</script>

@@ -1,0 +1,75 @@
+<div style="display:flex;align-items:center;gap:12px;margin-bottom:20px;">
+    <a href="/payroll/admin/runs" class="btn btn-secondary btn-sm">← Back</a>
+    <h2 style="margin:0;">▶️ Run Payroll</h2>
+</div>
+
+<% if (error && error.length) { %><div class="alert alert-error"><%= error %></div><% } %>
+
+<div style="display:grid;grid-template-columns:400px 1fr;gap:20px;">
+    <div>
+        <form method="POST" action="/payroll/admin/runs/create">
+            <div class="card">
+                <div class="card-header"><div class="card-title">Payroll Period</div></div>
+                <div class="card-body">
+
+                    <div class="form-group">
+                        <label class="form-label">Month <span style="color:red;">*</span></label>
+                        <select name="month" class="form-control" required>
+                            <% for (let m=1; m<=12; m++) { %>
+                            <option value="<%= m %>" <%= m === defaultMonth ? 'selected' : '' %>><%= MONTH_NAMES[m] %></option>
+                            <% } %>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">Year <span style="color:red;">*</span></label>
+                        <input type="number" name="year" class="form-control" required
+                            value="<%= defaultYear %>" min="2020" max="2100">
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">Notes</label>
+                        <textarea name="notes" class="form-control" rows="3" placeholder="Optional notes for this payroll run"></textarea>
+                    </div>
+
+                    <div style="background:#FEF3C7;border:1px solid #F59E0B;border-radius:6px;padding:12px;margin-bottom:16px;">
+                        <strong style="font-size:0.85rem;">⚡ Auto-calculation</strong>
+                        <p style="margin:4px 0 0;font-size:0.82rem;color:#92400E;">
+                            Payroll will be computed for all <strong><%= assignmentCount %></strong> active salary assignment(s) using their assigned structures.
+                            You can adjust LOP and bonuses after the run.
+                        </p>
+                    </div>
+
+                    <button type="submit" class="btn btn-primary" style="width:100%;">
+                        ▶️ Process Payroll
+                    </button>
+                </div>
+            </div>
+        </form>
+    </div>
+
+    <div class="card">
+        <div class="card-header"><div class="card-title">ℹ️ Payroll Workflow</div></div>
+        <div class="card-body">
+            <div style="display:flex;flex-direction:column;gap:12px;">
+                <% const steps = [
+                    { icon: '▶️', label: 'Draft', desc: 'System auto-calculates salary for all active employees.' },
+                    { icon: '🔍', label: 'Reviewed', desc: 'Admin reviews entries and adjusts LOP / bonuses.' },
+                    { icon: '✅', label: 'Approved', desc: 'Admin confirms payroll is correct and ready.' },
+                    { icon: '📤', label: 'Published', desc: 'Payslips generated, locked, and employees notified.' },
+                ] %>
+                <% steps.forEach((s, i) => { %>
+                <div style="display:flex;gap:12px;align-items:flex-start;">
+                    <div style="width:32px;height:32px;border-radius:50%;background:var(--primary-light);display:flex;align-items:center;justify-content:center;font-size:0.9rem;flex-shrink:0;">
+                        <%= i+1 %>
+                    </div>
+                    <div>
+                        <div style="font-weight:600;"><%= s.icon %> <%= s.label %></div>
+                        <div style="font-size:0.82rem;color:var(--text-muted);"><%= s.desc %></div>
+                    </div>
+                </div>
+                <% }) %>
+            </div>
+        </div>
+    </div>
+</div>

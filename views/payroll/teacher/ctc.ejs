@@ -1,0 +1,132 @@
+<div class="welcome-banner" style="margin-bottom:20px;">
+    <div class="welcome-icon">💰</div>
+    <div>
+        <h2>My CTC Details</h2>
+        <p>View your salary package and revision history.</p>
+    </div>
+</div>
+
+<% if (!assignment) { %>
+<div class="card">
+    <div class="empty-state" style="padding:50px;">
+        <div style="font-size:3rem;">💼</div>
+        <p>Your salary details haven't been set up yet. Please contact the school admin.</p>
+    </div>
+</div>
+<% } else { %>
+
+<!-- Current CTC cards -->
+<div class="stats-grid" style="margin-bottom:20px;">
+    <div class="stat-card">
+        <div class="stat-icon blue">💰</div>
+        <div class="stat-info">
+            <div class="stat-value">₹<%= (assignment.ctc || 0).toLocaleString('en-IN') %></div>
+            <div class="stat-label">Annual CTC</div>
+        </div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-icon green">📅</div>
+        <div class="stat-info">
+            <div class="stat-value">₹<%= assignment.ctc ? Math.round(assignment.ctc / 12).toLocaleString('en-IN') : 0 %></div>
+            <div class="stat-label">Monthly Salary</div>
+        </div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-icon purple" style="background:rgba(147,51,234,0.15);color:#9333ea;">🏗️</div>
+        <div class="stat-info">
+            <div class="stat-value"><%= assignment.structure ? assignment.structure.name : '—' %></div>
+            <div class="stat-label">Salary Structure</div>
+        </div>
+    </div>
+    <% if (revisions.length > 1) {
+        const latest = revisions[0];
+        const prev   = revisions[1];
+        const change = latest.annualCtc - prev.annualCtc;
+        const pct    = prev.annualCtc > 0 ? ((change/prev.annualCtc)*100).toFixed(1) : '—';
+    %>
+    <div class="stat-card">
+        <div class="stat-icon <%= change >= 0 ? 'green' : 'orange' %>">📈</div>
+        <div class="stat-info">
+            <div class="stat-value" style="color:<%= change >= 0 ? '#16a34a' : '#dc2626' %>;">
+                <%= change >= 0 ? '+' : '' %><%= pct %>%
+            </div>
+            <div class="stat-label">Last Revision</div>
+        </div>
+    </div>
+    <% } %>
+</div>
+
+<!-- Timeline -->
+<div class="card">
+    <div class="card-header"><div class="card-title">📈 Salary Revision Timeline</div></div>
+    <div class="card-body" style="padding:0;">
+        <% if (!revisions.length) { %>
+        <div class="empty-state" style="padding:40px;">
+            <p>No salary revision history available yet.</p>
+        </div>
+        <% } else { %>
+        <div style="padding:20px 24px;position:relative;">
+            <div style="position:absolute;left:44px;top:30px;bottom:30px;width:2px;background:#e2e8f0;"></div>
+
+            <% revisions.forEach((r, i) => {
+                const isPositive = r.annualCtc >= (r.previousCtc || 0);
+                const changeAmt  = r.annualCtc - (r.previousCtc || 0);
+                const changePct  = r.previousCtc > 0 ? ((changeAmt / r.previousCtc) * 100).toFixed(1) : null;
+                const isInitial  = r.incrementType === 'initial';
+                const dotColor   = isInitial ? '#3B82F6' : (isPositive ? '#16a34a' : '#dc2626');
+                const dotIcon    = isInitial ? '🏁' : (isPositive ? '📈' : '📉');
+                const typeLabel  = {
+                    initial: 'Initial CTC set',
+                    increment_pct: `${r.incrementValue}% increment`,
+                    increment_value: `₹${(r.incrementValue||0).toLocaleString('en-IN')} increment`,
+                    manual: 'Salary revision',
+                }[r.incrementType] || 'Revision';
+            %>
+            <div style="display:flex;gap:16px;margin-bottom:24px;position:relative;z-index:1;">
+                <div style="width:36px;height:36px;border-radius:50%;background:<%= dotColor %>;display:flex;align-items:center;justify-content:center;font-size:1rem;flex-shrink:0;box-shadow:0 0 0 4px #fff;">
+                    <%= dotIcon %>
+                </div>
+                <div style="flex:1;background:#fff;border:1px solid #e2e8f0;border-radius:8px;padding:14px 16px;box-shadow:0 1px 3px rgba(0,0,0,0.06);">
+                    <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:6px;">
+                        <div>
+                            <div style="font-size:1.1rem;font-weight:700;">
+                                ₹<%= r.annualCtc.toLocaleString('en-IN') %> / year
+                            </div>
+                            <div style="font-size:0.82rem;color:var(--text-muted);">
+                                Monthly take-home: ₹<%= Math.round(r.annualCtc / 12).toLocaleString('en-IN') %>
+                            </div>
+                        </div>
+                        <div style="text-align:right;">
+                            <span class="badge badge-<%= isInitial ? 'info' : (isPositive ? 'success' : 'warning') %>">
+                                <%= typeLabel %>
+                            </span>
+                            <div style="font-size:0.75rem;color:var(--text-muted);margin-top:4px;">
+                                Effective: <strong><%= MONTH_NAMES[r.effectiveMonth] %> <%= r.effectiveYear %></strong>
+                            </div>
+                        </div>
+                    </div>
+
+                    <% if (!isInitial && r.previousCtc > 0) { %>
+                    <div style="margin-top:8px;padding:6px 10px;background:<%= isPositive ? '#F0FDF4' : '#FEF2F2' %>;border-radius:6px;font-size:0.82rem;">
+                        Previous CTC: ₹<%= r.previousCtc.toLocaleString('en-IN') %> →
+                        <strong style="color:<%= dotColor %>;">
+                            <%= isPositive ? '+' : '' %>₹<%= Math.abs(changeAmt).toLocaleString('en-IN') %>
+                            <% if (changePct) { %>(<%= isPositive ? '+' : '' %><%= changePct %>%)<% } %>
+                        </strong>
+                    </div>
+                    <% } %>
+
+                    <% if (r.note) { %>
+                    <div style="margin-top:8px;font-size:0.78rem;color:var(--text-muted);">
+                        📝 <%= r.note %>
+                    </div>
+                    <% } %>
+                </div>
+            </div>
+            <% }) %>
+        </div>
+        <% } %>
+    </div>
+</div>
+
+<% } %>

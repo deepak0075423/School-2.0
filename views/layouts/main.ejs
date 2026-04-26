@@ -44,6 +44,7 @@
                     const _hasLeave        = !!_schoolModules.leave;
                     const _hasDocument     = !!_schoolModules.document;
                     const _hasLibrary      = !!_schoolModules.library;
+                    const _hasPayroll      = !!_schoolModules.payroll;
                     const _path = (typeof locals !== 'undefined' && locals.title) ? title : '';
                     const _unreadCount = (typeof unreadNotificationCount !== 'undefined') ? unreadNotificationCount : 0;
                 %>
@@ -228,6 +229,28 @@
                     </a>
                     <% } %>
 
+                    <% if (_hasPayroll) { %>
+                    <div class="nav-section-label">Payroll</div>
+                    <a href="/payroll/admin/dashboard" class="nav-item <%= _path === 'Payroll Dashboard' ? 'active' : '' %>">
+                        <span class="nav-icon">💰</span> Dashboard
+                    </a>
+                    <a href="/payroll/admin/structures" class="nav-item <%= _path.includes('Salary Structure') ? 'active' : '' %>">
+                        <span class="nav-icon">🏗️</span> Structures
+                    </a>
+                    <a href="/payroll/admin/assignments" class="nav-item <%= _path.includes('Salary Assignment') ? 'active' : '' %>">
+                        <span class="nav-icon">👤</span> Assignments
+                    </a>
+                    <a href="/payroll/admin/runs" class="nav-item <%= _path.includes('Payroll Run') || _path.includes('Payroll —') ? 'active' : '' %>">
+                        <span class="nav-icon">▶️</span> Payroll Runs
+                    </a>
+                    <a href="/payroll/admin/reports" class="nav-item <%= _path === 'Payroll Reports' ? 'active' : '' %>">
+                        <span class="nav-icon">📊</span> Reports
+                    </a>
+                    <a href="/payroll/admin/audit" class="nav-item <%= _path === 'Payroll Audit Log' ? 'active' : '' %>">
+                        <span class="nav-icon">📋</span> Audit Log
+                    </a>
+                    <% } %>
+
                 <% } else if (session && session.userRole === 'teacher') { %>
                     <div class="nav-section-label">Classroom</div>
                     <a href="/teacher/dashboard"
@@ -369,6 +392,16 @@
                     </a>
                     <a href="/library/return" class="nav-item">
                         <span class="nav-icon">↩️</span> Return Book
+                    </a>
+                    <% } %>
+
+                    <% if (_hasPayroll) { %>
+                    <div class="nav-section-label">Payroll</div>
+                    <a href="/payroll/teacher/payslips" class="nav-item <%= _path === 'My Salary Slips' || _path.includes('Salary Slip —') ? 'active' : '' %>">
+                        <span class="nav-icon">💰</span> My Salary Slips
+                    </a>
+                    <a href="/payroll/teacher/ctc" class="nav-item <%= _path === 'My CTC Details' ? 'active' : '' %>">
+                        <span class="nav-icon">📊</span> My CTC
                     </a>
                     <% } %>
 

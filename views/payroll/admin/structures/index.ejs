@@ -1,0 +1,68 @@
+<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;">
+    <h2 style="margin:0;">🏗️ Salary Structures</h2>
+    <a href="/payroll/admin/structures/create" class="btn btn-primary">+ Create Structure</a>
+</div>
+
+<% if (success && success.length) { %><div class="alert alert-success"><%= success %></div><% } %>
+<% if (error && error.length) { %><div class="alert alert-error"><%= error %></div><% } %>
+
+<div class="card">
+    <div class="table-wrapper">
+        <% if (!structures.length) { %>
+        <div class="empty-state" style="padding:40px;">
+            <div style="font-size:2.5rem;">🏗️</div>
+            <p>No salary structures yet.</p>
+            <a href="/payroll/admin/structures/create" class="btn btn-primary">Create Your First Structure</a>
+        </div>
+        <% } else { %>
+        <table>
+            <thead>
+                <tr>
+                    <th>Name</th>
+                    <th>Description</th>
+                    <th>Earnings</th>
+                    <th>Deductions</th>
+                    <th>Status</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                <% structures.forEach(s => { %>
+                <tr>
+                    <td><strong><%= s.name %></strong></td>
+                    <td style="color:var(--text-muted);font-size:0.85rem;"><%= s.description || '—' %></td>
+                    <td>
+                        <% const earnings = s.components.filter(c => c.type === 'earning' && c.isActive); %>
+                        <span style="font-size:0.8rem;color:#16a34a;">
+                            <%= earnings.length %> item(s)
+                        </span>
+                    </td>
+                    <td>
+                        <% const deductions = s.components.filter(c => c.type === 'deduction' && c.isActive); %>
+                        <span style="font-size:0.8rem;color:#dc2626;">
+                            <%= deductions.length %> item(s)
+                        </span>
+                    </td>
+                    <td>
+                        <span class="badge badge-<%= s.isActive ? 'success' : 'warning' %>">
+                            <%= s.isActive ? 'Active' : 'Inactive' %>
+                        </span>
+                    </td>
+                    <td>
+                        <div style="display:flex;gap:6px;flex-wrap:wrap;">
+                            <a href="/payroll/admin/structures/<%= s._id %>/edit" class="btn btn-secondary btn-sm">Edit</a>
+                            <form method="POST" action="/payroll/admin/structures/<%= s._id %>/toggle" style="display:inline;">
+                                <button type="submit" class="btn btn-sm <%= s.isActive ? 'btn-warning' : 'btn-success' %>"
+                                    onclick="return confirm('<%= s.isActive ? 'Deactivate' : 'Activate' %> this structure?')">
+                                    <%= s.isActive ? 'Deactivate' : 'Activate' %>
+                                </button>
+                            </form>
+                        </div>
+                    </td>
+                </tr>
+                <% }) %>
+            </tbody>
+        </table>
+        <% } %>
+    </div>
+</div>

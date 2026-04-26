@@ -1,0 +1,183 @@
+<div style="display:flex;align-items:center;gap:12px;margin-bottom:20px;">
+    <a href="/payroll/admin/assignments/<%= assignment._id %>/ctc-history" class="btn btn-secondary btn-sm">← History</a>
+    <h2 style="margin:0;">💰 Update CTC — <%= assignment.employee.name %></h2>
+</div>
+
+<% if (error && error.length) { %><div class="alert alert-error"><%= error %></div><% } %>
+
+<div style="display:grid;grid-template-columns:480px 1fr;gap:20px;">
+
+    <form method="POST" action="/payroll/admin/assignments/<%= assignment._id %>/update-ctc">
+        <div class="card">
+            <div class="card-header"><div class="card-title">CTC Revision</div></div>
+            <div class="card-body">
+
+                <!-- Current CTC display -->
+                <div style="background:#F8FAFC;border:1px solid #E2E8F0;border-radius:8px;padding:14px;margin-bottom:20px;">
+                    <div style="font-size:0.75rem;color:var(--text-muted);text-transform:uppercase;font-weight:700;">Current Annual CTC</div>
+                    <div style="font-size:1.5rem;font-weight:800;color:#1D4ED8;">
+                        ₹<%= (assignment.ctc || 0).toLocaleString('en-IN') %>
+                    </div>
+                    <div style="font-size:0.8rem;color:var(--text-muted);">
+                        Monthly: ₹<%= assignment.ctc ? Math.round(assignment.ctc / 12).toLocaleString('en-IN') : 0 %>
+                    </div>
+                </div>
+
+                <!-- Increment Type -->
+                <div class="form-group">
+                    <label class="form-label">Revision Type <span style="color:red;">*</span></label>
+                    <select name="incrementType" id="incrementType" class="form-control" onchange="onTypeChange()">
+                        <option value="increment_pct">📈 Increment by Percentage (%)</option>
+                        <option value="increment_value">➕ Increment by Fixed Amount (₹)</option>
+                        <option value="manual">✏️ Set New CTC Directly</option>
+                    </select>
+                </div>
+
+                <!-- Percentage increment -->
+                <div id="pctSection" class="form-group">
+                    <label class="form-label">Increment % <span style="color:red;">*</span></label>
+                    <input type="number" name="incrementValue" id="incrementValue"
+                        class="form-control" step="0.01" min="0.01" placeholder="e.g. 10 for 10% hike"
+                        oninput="computePreview()">
+                </div>
+
+                <!-- Value increment -->
+                <div id="valueSection" class="form-group" style="display:none;">
+                    <label class="form-label">Increment Amount (₹ Annual) <span style="color:red;">*</span></label>
+                    <input type="number" name="incrementValue" id="incrementValueAlt"
+                        class="form-control" step="0.01" min="0.01" placeholder="e.g. 60000 per year"
+                        oninput="computePreview()">
+                </div>
+
+                <!-- Manual new CTC -->
+                <div id="manualSection" class="form-group" style="display:none;">
+                    <label class="form-label">New Annual CTC (₹) <span style="color:red;">*</span></label>
+                    <input type="number" name="newCtc" id="newCtc"
+                        class="form-control" step="0.01" min="1" placeholder="e.g. 720000"
+                        oninput="computePreview()">
+                </div>
+
+                <!-- Preview -->
+                <div id="previewBox" style="background:#F0FDF4;border:1px solid #86EFAC;border-radius:8px;padding:12px;margin-bottom:16px;display:none;">
+                    <div style="font-size:0.75rem;color:#166534;font-weight:700;text-transform:uppercase;">New Annual CTC</div>
+                    <div style="font-size:1.4rem;font-weight:800;color:#15803D;" id="newCtcPreview">—</div>
+                    <div style="font-size:0.8rem;color:#166534;" id="newMonthlyPreview">Monthly: —</div>
+                    <div style="font-size:0.8rem;color:#166534;margin-top:2px;" id="changePreview"></div>
+                </div>
+
+                <!-- Effective Period -->
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+                    <div class="form-group">
+                        <label class="form-label">Effective From Month <span style="color:red;">*</span></label>
+                        <select name="effectiveMonth" class="form-control" required>
+                            <% for (let m = 1; m <= 12; m++) { %>
+                            <option value="<%= m %>" <%= m === defaultMonth ? 'selected' : '' %>><%= MONTH_NAMES[m] %></option>
+                            <% } %>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Effective Year <span style="color:red;">*</span></label>
+                        <input type="number" name="effectiveYear" class="form-control"
+                            value="<%= defaultYear %>" min="2020" max="2100" required>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Note / Reason</label>
+                    <input type="text" name="note" class="form-control" placeholder="e.g. Annual appraisal FY 2026-27">
+                </div>
+
+                <div style="background:#FEF3C7;border:1px solid #F59E0B;border-radius:6px;padding:10px;margin-bottom:16px;font-size:0.82rem;color:#92400E;">
+                    📣 The employee will receive an in-app notification when you save this revision.
+                </div>
+
+                <button type="submit" class="btn btn-primary" style="width:100%;">
+                    💾 Save CTC Revision
+                </button>
+            </div>
+        </div>
+    </form>
+
+    <!-- Mini timeline -->
+    <div class="card">
+        <div class="card-header">
+            <div class="card-title">📈 Revision History</div>
+            <a href="/payroll/admin/assignments/<%= assignment._id %>/ctc-history" class="btn btn-secondary btn-sm">Full Timeline</a>
+        </div>
+        <div class="card-body" style="padding:0;">
+            <% const recent = (assignment.ctcRevisions || []).slice().sort((a,b) =>
+                b.effectiveYear !== a.effectiveYear ? b.effectiveYear - a.effectiveYear : b.effectiveMonth - a.effectiveMonth
+            ).slice(0, 5); %>
+            <% if (!recent.length) { %>
+            <p style="padding:16px;color:var(--text-muted);font-size:0.85rem;">No revisions yet.</p>
+            <% } else { %>
+            <% recent.forEach((r, i) => {
+                const isPositive = r.annualCtc >= r.previousCtc;
+                const changeAmt  = r.annualCtc - r.previousCtc;
+                const changePct  = r.previousCtc > 0 ? ((changeAmt/r.previousCtc)*100).toFixed(1) : '—';
+            %>
+            <div style="padding:12px 16px;border-bottom:1px solid #f1f5f9;display:flex;gap:12px;align-items:flex-start;">
+                <div style="width:36px;height:36px;border-radius:50%;background:<%= isPositive ? '#dcfce7' : '#fee2e2' %>;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:1rem;">
+                    <%= r.incrementType === 'initial' ? '🏁' : (isPositive ? '📈' : '📉') %>
+                </div>
+                <div style="flex:1;">
+                    <div style="font-weight:600;font-size:0.9rem;">
+                        ₹<%= r.annualCtc.toLocaleString('en-IN') %> / year
+                    </div>
+                    <div style="font-size:0.78rem;color:var(--text-muted);">
+                        Effective: <%= MONTH_NAMES[r.effectiveMonth] %> <%= r.effectiveYear %>
+                        <% if (r.incrementType !== 'initial' && r.previousCtc > 0) { %>
+                        · <span style="color:<%= isPositive ? '#16a34a' : '#dc2626' %>">
+                            <%= isPositive ? '+' : '' %>₹<%= Math.abs(changeAmt).toLocaleString('en-IN') %> (<%= changePct %>%)
+                        </span>
+                        <% } %>
+                    </div>
+                    <% if (r.note) { %><div style="font-size:0.75rem;color:var(--text-muted);margin-top:2px;"><%= r.note %></div><% } %>
+                </div>
+            </div>
+            <% }) %>
+            <% } %>
+        </div>
+    </div>
+</div>
+
+<script>
+const currentCtc = <%= assignment.ctc || 0 %>;
+
+function onTypeChange() {
+    const type = document.getElementById('incrementType').value;
+    document.getElementById('pctSection').style.display   = type === 'increment_pct'   ? '' : 'none';
+    document.getElementById('valueSection').style.display = type === 'increment_value' ? '' : 'none';
+    document.getElementById('manualSection').style.display = type === 'manual'         ? '' : 'none';
+    computePreview();
+}
+
+function computePreview() {
+    const type = document.getElementById('incrementType').value;
+    let newCTC = 0;
+
+    if (type === 'increment_pct') {
+        const pct = parseFloat(document.getElementById('incrementValue').value) || 0;
+        newCTC = Math.round(currentCtc * (1 + pct / 100) * 100) / 100;
+    } else if (type === 'increment_value') {
+        const val = parseFloat(document.getElementById('incrementValueAlt').value) || 0;
+        newCTC = Math.round((currentCtc + val) * 100) / 100;
+    } else {
+        newCTC = parseFloat(document.getElementById('newCtc').value) || 0;
+    }
+
+    if (!newCTC) { document.getElementById('previewBox').style.display = 'none'; return; }
+
+    const change = newCTC - currentCtc;
+    const changePct = currentCtc > 0 ? ((change / currentCtc) * 100).toFixed(1) : '—';
+
+    document.getElementById('previewBox').style.display = '';
+    document.getElementById('newCtcPreview').textContent   = '₹ ' + newCTC.toLocaleString('en-IN');
+    document.getElementById('newMonthlyPreview').textContent = 'Monthly: ₹ ' + Math.round(newCTC / 12).toLocaleString('en-IN');
+    document.getElementById('changePreview').textContent =
+        change >= 0
+            ? `+₹${change.toLocaleString('en-IN')} (+${changePct}%) vs current`
+            : `-₹${Math.abs(change).toLocaleString('en-IN')} (${changePct}%) vs current`;
+    document.getElementById('changePreview').style.color = change >= 0 ? '#16a34a' : '#dc2626';
+}
+</script>
