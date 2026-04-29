@@ -46,8 +46,10 @@
                     const _hasLibrary      = !!_schoolModules.library;
                     const _hasPayroll      = !!_schoolModules.payroll;
                     const _hasFees         = !!_schoolModules.fees;
+                    const _hasChat         = !!_schoolModules.chat;
                     const _path = (typeof locals !== 'undefined' && locals.title) ? title : '';
-                    const _unreadCount = (typeof unreadNotificationCount !== 'undefined') ? unreadNotificationCount : 0;
+                    const _unreadCount     = (typeof unreadNotificationCount !== 'undefined') ? unreadNotificationCount : 0;
+                    const _unreadChatCount = (typeof unreadChatCount !== 'undefined') ? unreadChatCount : 0;
                 %>
 
                 <% if (session && session.userRole === 'super_admin') { %>
@@ -86,6 +88,9 @@
                     </a>
                     <a href="/super-admin/notifications/create" class="nav-item">
                         <span class="nav-icon">📢</span> Send Notification
+                    </a>
+                    <a href="/chat" class="nav-item <%= _path === 'Chat' ? 'active' : '' %>">
+                        <span class="nav-icon">💬</span> Chat
                     </a>
 
                     <div class="nav-section-label">Logs</div>
@@ -156,6 +161,17 @@
                     </a>
                     <a href="/admin/notifications/create" class="nav-item">
                         <span class="nav-icon">📢</span> Send Notification
+                    </a>
+                    <% } %>
+                    <% if (_hasChat) { %>
+                    <% if (!_hasNotification) { %><div class="nav-section-label">Communications</div><% } %>
+                    <a href="/chat" class="nav-item <%= _path === 'Chat' ? 'active' : '' %>" style="position:relative;">
+                        <span class="nav-icon">💬</span> Chat
+                        <% if (_unreadChatCount > 0) { %>
+                        <span style="position:absolute;right:10px;top:50%;transform:translateY(-50%);background:#3b82f6;color:#fff;border-radius:10px;min-width:18px;height:18px;font-size:10px;font-weight:700;display:inline-flex;align-items:center;justify-content:center;padding:0 4px;">
+                            <%= _unreadChatCount > 99 ? '99+' : _unreadChatCount %>
+                        </span>
+                        <% } %>
                     </a>
                     <% } %>
 
@@ -325,8 +341,9 @@
                     </a>
                     <% } %>
 
-                    <% if (_hasNotification) { %>
+                    <% if (_hasNotification || _hasChat) { %>
                     <div class="nav-section-label">Communications</div>
+                    <% if (_hasNotification) { %>
                     <a href="/teacher/notifications"
                         class="nav-item <%= _path.includes('Notification') ? 'active' : '' %>">
                         <span class="nav-icon">🔔</span> Notifications
@@ -334,6 +351,17 @@
                     <a href="/teacher/notifications/create" class="nav-item">
                         <span class="nav-icon">📢</span> Send Notification
                     </a>
+                    <% } %>
+                    <% if (_hasChat) { %>
+                    <a href="/chat" class="nav-item <%= _path === 'Chat' ? 'active' : '' %>" style="position:relative;">
+                        <span class="nav-icon">💬</span> Chat
+                        <% if (_unreadChatCount > 0) { %>
+                        <span style="position:absolute;right:10px;top:50%;transform:translateY(-50%);background:#3b82f6;color:#fff;border-radius:10px;min-width:18px;height:18px;font-size:10px;font-weight:700;display:inline-flex;align-items:center;justify-content:center;padding:0 4px;">
+                            <%= _unreadChatCount > 99 ? '99+' : _unreadChatCount %>
+                        </span>
+                        <% } %>
+                    </a>
+                    <% } %>
                     <% } %>
 
                     <% if (_hasAptitudeExam) { %>
@@ -493,6 +521,18 @@
                     </a>
                     <% } %>
 
+                    <% if (_hasChat) { %>
+                    <div class="nav-section-label">Communications</div>
+                    <a href="/chat" class="nav-item <%= _path === 'Chat' ? 'active' : '' %>" style="position:relative;">
+                        <span class="nav-icon">💬</span> Chat
+                        <% if (_unreadChatCount > 0) { %>
+                        <span style="position:absolute;right:10px;top:50%;transform:translateY(-50%);background:#3b82f6;color:#fff;border-radius:10px;min-width:18px;height:18px;font-size:10px;font-weight:700;display:inline-flex;align-items:center;justify-content:center;padding:0 4px;">
+                            <%= _unreadChatCount > 99 ? '99+' : _unreadChatCount %>
+                        </span>
+                        <% } %>
+                    </a>
+                    <% } %>
+
                     <% if (_hasDocument) { %>
                     <div class="nav-section-label">Documents</div>
                     <a href="/student/documents"
@@ -570,6 +610,18 @@
                     <a href="/parent/child-attendance"
                         class="nav-item <%= _path.includes('Attendance') ? 'active' : '' %>">
                         <span class="nav-icon">✅</span> Child's Attendance
+                    </a>
+                    <% } %>
+
+                    <% if (_hasChat) { %>
+                    <div class="nav-section-label">Communications</div>
+                    <a href="/chat" class="nav-item <%= _path === 'Chat' ? 'active' : '' %>" style="position:relative;">
+                        <span class="nav-icon">💬</span> Chat
+                        <% if (_unreadChatCount > 0) { %>
+                        <span style="position:absolute;right:10px;top:50%;transform:translateY(-50%);background:#3b82f6;color:#fff;border-radius:10px;min-width:18px;height:18px;font-size:10px;font-weight:700;display:inline-flex;align-items:center;justify-content:center;padding:0 4px;">
+                            <%= _unreadChatCount > 99 ? '99+' : _unreadChatCount %>
+                        </span>
+                        <% } %>
                     </a>
                     <% } %>
 
