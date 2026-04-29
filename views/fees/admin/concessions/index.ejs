@@ -1,0 +1,66 @@
+<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;">
+    <h2 style="margin:0;">🎁 Concession Templates</h2>
+    <a href="/fees/admin/concessions/create" class="btn btn-primary">+ Create Template</a>
+</div>
+
+<% if (success && success.length) { %><div class="alert alert-success"><%= success %></div><% } %>
+<% if (error && error.length) { %><div class="alert alert-error"><%= error %></div><% } %>
+
+<div class="card">
+    <div class="table-wrapper">
+        <% if (!concessions.length) { %>
+        <div class="empty-state" style="padding:40px;">
+            <div style="font-size:2.5rem;">🎁</div>
+            <p>No concession templates yet. Create templates to assign discounts to students.</p>
+            <a href="/fees/admin/concessions/create" class="btn btn-primary">Create Template</a>
+        </div>
+        <% } else { %>
+        <table>
+            <thead>
+                <tr><th>Name</th><th>Type</th><th>Value</th><th>Applicable To</th><th>Status</th><th>Actions</th></tr>
+            </thead>
+            <tbody>
+                <% concessions.forEach(c => { %>
+                <tr>
+                    <td>
+                        <strong><%= c.name %></strong>
+                        <% if (c.description) { %><br><span style="font-size:0.78rem;color:var(--text-muted);"><%= c.description %></span><% } %>
+                    </td>
+                    <td><span class="badge badge-<%= c.concessionType === 'percentage' ? 'info' : 'success' %>">
+                        <%= c.concessionType === 'percentage' ? 'Percentage' : 'Fixed Amount' %>
+                    </span></td>
+                    <td style="font-weight:600;">
+                        <% if (c.concessionType === 'percentage') { %>
+                            <%= c.value %>%
+                        <% } else { %>
+                            ₹<%= (c.value || 0).toLocaleString('en-IN') %>
+                        <% } %>
+                    </td>
+                    <td>
+                        <% if (c.applicableTo === 'all') { %>
+                            <span style="color:var(--text-muted);font-size:0.82rem;">All Fee Heads</span>
+                        <% } else { %>
+                            <span style="font-size:0.82rem;">
+                                <%= (c.applicableHeads || []).map(h => h.name).join(', ') || '—' %>
+                            </span>
+                        <% } %>
+                    </td>
+                    <td><span class="badge badge-<%= c.isActive ? 'success' : 'secondary' %>"><%= c.isActive ? 'Active' : 'Inactive' %></span></td>
+                    <td>
+                        <div style="display:flex;gap:6px;">
+                            <a href="/fees/admin/concessions/<%= c._id %>/edit" class="btn btn-secondary btn-sm">Edit</a>
+                            <form method="POST" action="/fees/admin/concessions/<%= c._id %>/toggle" style="display:inline;">
+                                <button type="submit" class="btn btn-sm <%= c.isActive ? 'btn-warning' : 'btn-success' %>"
+                                    onclick="return confirm('<%= c.isActive ? 'Deactivate' : 'Activate' %> this template?')">
+                                    <%= c.isActive ? 'Deactivate' : 'Activate' %>
+                                </button>
+                            </form>
+                        </div>
+                    </td>
+                </tr>
+                <% }) %>
+            </tbody>
+        </table>
+        <% } %>
+    </div>
+</div>

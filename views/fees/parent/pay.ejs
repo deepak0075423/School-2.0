@@ -1,0 +1,307 @@
+<%
+const flash_success = typeof success !== 'undefined' ? success : (locals.success || '');
+const flash_error   = typeof error   !== 'undefined' ? error   : (locals.error   || '');
+const sym = currencySymbol || '₹';
+const base = `/fees/parent/child/${childId}`;
+%>
+
+<% if (flash_success && flash_success.length) { %><div class="alert alert-success"><%= flash_success %></div><% } %>
+<% if (flash_error   && flash_error.length)   { %><div class="alert alert-error"><%=   flash_error   %></div><% } %>
+
+<div style="display:flex;align-items:center;gap:12px;margin-bottom:24px;">
+    <a href="<%= base %>/fees" class="btn btn-secondary btn-sm">← Back</a>
+    <div>
+        <h2 style="margin:0;font-size:1.4rem;">💳 Pay Fees for <%= studentName %></h2>
+        <% if (activeYear) { %><span style="font-size:0.82rem;color:var(--text-muted);">Academic Year: <strong><%= activeYear.yearName %></strong></span><% } %>
+    </div>
+</div>
+
+<div style="display:grid;grid-template-columns:1fr 360px;gap:24px;align-items:start;">
+
+    <!-- ── Left: Payment Panel ── -->
+    <div class="card">
+        <div class="card-header">
+            <div class="card-title">
+                <% if (gateway === 'razorpay') { %>🔵 Pay via Razorpay
+                <% } else if (gateway === 'stripe') { %>🔷 Pay via Stripe
+                <% } else { %>📋 Submit Payment Details<% } %>
+            </div>
+            <% if (gateway !== 'none') { %>
+            <span class="badge badge-success" style="font-size:0.72rem;">🔒 Secure Payment</span>
+            <% } %>
+        </div>
+        <div class="card-body">
+
+            <!-- Amount -->
+            <div class="form-group">
+                <label class="form-label">Amount to Pay (<%= currency %>)</label>
+                <div style="position:relative;">
+                    <span style="position:absolute;left:12px;top:50%;transform:translateY(-50%);font-size:1.1rem;font-weight:700;color:var(--text-muted);"><%= sym %></span>
+                    <input type="number" id="payAmount" class="form-control"
+                        value="<%= balance %>" min="1" max="<%= balance %>" step="0.01"
+                        style="padding-left:32px;font-size:1.3rem;font-weight:700;color:#1d4ed8;"
+                        oninput="syncAmount(this.value)">
+                </div>
+                <div style="font-size:0.78rem;color:var(--text-muted);margin-top:4px;">
+                    Outstanding balance for <strong><%= studentName %></strong>: <strong style="color:#dc2626;"><%= sym %><%= balance.toLocaleString('en-IN') %></strong>
+                </div>
+            </div>
+
+            <% if (gateway === 'razorpay') { %>
+            <!-- ── RAZORPAY ── -->
+            <div id="rzpError" class="alert alert-error" style="display:none;"></div>
+            <div style="margin-bottom:20px;padding:14px;background:#F0F9FF;border:1px solid #BAE6FD;border-radius:8px;font-size:0.85rem;color:#0369a1;">
+                🔒 Razorpay secure checkout — supports UPI, Cards, Net Banking, and Wallets.
+            </div>
+            <button onclick="initiateRazorpay()" class="btn btn-primary" id="rzpBtn"
+                style="width:100%;padding:14px;font-size:1rem;font-weight:700;">
+                🔵 Pay <%= sym %><span id="rzpAmtDisplay"><%= balance.toLocaleString('en-IN') %></span> via Razorpay
+            </button>
+
+            <% } else if (gateway === 'stripe') { %>
+            <!-- ── STRIPE ── -->
+            <div id="stripeError" class="alert alert-error" style="display:none;"></div>
+            <div class="form-group">
+                <label class="form-label">Card Details</label>
+                <div id="stripeCardElement" style="padding:12px;border:1px solid var(--border);border-radius:8px;background:#fff;min-height:44px;"></div>
+            </div>
+            <button onclick="initiateStripe()" class="btn btn-primary" id="stripeBtn"
+                style="width:100%;padding:14px;font-size:1rem;font-weight:700;">
+                🔷 Pay <%= sym %><span id="stripeAmtDisplay"><%= balance.toLocaleString('en-IN') %></span> Securely
+            </button>
+
+            <% } else { %>
+            <!-- ── OFFLINE ── -->
+            <form method="POST" action="<%= base %>/pay">
+                <input type="hidden" name="amount" id="offlineAmountField" value="<%= balance %>">
+
+                <div class="form-group">
+                    <label class="form-label">Payment Mode <span style="color:#dc2626;">*</span></label>
+                    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:6px;">
+                        <% [
+                            { val:'cash',          label:'💵 Cash',      desc:'Pay at counter' },
+                            { val:'upi',           label:'📱 UPI',       desc:'GPay / PhonePe' },
+                            { val:'cheque',        label:'📝 Cheque',    desc:'Submit at office' },
+                            { val:'bank_transfer', label:'🏦 NEFT/RTGS', desc:'Bank transfer' },
+                            { val:'online',        label:'💻 Online',    desc:'Net banking' },
+                            { val:'dd',            label:'📄 DD',        desc:'Demand Draft' },
+                        ].forEach(m => { %>
+                        <label style="cursor:pointer;">
+                            <input type="radio" name="paymentMode" value="<%= m.val %>" required
+                                class="mode-radio" style="display:none;"
+                                onchange="document.querySelectorAll('.mode-card').forEach(c=>c.classList.remove('mode-selected'));this.closest('.mode-card').classList.add('mode-selected')">
+                            <div class="mode-card" style="border:2px solid var(--border);border-radius:8px;padding:10px 6px;text-align:center;transition:all 0.15s;font-size:0.8rem;cursor:pointer;">
+                                <div style="font-size:1rem;margin-bottom:3px;"><%= m.label %></div>
+                                <div style="font-size:0.7rem;color:var(--text-muted);"><%= m.desc %></div>
+                            </div>
+                        </label>
+                        <% }) %>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Transaction / Reference No.</label>
+                    <input type="text" name="transactionRef" class="form-control" placeholder="UPI ref, cheque no., bank ref...">
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Payment Date <span style="color:#dc2626;">*</span></label>
+                    <input type="date" name="paymentDate" class="form-control"
+                        value="<%= new Date().toISOString().split('T')[0] %>" required>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Remarks</label>
+                    <textarea name="remarks" class="form-control" rows="2" placeholder="Any additional info..."></textarea>
+                </div>
+
+                <div style="padding:12px 14px;background:#FFFBEB;border:1px solid #FCD34D;border-radius:8px;font-size:0.82rem;color:#92400E;margin-bottom:18px;">
+                    ⏳ Payment will be verified by admin. Receipt is issued after confirmation.
+                </div>
+
+                <button type="submit" class="btn btn-primary" style="width:100%;padding:13px;font-size:1rem;font-weight:700;"
+                    onclick="document.getElementById('offlineAmountField').value=document.getElementById('payAmount').value;return confirm('Submit payment of <%= sym %>'+document.getElementById('payAmount').value+' for <%= studentName.replace(/'/g, '') %>?')">
+                    ✅ Submit Payment
+                </button>
+            </form>
+            <% } %>
+
+        </div>
+    </div>
+
+    <!-- ── Right: Summary ── -->
+    <div style="display:flex;flex-direction:column;gap:16px;">
+
+        <!-- Student & Balance -->
+        <div class="card" style="border-top:4px solid #1d4ed8;">
+            <div class="card-body" style="text-align:center;padding:22px 16px;">
+                <div style="font-size:0.75rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.05em;margin-bottom:4px;">Paying for</div>
+                <div style="font-size:1.1rem;font-weight:700;margin-bottom:12px;"><%= studentName %></div>
+                <div style="font-size:0.8rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.05em;margin-bottom:6px;">Outstanding Balance</div>
+                <div style="font-size:2rem;font-weight:800;color:#dc2626;"><%= sym %><%= balance.toLocaleString('en-IN') %></div>
+            </div>
+        </div>
+
+        <!-- Fee Breakdown -->
+        <% if (resolved && resolved.items.length) { %>
+        <div class="card">
+            <div class="card-header"><div class="card-title">📋 Fee Breakdown</div></div>
+            <div class="card-body" style="padding:0;">
+                <% resolved.items.forEach((item, idx) => {
+                    const isOverdue = item.dueDate && new Date(item.dueDate) < new Date();
+                %>
+                <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 14px;border-bottom:<%= idx < resolved.items.length-1 ? '1px solid var(--border)' : 'none' %>;">
+                    <div>
+                        <div style="font-size:0.85rem;font-weight:500;"><%= item.feeName %></div>
+                        <% if (item.dueDate) { %>
+                        <div style="font-size:0.72rem;color:<%= isOverdue?'#dc2626':'var(--text-muted)' %>;">
+                            Due: <%= new Date(item.dueDate).toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'}) %><%= isOverdue?' ⚠️':'' %>
+                        </div>
+                        <% } %>
+                    </div>
+                    <div style="font-weight:700;color:#1d4ed8;"><%= sym %><%= (item.amount||0).toLocaleString('en-IN') %></div>
+                </div>
+                <% }) %>
+                <div style="display:flex;justify-content:space-between;padding:12px 14px;background:#EBF5FB;font-weight:700;border-top:2px solid #BFDBFE;">
+                    <span>Total</span>
+                    <span style="color:#1d4ed8;"><%= sym %><%= resolved.items.reduce((s,i)=>s+i.amount,0).toLocaleString('en-IN') %></span>
+                </div>
+            </div>
+        </div>
+        <% } %>
+
+        <% if (gateway !== 'none') { %>
+        <div class="card" style="background:#F0FDF4;border:1px solid #BBF7D0;">
+            <div class="card-body" style="font-size:0.8rem;color:#166534;text-align:center;padding:16px;">
+                <div style="font-size:1.4rem;margin-bottom:6px;">🔒</div>
+                <div style="font-weight:700;margin-bottom:4px;">100% Secure Payment</div>
+                <div style="opacity:0.85;">Powered by <%= gateway === 'razorpay' ? 'Razorpay' : 'Stripe' %>. Card details are never stored on our servers.</div>
+            </div>
+        </div>
+        <% } %>
+    </div>
+</div>
+
+<style>
+.mode-card:hover   { border-color:#3b82f6!important;background:#EFF6FF; }
+.mode-selected     { border-color:#1d4ed8!important;background:#EFF6FF;color:#1d4ed8;font-weight:600; }
+</style>
+
+<% if (gateway === 'razorpay') { %>
+<script src="https://checkout.razorpay.com/v1/checkout.js"></script>
+<script>
+const RZP_KEY      = '<%= razorpayKeyId %>';
+const STUDENT_NAME = '<%= studentName.replace(/'/g, "\\'") %>';
+const SCHOOL_NAME  = '<%= (schoolName||'').replace(/'/g, "\\'") %>';
+const CHILD_ID     = '<%= childId %>';
+let rzpAmtRaw = <%= balance %>;
+
+function syncAmount(val) {
+    rzpAmtRaw = parseFloat(val) || 0;
+    document.getElementById('rzpAmtDisplay').textContent = rzpAmtRaw.toLocaleString('en-IN');
+}
+
+async function initiateRazorpay() {
+    const btn   = document.getElementById('rzpBtn');
+    const errEl = document.getElementById('rzpError');
+    errEl.style.display = 'none';
+    btn.disabled = true; btn.textContent = 'Creating order…';
+
+    const res  = await fetch(`/fees/parent/child/${CHILD_ID}/pay/razorpay/create-order`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ amount: rzpAmtRaw }),
+    });
+    const data = await res.json();
+    if (data.error) {
+        errEl.textContent = data.error; errEl.style.display = 'block';
+        btn.disabled = false; btn.textContent = '🔵 Pay via Razorpay'; return;
+    }
+
+    const options = {
+        key: RZP_KEY, amount: data.amount, currency: data.currency, order_id: data.orderId,
+        name: SCHOOL_NAME || 'School Fees', description: `Fee Payment for ${STUDENT_NAME}`,
+        prefill: { name: STUDENT_NAME }, theme: { color: '#1d4ed8' },
+        handler: async function(response) {
+            btn.textContent = 'Verifying…';
+            const vres = await fetch(`/fees/parent/child/${CHILD_ID}/pay/razorpay/verify`, {
+                method: 'POST', headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    razorpay_order_id:   response.razorpay_order_id,
+                    razorpay_payment_id: response.razorpay_payment_id,
+                    razorpay_signature:  response.razorpay_signature,
+                    amount: rzpAmtRaw,
+                }),
+            });
+            const vdata = await vres.json();
+            if (vdata.success) { window.location.href = vdata.receiptUrl; }
+            else {
+                errEl.textContent = vdata.error || 'Verification failed.';
+                errEl.style.display = 'block';
+                btn.disabled = false; btn.textContent = '🔵 Pay via Razorpay';
+            }
+        },
+        modal: { ondismiss: () => { btn.disabled = false; btn.textContent = '🔵 Pay via Razorpay'; } },
+    };
+    new Razorpay(options).open();
+}
+</script>
+
+<% } else if (gateway === 'stripe') { %>
+<script src="https://js.stripe.com/v3/"></script>
+<script>
+const stripe   = Stripe('<%= stripePublishableKey %>');
+const elements = stripe.elements();
+const card     = elements.create('card', { style: { base: { fontSize:'16px', color:'#374151' } } });
+card.mount('#stripeCardElement');
+const CHILD_ID = '<%= childId %>';
+let stripeAmtRaw = <%= balance %>;
+
+function syncAmount(val) {
+    stripeAmtRaw = parseFloat(val) || 0;
+    document.getElementById('stripeAmtDisplay').textContent = stripeAmtRaw.toLocaleString('en-IN');
+}
+
+async function initiateStripe() {
+    const btn   = document.getElementById('stripeBtn');
+    const errEl = document.getElementById('stripeError');
+    errEl.style.display = 'none';
+    btn.disabled = true; btn.textContent = 'Processing…';
+
+    const res  = await fetch(`/fees/parent/child/${CHILD_ID}/pay/stripe/create-intent`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ amount: stripeAmtRaw }),
+    });
+    const data = await res.json();
+    if (data.error) {
+        errEl.textContent = data.error; errEl.style.display = 'block';
+        btn.disabled = false; btn.textContent = '🔷 Pay Securely'; return;
+    }
+
+    const { error, paymentIntent } = await stripe.confirmCardPayment(data.clientSecret, { payment_method: { card } });
+    if (error) {
+        errEl.textContent = error.message; errEl.style.display = 'block';
+        btn.disabled = false; btn.textContent = '🔷 Pay Securely'; return;
+    }
+
+    btn.textContent = 'Confirming…';
+    const vres  = await fetch(`/fees/parent/child/${CHILD_ID}/pay/stripe/verify`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ paymentIntentId: paymentIntent.id, amount: stripeAmtRaw }),
+    });
+    const vdata = await vres.json();
+    if (vdata.success) { window.location.href = vdata.receiptUrl; }
+    else {
+        errEl.textContent = vdata.error || 'Confirmation failed.';
+        errEl.style.display = 'block';
+        btn.disabled = false; btn.textContent = '🔷 Pay Securely';
+    }
+}
+</script>
+
+<% } else { %>
+<script>
+function syncAmount(val) {
+    document.getElementById('offlineAmountField').value = val;
+}
+</script>
+<% } %>

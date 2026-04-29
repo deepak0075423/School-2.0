@@ -23,6 +23,8 @@ const MODULE_LABELS = {
     leave:        'Leave Management',
     document:     'Document Sharing',
     library:      'Library Management',
+    payroll:      'Payroll Management',
+    fees:         'Fees Management',
 };
 
 const requireModule = (moduleName) => (req, res, next) => {

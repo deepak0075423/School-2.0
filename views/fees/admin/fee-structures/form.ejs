@@ -1,0 +1,170 @@
+<div style="display:flex;align-items:center;gap:12px;margin-bottom:20px;">
+    <a href="/fees/admin/fee-structures" class="btn btn-secondary btn-sm">← Back</a>
+    <h2 style="margin:0;"><%= isEdit ? 'Edit' : 'Create' %> Fee Structure</h2>
+</div>
+
+<% if (error && error.length) { %><div class="alert alert-error"><%= error %></div><% } %>
+
+<div class="card">
+    <div class="card-body">
+        <form method="POST" action="/fees/admin/fee-structures/<%= isEdit ? structure._id + '/edit' : 'create' %>" id="structureForm">
+
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
+                <div class="form-group">
+                    <label class="form-label">Structure Name <span style="color:#dc2626;">*</span></label>
+                    <input type="text" name="name" class="form-control" required
+                        value="<%= structure?.name || '' %>" placeholder="e.g. Class 10 Annual Fees 2024-25">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Academic Year</label>
+                    <select name="academicYearId" class="form-control">
+                        <% academicYears.forEach(ay => { %>
+                        <option value="<%= ay._id %>"
+                            <%= (structure?.academicYear?.toString() === ay._id.toString() || activeYear?._id?.toString() === ay._id.toString()) ? 'selected' : '' %>>
+                            <%= ay.yearName %> <%= ay.status === 'active' ? '(Active)' : '' %>
+                        </option>
+                        <% }) %>
+                    </select>
+                </div>
+            </div>
+
+            <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;">
+                <div class="form-group">
+                    <label class="form-label">Level <span style="color:#dc2626;">*</span></label>
+                    <select name="level" class="form-control" id="levelSelect" onchange="toggleScope()">
+                        <option value="class"   <%= (structure?.level || 'class') === 'class'   ? 'selected' : '' %>>Class-wide</option>
+                        <option value="section" <%= structure?.level === 'section' ? 'selected' : '' %>>Section-specific</option>
+                    </select>
+                </div>
+                <div class="form-group" id="classGroup">
+                    <label class="form-label">Class</label>
+                    <select name="classId" class="form-control" id="classSelect">
+                        <option value="">— Select Class —</option>
+                        <% classes.forEach(c => { %>
+                        <option value="<%= c._id %>" <%= structure?.class?.toString() === c._id.toString() ? 'selected' : '' %>>
+                            Class <%= c.classNumber %> — <%= c.className %>
+                        </option>
+                        <% }) %>
+                    </select>
+                </div>
+                <div class="form-group" id="sectionGroup" style="display:none;">
+                    <label class="form-label">Section</label>
+                    <select name="sectionId" class="form-control">
+                        <option value="">— Select Section —</option>
+                        <% sections.forEach(s => { %>
+                        <option value="<%= s._id %>" <%= structure?.section?.toString() === s._id.toString() ? 'selected' : '' %>>
+                            <%= s.class?.className %> — Section <%= s.sectionName %>
+                        </option>
+                        <% }) %>
+                    </select>
+                </div>
+            </div>
+
+            <hr style="margin:20px 0;border-color:var(--border);">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
+                <h3 style="margin:0;font-size:1rem;">Fee Components</h3>
+                <button type="button" class="btn btn-secondary btn-sm" onclick="addRow()">+ Add Component</button>
+            </div>
+
+            <div class="table-wrapper">
+                <table id="feeTable">
+                    <thead>
+                        <tr><th style="width:35%;">Fee Head</th><th>Amount (₹)</th><th>Due Date</th><th>Installment Label</th><th></th></tr>
+                    </thead>
+                    <tbody id="feeRows">
+                        <% if (structure && structure.items && structure.items.length) { %>
+                            <% structure.items.forEach((item, i) => { %>
+                            <tr id="row-<%= i %>">
+                                <td>
+                                    <select name="feeHeads" class="form-control" required>
+                                        <option value="">— Select Head —</option>
+                                        <% feeHeads.forEach(h => { %>
+                                        <option value="<%= h._id %>" <%= item.feeHead?._id?.toString() === h._id.toString() || item.feeHead?.toString() === h._id.toString() ? 'selected' : '' %>>
+                                            <%= h.name %> (<%= h.category %>)
+                                        </option>
+                                        <% }) %>
+                                    </select>
+                                </td>
+                                <td><input type="number" name="amounts" class="form-control amount-input" min="0" step="0.01" value="<%= item.amount || 0 %>" onchange="updateTotal()"></td>
+                                <td><input type="date" name="dueDates" class="form-control" value="<%= item.dueDate ? new Date(item.dueDate).toISOString().split('T')[0] : '' %>"></td>
+                                <td><input type="text" name="installmentLabels" class="form-control" value="<%= item.installmentLabel || '' %>" placeholder="e.g. Term 1, April"></td>
+                                <td><button type="button" class="btn btn-danger btn-sm" onclick="removeRow('<%= i %>')">✕</button></td>
+                            </tr>
+                            <% }) %>
+                        <% } else { %>
+                            <tr id="row-0">
+                                <td>
+                                    <select name="feeHeads" class="form-control" required>
+                                        <option value="">— Select Head —</option>
+                                        <% feeHeads.forEach(h => { %>
+                                        <option value="<%= h._id %>"><%= h.name %> (<%= h.category %>)</option>
+                                        <% }) %>
+                                    </select>
+                                </td>
+                                <td><input type="number" name="amounts" class="form-control amount-input" min="0" step="0.01" value="0" onchange="updateTotal()"></td>
+                                <td><input type="date" name="dueDates" class="form-control"></td>
+                                <td><input type="text" name="installmentLabels" class="form-control" placeholder="e.g. Term 1, April"></td>
+                                <td><button type="button" class="btn btn-danger btn-sm" onclick="removeRow('0')">✕</button></td>
+                            </tr>
+                        <% } %>
+                    </tbody>
+                </table>
+            </div>
+
+            <div style="text-align:right;margin-top:12px;font-size:1rem;font-weight:700;color:#1d4ed8;">
+                Total: ₹<span id="totalDisplay">0</span>
+            </div>
+
+            <div style="display:flex;gap:10px;margin-top:20px;">
+                <button type="submit" class="btn btn-primary"><%= isEdit ? '💾 Update' : '✅ Create' %> Structure</button>
+                <a href="/fees/admin/fee-structures" class="btn btn-secondary">Cancel</a>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+let rowCount = <%= (structure?.items?.length || 1) %>;
+
+const feeHeadsOptions = `<option value="">— Select Head —</option>` +
+    [<% feeHeads.forEach((h, i) => { %>`<option value="<%= h._id %>"><%= h.name %> (<%= h.category %>)</option>`<%= i < feeHeads.length-1 ? ',' : '' %><% }) %>].join('');
+
+function toggleScope() {
+    const level = document.getElementById('levelSelect').value;
+    document.getElementById('classGroup').style.display   = level === 'class'   ? '' : 'none';
+    document.getElementById('sectionGroup').style.display = level === 'section' ? '' : 'none';
+}
+
+function addRow() {
+    const tbody = document.getElementById('feeRows');
+    const tr = document.createElement('tr');
+    tr.id = 'row-' + rowCount;
+    tr.innerHTML = `
+        <td><select name="feeHeads" class="form-control" required>${feeHeadsOptions}</select></td>
+        <td><input type="number" name="amounts" class="form-control amount-input" min="0" step="0.01" value="0" onchange="updateTotal()"></td>
+        <td><input type="date" name="dueDates" class="form-control"></td>
+        <td><input type="text" name="installmentLabels" class="form-control" placeholder="e.g. Term 1, April"></td>
+        <td><button type="button" class="btn btn-danger btn-sm" onclick="removeRow('${rowCount}')">✕</button></td>
+    `;
+    tbody.appendChild(tr);
+    rowCount++;
+}
+
+function removeRow(id) {
+    const row = document.getElementById('row-' + id);
+    if (row && document.getElementById('feeRows').children.length > 1) {
+        row.remove(); updateTotal();
+    }
+}
+
+function updateTotal() {
+    const inputs = document.querySelectorAll('.amount-input');
+    let total = 0;
+    inputs.forEach(i => { total += parseFloat(i.value) || 0; });
+    document.getElementById('totalDisplay').textContent = total.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+
+// Init
+toggleScope();
+updateTotal();
+</script>

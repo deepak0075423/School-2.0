@@ -1,0 +1,170 @@
+<%
+const flash_success = typeof success !== 'undefined' ? success : (locals.success || '');
+const flash_error   = typeof error   !== 'undefined' ? error   : (locals.error   || '');
+const pendingPayments = payments.filter(p => p.paymentStatus === 'pending');
+%>
+
+<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;flex-wrap:wrap;gap:12px;">
+    <div>
+        <h2 style="margin:0;">💳 Fee Payments</h2>
+        <% if (pendingPayments.length) { %>
+        <span style="font-size:0.82rem;color:#d97706;font-weight:600;">⏳ <%= pendingPayments.length %> payment(s) pending verification</span>
+        <% } %>
+    </div>
+    <a href="/fees/admin/payments/record" class="btn btn-primary">+ Record Payment</a>
+</div>
+
+<% if (flash_success && flash_success.length) { %><div class="alert alert-success"><%= flash_success %></div><% } %>
+<% if (flash_error   && flash_error.length)   { %><div class="alert alert-error"><%=   flash_error   %></div><% } %>
+
+<!-- Pending Payments Alert -->
+<% if (pendingPayments.length) { %>
+<div style="background:#FFFBEB;border:1px solid #FCD34D;border-radius:10px;margin-bottom:20px;overflow:hidden;">
+    <div style="padding:12px 18px;background:#FEF3C7;border-bottom:1px solid #FCD34D;display:flex;align-items:center;gap:8px;">
+        <span style="font-size:1rem;">⏳</span>
+        <strong style="color:#92400E;">Pending Verification (<%= pendingPayments.length %>)</strong>
+        <span style="font-size:0.82rem;color:#78350F;margin-left:4px;">— Student-submitted payments awaiting approval</span>
+    </div>
+    <div>
+        <% pendingPayments.forEach((p, idx) => { %>
+        <div style="padding:14px 18px;border-bottom:<%= idx < pendingPayments.length-1 ? '1px solid #FDE68A' : 'none' %>;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;">
+            <div style="display:flex;gap:20px;align-items:center;flex-wrap:wrap;">
+                <div>
+                    <div style="font-weight:700;color:#1d4ed8;font-size:1.05rem;">₹<%= (p.amount||0).toLocaleString('en-IN') %></div>
+                    <div style="font-size:0.75rem;color:var(--text-muted);">
+                        <%= new Date(p.paymentDate).toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'}) %>
+                    </div>
+                </div>
+                <div>
+                    <div style="font-weight:600;font-size:0.9rem;"><%= p.student?.name || '—' %></div>
+                    <div style="font-size:0.75rem;color:var(--text-muted);">
+                        <span class="badge badge-secondary" style="font-size:0.7rem;"><%= (p.paymentMode||'').replace(/_/g,' ').toUpperCase() %></span>
+                        <% if (p.transactionRef) { %> · Ref: <code style="font-size:0.75rem;"><%= p.transactionRef %></code><% } %>
+                    </div>
+                </div>
+                <% if (p.remarks) { %>
+                <div style="font-size:0.78rem;color:var(--text-muted);max-width:200px;">📝 <%= p.remarks %></div>
+                <% } %>
+            </div>
+            <div style="display:flex;gap:8px;align-items:center;">
+                <form method="POST" action="/fees/admin/payments/<%= p._id %>/approve"
+                    onsubmit="return confirm('Approve ₹<%= (p.amount||0).toLocaleString('en-IN') %> payment for <%= (p.student?.name||'this student').replace(/'/g,'') %>?')">
+                    <button type="submit" class="btn btn-primary btn-sm" style="background:#16a34a;border-color:#16a34a;">
+                        ✅ Approve
+                    </button>
+                </form>
+                <form method="POST" action="/fees/admin/payments/<%= p._id %>/reject"
+                    onsubmit="return confirmReject(this)">
+                    <input type="hidden" name="reason" id="reason_<%= p._id %>">
+                    <button type="submit" class="btn btn-secondary btn-sm" style="color:#dc2626;border-color:#dc2626;">
+                        ❌ Reject
+                    </button>
+                </form>
+            </div>
+        </div>
+        <% }) %>
+    </div>
+</div>
+<% } %>
+
+<!-- Filters -->
+<div class="card" style="margin-bottom:16px;">
+    <div class="card-body">
+        <form method="GET" style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr auto;gap:12px;align-items:end;">
+            <div class="form-group" style="margin:0;">
+                <label class="form-label">From Date</label>
+                <input type="date" name="from" class="form-control" value="<%= from || '' %>">
+            </div>
+            <div class="form-group" style="margin:0;">
+                <label class="form-label">To Date</label>
+                <input type="date" name="to" class="form-control" value="<%= to || '' %>">
+            </div>
+            <div class="form-group" style="margin:0;">
+                <label class="form-label">Payment Mode</label>
+                <select name="mode" class="form-control">
+                    <option value="">All Modes</option>
+                    <% ['cash','cheque','bank_transfer','online','dd','upi'].forEach(m => { %>
+                    <option value="<%= m %>" <%= mode === m ? 'selected' : '' %>><%= m.replace(/_/g,' ').replace(/\b\w/g,c=>c.toUpperCase()) %></option>
+                    <% }) %>
+                </select>
+            </div>
+            <div class="form-group" style="margin:0;">
+                <label class="form-label">Status</label>
+                <select name="status" class="form-control">
+                    <option value="">All</option>
+                    <% ['completed','pending','failed','refunded'].forEach(s => { %>
+                    <option value="<%= s %>" <%= status === s ? 'selected' : '' %>><%= s.charAt(0).toUpperCase()+s.slice(1) %></option>
+                    <% }) %>
+                </select>
+            </div>
+            <button type="submit" class="btn btn-primary" style="height:40px;">Filter</button>
+        </form>
+    </div>
+</div>
+
+<!-- Payments Table -->
+<div class="card">
+    <div class="card-header">
+        <div class="card-title">All Payments</div>
+        <div style="font-weight:600;color:#16a34a;">Total Collected: ₹<%= total.toLocaleString('en-IN') %></div>
+    </div>
+    <div class="table-wrapper">
+        <% if (!payments.length) { %>
+        <div class="empty-state" style="padding:40px;"><div style="font-size:2rem;">💳</div><p>No payments found.</p></div>
+        <% } else { %>
+        <table>
+            <thead>
+                <tr>
+                    <th>Receipt No.</th><th>Student</th><th>Amount</th><th>Mode</th>
+                    <th>Date</th><th>Status</th><th>Collected By</th><th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                <% payments.forEach(p => { %>
+                <tr style="<%= p.paymentStatus === 'pending' ? 'background:#FFFBEB;' : '' %>">
+                    <td style="font-family:monospace;font-size:0.82rem;">
+                        <%= p.receiptNumber || '<span style="color:var(--text-muted);">Pending</span>' %>
+                    </td>
+                    <td><strong><%= p.student?.name || '—' %></strong></td>
+                    <td style="font-weight:700;color:#16a34a;">₹<%= (p.amount || 0).toLocaleString('en-IN') %></td>
+                    <td><span class="badge badge-secondary" style="font-size:0.72rem;"><%= (p.paymentMode || '').replace(/_/g,' ').toUpperCase() %></span></td>
+                    <td style="font-size:0.82rem;color:var(--text-muted);">
+                        <%= new Date(p.paymentDate).toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'}) %>
+                    </td>
+                    <td>
+                        <span class="badge badge-<%=
+                            p.paymentStatus === 'completed' ? 'success' :
+                            p.paymentStatus === 'pending'   ? 'warning' :
+                            p.paymentStatus === 'refunded'  ? 'info'    : 'danger'
+                        %>" style="font-size:0.72rem;"><%= p.paymentStatus %></span>
+                    </td>
+                    <td style="font-size:0.82rem;color:var(--text-muted);"><%= p.collectedBy?.name || (p.paymentStatus === 'pending' ? 'Self-submitted' : '—') %></td>
+                    <td>
+                        <div style="display:flex;gap:6px;flex-wrap:wrap;">
+                            <% if (p.paymentStatus === 'pending') { %>
+                            <form method="POST" action="/fees/admin/payments/<%= p._id %>/approve" style="display:inline;"
+                                onsubmit="return confirm('Approve this payment?')">
+                                <button type="submit" class="btn btn-sm" style="background:#16a34a;color:#fff;border:none;padding:4px 10px;border-radius:4px;cursor:pointer;font-size:0.75rem;">✅ Approve</button>
+                            </form>
+                            <% } else if (p.paymentStatus === 'completed') { %>
+                            <a href="/fees/admin/payments/<%= p._id %>/receipt" class="btn btn-secondary btn-sm">View</a>
+                            <a href="/fees/admin/payments/<%= p._id %>/download" class="btn btn-secondary btn-sm">PDF</a>
+                            <% } %>
+                        </div>
+                    </td>
+                </tr>
+                <% }) %>
+            </tbody>
+        </table>
+        <% } %>
+    </div>
+</div>
+
+<script>
+function confirmReject(form) {
+    const reason = prompt('Reason for rejection (optional):');
+    if (reason === null) return false; // cancelled
+    form.querySelector('input[name="reason"]').value = reason || 'Not specified';
+    return true;
+}
+</script>

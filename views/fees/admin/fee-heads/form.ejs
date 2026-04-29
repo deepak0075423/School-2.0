@@ -1,0 +1,56 @@
+<div style="display:flex;align-items:center;gap:12px;margin-bottom:20px;">
+    <a href="/fees/admin/fee-heads" class="btn btn-secondary btn-sm">← Back</a>
+    <h2 style="margin:0;"><%= isEdit ? 'Edit' : 'Create' %> Fee Head</h2>
+</div>
+
+<% if (error && error.length) { %><div class="alert alert-error"><%= error %></div><% } %>
+
+<div class="card" style="max-width:620px;">
+    <div class="card-body">
+        <form method="POST" action="/fees/admin/fee-heads/<%= isEdit ? feeHead._id + '/edit' : 'create' %>">
+
+            <div class="form-group">
+                <label class="form-label">Name <span style="color:#dc2626;">*</span></label>
+                <input type="text" name="name" class="form-control" required
+                    value="<%= feeHead?.name || '' %>" placeholder="e.g. Tuition Fee, Transport Fee">
+            </div>
+
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
+                <div class="form-group">
+                    <label class="form-label">Category</label>
+                    <select name="category" class="form-control">
+                        <% ['tuition','transport','admission','exam','library','sports','hostel','custom'].forEach(cat => { %>
+                        <option value="<%= cat %>" <%= (feeHead?.category || 'custom') === cat ? 'selected' : '' %>
+                            style="text-transform:capitalize;"><%= cat.charAt(0).toUpperCase() + cat.slice(1) %></option>
+                        <% }) %>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Type <span style="color:#dc2626;">*</span></label>
+                    <select name="type" class="form-control" required>
+                        <option value="recurring" <%= (feeHead?.type === 'recurring') ? 'selected' : '' %>>Recurring (monthly/termly)</option>
+                        <option value="one_time" <%= (feeHead?.type === 'one_time') ? 'selected' : '' %>>One-Time</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">Default Amount (₹)</label>
+                <input type="number" name="defaultAmount" class="form-control" min="0" step="0.01"
+                    value="<%= feeHead?.defaultAmount || 0 %>" placeholder="0.00">
+                <small style="color:var(--text-muted);font-size:0.78rem;">Used as pre-fill in fee structures. Can be overridden per structure.</small>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">Description</label>
+                <textarea name="description" class="form-control" rows="2"
+                    placeholder="Optional description"><%= feeHead?.description || '' %></textarea>
+            </div>
+
+            <div style="display:flex;gap:10px;margin-top:8px;">
+                <button type="submit" class="btn btn-primary"><%= isEdit ? '💾 Update' : '✅ Create' %> Fee Head</button>
+                <a href="/fees/admin/fee-heads" class="btn btn-secondary">Cancel</a>
+            </div>
+        </form>
+    </div>
+</div>

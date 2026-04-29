@@ -1,0 +1,90 @@
+<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;">
+    <div>
+        <h2 style="margin:0;">🎒 Student Fee Management</h2>
+        <% if (activeYear) { %><span style="font-size:0.82rem;color:var(--text-muted);">Year: <%= activeYear.yearName %></span><% } %>
+    </div>
+    <a href="/fees/admin/payments/record" class="btn btn-primary">+ Record Payment</a>
+</div>
+
+<% if (success && success.length) { %><div class="alert alert-success"><%= success %></div><% } %>
+<% if (error && error.length) { %><div class="alert alert-error"><%= error %></div><% } %>
+
+<div class="card" style="margin-bottom:16px;">
+    <div class="card-body">
+        <form method="GET" style="display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end;">
+            <div class="form-group" style="margin:0;min-width:200px;">
+                <label class="form-label">Search Student</label>
+                <input type="text" name="search" class="form-control" value="<%= search || '' %>" placeholder="Student name…">
+            </div>
+            <div class="form-group" style="margin:0;min-width:150px;">
+                <label class="form-label">Class</label>
+                <select name="classId" class="form-control">
+                    <option value="">All Classes</option>
+                    <% classes.forEach(c => { %>
+                    <option value="<%= c._id %>" <%= classId === c._id.toString() ? 'selected' : '' %>>
+                        Class <%= c.classNumber %> — <%= c.className %>
+                    </option>
+                    <% }) %>
+                </select>
+            </div>
+            <div class="form-group" style="margin:0;min-width:150px;">
+                <label class="form-label">Section</label>
+                <select name="sectionId" class="form-control">
+                    <option value="">All Sections</option>
+                    <% allSections.forEach(s => { %>
+                    <option value="<%= s._id %>" <%= sectionId === s._id.toString() ? 'selected' : '' %>>
+                        <%= s.class?.className %> — <%= s.sectionName %>
+                    </option>
+                    <% }) %>
+                </select>
+            </div>
+            <button type="submit" class="btn btn-primary" style="height:40px;">Search</button>
+            <a href="/fees/admin/student-fees" class="btn btn-secondary" style="height:40px;line-height:24px;">Clear</a>
+        </form>
+    </div>
+</div>
+
+<div class="card">
+    <div class="table-wrapper">
+        <% if (!students.length) { %>
+        <div class="empty-state" style="padding:40px;">
+            <div style="font-size:2.5rem;">🎒</div>
+            <p>No students found matching the filter.</p>
+        </div>
+        <% } else { %>
+        <table>
+            <thead>
+                <tr><th>Student</th><th>Class / Section</th><th>Adm. No.</th><th>Outstanding</th><th>Actions</th></tr>
+            </thead>
+            <tbody>
+                <% students.forEach(s => { %>
+                <tr>
+                    <td><strong><%= s.name %></strong><br><span style="font-size:0.78rem;color:var(--text-muted);"><%= s.email %></span></td>
+                    <td style="font-size:0.85rem;">
+                        <% if (s.profile?.currentSection) { %>
+                            <%= s.profile.currentSection.class?.className || '' %> — Sec <%= s.profile.currentSection.sectionName %>
+                        <% } else { %>—<% } %>
+                    </td>
+                    <td style="font-size:0.82rem;color:var(--text-muted);"><%= s.profile?.admissionNumber || '—' %></td>
+                    <td>
+                        <% if (s.balance > 0) { %>
+                        <span style="color:#dc2626;font-weight:700;">₹<%= s.balance.toLocaleString('en-IN') %></span>
+                        <% } else if (s.balance < 0) { %>
+                        <span style="color:#16a34a;font-weight:600;">Credit ₹<%= Math.abs(s.balance).toLocaleString('en-IN') %></span>
+                        <% } else { %>
+                        <span style="color:#16a34a;">Cleared</span>
+                        <% } %>
+                    </td>
+                    <td>
+                        <div style="display:flex;gap:6px;">
+                            <a href="/fees/admin/student-fees/<%= s._id %>" class="btn btn-secondary btn-sm">View</a>
+                            <a href="/fees/admin/payments/record?studentId=<%= s._id %>" class="btn btn-primary btn-sm">Pay</a>
+                        </div>
+                    </td>
+                </tr>
+                <% }) %>
+            </tbody>
+        </table>
+        <% } %>
+    </div>
+</div>

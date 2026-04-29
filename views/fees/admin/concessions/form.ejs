@@ -1,0 +1,75 @@
+<div style="display:flex;align-items:center;gap:12px;margin-bottom:20px;">
+    <a href="/fees/admin/concessions" class="btn btn-secondary btn-sm">← Back</a>
+    <h2 style="margin:0;"><%= isEdit ? 'Edit' : 'Create' %> Concession Template</h2>
+</div>
+
+<% if (error && error.length) { %><div class="alert alert-error"><%= error %></div><% } %>
+
+<div class="card" style="max-width:620px;">
+    <div class="card-body">
+        <form method="POST" action="/fees/admin/concessions/<%= isEdit ? concession._id + '/edit' : 'create' %>">
+
+            <div class="form-group">
+                <label class="form-label">Template Name <span style="color:#dc2626;">*</span></label>
+                <input type="text" name="name" class="form-control" required
+                    value="<%= concession?.name || '' %>" placeholder="e.g. Staff Ward Concession, Merit Scholarship">
+            </div>
+
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
+                <div class="form-group">
+                    <label class="form-label">Concession Type <span style="color:#dc2626;">*</span></label>
+                    <select name="concessionType" class="form-control">
+                        <option value="percentage" <%= (concession?.concessionType || 'percentage') === 'percentage' ? 'selected' : '' %>>Percentage (%)</option>
+                        <option value="fixed"      <%= concession?.concessionType === 'fixed' ? 'selected' : '' %>>Fixed Amount (₹)</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Value <span style="color:#dc2626;">*</span></label>
+                    <input type="number" name="value" class="form-control" required min="0" step="0.01"
+                        value="<%= concession?.value || 0 %>" placeholder="e.g. 50 or 500">
+                    <small style="color:var(--text-muted);font-size:0.78rem;">% for percentage type, ₹ for fixed.</small>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">Applicable To</label>
+                <select name="applicableTo" class="form-control" id="applicableToSelect" onchange="toggleHeads()">
+                    <option value="all"            <%= (concession?.applicableTo || 'all') === 'all'            ? 'selected' : '' %>>All Fee Heads</option>
+                    <option value="specific_heads" <%= concession?.applicableTo === 'specific_heads' ? 'selected' : '' %>>Specific Fee Heads</option>
+                </select>
+            </div>
+
+            <div class="form-group" id="headsGroup" style="display:none;">
+                <label class="form-label">Select Fee Heads</label>
+                <div style="display:flex;flex-direction:column;gap:6px;max-height:200px;overflow-y:auto;border:1px solid var(--border);border-radius:6px;padding:10px;">
+                    <% feeHeads.forEach(h => { %>
+                    <label style="display:flex;align-items:center;gap:8px;cursor:pointer;">
+                        <input type="checkbox" name="applicableHeads" value="<%= h._id %>"
+                            <%= concession?.applicableHeads?.some(ah => ah._id?.toString() === h._id.toString() || ah.toString() === h._id.toString()) ? 'checked' : '' %>>
+                        <span style="font-size:0.88rem;"><%= h.name %> <span style="color:var(--text-muted);font-size:0.78rem;">(<%= h.category %>)</span></span>
+                    </label>
+                    <% }) %>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">Description</label>
+                <textarea name="description" class="form-control" rows="2"
+                    placeholder="Optional notes about this concession"><%= concession?.description || '' %></textarea>
+            </div>
+
+            <div style="display:flex;gap:10px;margin-top:8px;">
+                <button type="submit" class="btn btn-primary"><%= isEdit ? '💾 Update' : '✅ Create' %> Template</button>
+                <a href="/fees/admin/concessions" class="btn btn-secondary">Cancel</a>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+function toggleHeads() {
+    const v = document.getElementById('applicableToSelect').value;
+    document.getElementById('headsGroup').style.display = v === 'specific_heads' ? '' : 'none';
+}
+toggleHeads();
+</script>

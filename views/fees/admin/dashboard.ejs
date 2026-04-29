@@ -1,0 +1,131 @@
+<div class="welcome-banner">
+    <div class="welcome-icon">💰</div>
+    <div>
+        <h2>Fees Dashboard</h2>
+        <p>Manage fee structures, record payments, and track dues for <%= session.schoolName %>.</p>
+        <% if (activeYear) { %><span style="font-size:0.85rem;opacity:0.8;">Academic Year: <strong><%= activeYear.yearName %></strong></span><% } %>
+    </div>
+</div>
+
+<div class="stats-grid">
+    <div class="stat-card">
+        <div class="stat-icon blue">📋</div>
+        <div class="stat-info">
+            <div class="stat-value">₹<%= stats.totalCharged.toLocaleString('en-IN') %></div>
+            <div class="stat-label">Total Charged</div>
+        </div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-icon green">✅</div>
+        <div class="stat-info">
+            <div class="stat-value">₹<%= stats.totalCollected.toLocaleString('en-IN') %></div>
+            <div class="stat-label">Total Collected</div>
+        </div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-icon orange">⏳</div>
+        <div class="stat-info">
+            <div class="stat-value">₹<%= stats.totalDues.toLocaleString('en-IN') %></div>
+            <div class="stat-label">Outstanding Dues</div>
+        </div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-icon purple" style="background:rgba(147,51,234,0.15);color:#9333ea;">🎁</div>
+        <div class="stat-info">
+            <div class="stat-value">₹<%= stats.totalConcession.toLocaleString('en-IN') %></div>
+            <div class="stat-label">Concessions Given</div>
+        </div>
+    </div>
+</div>
+
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-top:20px;">
+
+    <div class="card">
+        <div class="card-header"><div class="card-title">⚡ Quick Actions</div></div>
+        <div class="card-body" style="display:flex;flex-direction:column;gap:10px;">
+            <a href="/fees/admin/payments/record" class="btn btn-primary">💳 Record Payment</a>
+            <a href="/fees/admin/fee-structures/create" class="btn btn-secondary">🏗️ Create Fee Structure</a>
+            <a href="/fees/admin/fee-heads/create" class="btn btn-secondary">➕ Add Fee Head</a>
+            <a href="/fees/admin/reports/dues" class="btn btn-secondary">📊 View Dues Report</a>
+            <a href="/fees/admin/ledger" class="btn btn-secondary">📒 School Ledger</a>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="card-header"><div class="card-title">📊 Overview</div></div>
+        <div class="card-body">
+            <table style="width:100%;border-collapse:collapse;font-size:0.9rem;">
+                <tr><td style="padding:8px 0;color:var(--text-muted);">Students with dues</td>
+                    <td style="text-align:right;font-weight:600;color:#dc2626;"><%= stats.pendingStudents %></td></tr>
+                <tr><td style="padding:8px 0;color:var(--text-muted);border-top:1px solid var(--border);">Active fee heads</td>
+                    <td style="text-align:right;font-weight:600;"><%= stats.feeHeadCount %></td></tr>
+                <tr><td style="padding:8px 0;color:var(--text-muted);border-top:1px solid var(--border);">Active structures</td>
+                    <td style="text-align:right;font-weight:600;"><%= stats.structureCount %></td></tr>
+                <tr><td style="padding:8px 0;color:var(--text-muted);border-top:1px solid var(--border);">Late fines collected</td>
+                    <td style="text-align:right;font-weight:600;color:#d97706;">₹<%= stats.totalFine.toLocaleString('en-IN') %></td></tr>
+            </table>
+        </div>
+    </div>
+</div>
+
+<div class="card" style="margin-top:20px;">
+    <div class="card-header">
+        <div class="card-title">💳 Recent Payments</div>
+        <a href="/fees/admin/payments" class="btn btn-secondary btn-sm">View All</a>
+    </div>
+    <div class="table-wrapper">
+        <% if (!recentPayments.length) { %>
+        <div class="empty-state" style="padding:30px;">
+            <div style="font-size:2rem;">💳</div>
+            <p>No payments recorded yet.</p>
+            <a href="/fees/admin/payments/record" class="btn btn-primary">Record First Payment</a>
+        </div>
+        <% } else { %>
+        <table>
+            <thead><tr><th>Student</th><th>Amount</th><th>Mode</th><th>Date</th><th>Receipt</th></tr></thead>
+            <tbody>
+                <% recentPayments.forEach(p => { %>
+                <tr>
+                    <td><strong><%= p.student?.name || '—' %></strong></td>
+                    <td style="color:#16a34a;font-weight:600;">₹<%= (p.amount || 0).toLocaleString('en-IN') %></td>
+                    <td><span class="badge badge-secondary"><%= (p.paymentMode || '').toUpperCase() %></span></td>
+                    <td style="font-size:0.82rem;color:var(--text-muted);">
+                        <%= new Date(p.paymentDate).toLocaleDateString('en-IN') %>
+                    </td>
+                    <td>
+                        <a href="/fees/admin/payments/<%= p._id %>/receipt" class="btn btn-secondary btn-sm">View</a>
+                    </td>
+                </tr>
+                <% }) %>
+            </tbody>
+        </table>
+        <% } %>
+    </div>
+</div>
+
+<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-top:20px;">
+    <a href="/fees/admin/fee-heads" class="card" style="text-decoration:none;padding:16px;display:flex;align-items:center;gap:12px;">
+        <span style="font-size:1.6rem;">🏷️</span>
+        <div><div style="font-weight:600;">Fee Heads</div><div style="font-size:0.8rem;color:var(--text-muted);">Configure components</div></div>
+    </a>
+    <a href="/fees/admin/fine-rules" class="card" style="text-decoration:none;padding:16px;display:flex;align-items:center;gap:12px;">
+        <span style="font-size:1.6rem;">⏰</span>
+        <div><div style="font-weight:600;">Fine Rules</div><div style="font-size:0.8rem;color:var(--text-muted);">Late payment fines</div></div>
+    </a>
+    <a href="/fees/admin/concessions" class="card" style="text-decoration:none;padding:16px;display:flex;align-items:center;gap:12px;">
+        <span style="font-size:1.6rem;">🎁</span>
+        <div><div style="font-weight:600;">Concessions</div><div style="font-size:0.8rem;color:var(--text-muted);">Discount templates</div></div>
+    </a>
+    <a href="/fees/admin/reports/collection" class="card" style="text-decoration:none;padding:16px;display:flex;align-items:center;gap:12px;">
+        <span style="font-size:1.6rem;">📈</span>
+        <div><div style="font-weight:600;">Collection Report</div><div style="font-size:0.8rem;color:var(--text-muted);">Track collections</div></div>
+    </a>
+    <a href="/fees/admin/student-fees" class="card" style="text-decoration:none;padding:16px;display:flex;align-items:center;gap:12px;">
+        <span style="font-size:1.6rem;">🎒</span>
+        <div><div style="font-weight:600;">Student Fees</div><div style="font-size:0.8rem;color:var(--text-muted);">Per-student management</div></div>
+    </a>
+    <a href="/fees/admin/settings" class="card" style="text-decoration:none;padding:16px;display:flex;align-items:center;gap:12px;">
+        <span style="font-size:1.6rem;">⚙️</span>
+        <div><div style="font-weight:600;">Settings</div><div style="font-size:0.8rem;color:var(--text-muted);">Gateway &amp; receipt config</div></div>
+    </a>
+</div>

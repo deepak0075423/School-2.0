@@ -45,6 +45,7 @@
                     const _hasDocument     = !!_schoolModules.document;
                     const _hasLibrary      = !!_schoolModules.library;
                     const _hasPayroll      = !!_schoolModules.payroll;
+                    const _hasFees         = !!_schoolModules.fees;
                     const _path = (typeof locals !== 'undefined' && locals.title) ? title : '';
                     const _unreadCount = (typeof unreadNotificationCount !== 'undefined') ? unreadNotificationCount : 0;
                 %>
@@ -248,6 +249,40 @@
                     </a>
                     <a href="/payroll/admin/audit" class="nav-item <%= _path === 'Payroll Audit Log' ? 'active' : '' %>">
                         <span class="nav-icon">📋</span> Audit Log
+                    </a>
+                    <% } %>
+
+                    <% if (_hasFees) { %>
+                    <div class="nav-section-label">Fees</div>
+                    <a href="/fees/admin/dashboard" class="nav-item <%= _path === 'Fees Dashboard' ? 'active' : '' %>">
+                        <span class="nav-icon">💰</span> Dashboard
+                    </a>
+                    <a href="/fees/admin/fee-heads" class="nav-item <%= _path === 'Fee Heads' ? 'active' : '' %>">
+                        <span class="nav-icon">🏷️</span> Fee Heads
+                    </a>
+                    <a href="/fees/admin/fee-structures" class="nav-item <%= _path.includes('Fee Structure') ? 'active' : '' %>">
+                        <span class="nav-icon">🏗️</span> Fee Structures
+                    </a>
+                    <a href="/fees/admin/student-fees" class="nav-item <%= _path.includes('Student Fee') ? 'active' : '' %>">
+                        <span class="nav-icon">🎒</span> Student Fees
+                    </a>
+                    <a href="/fees/admin/payments" class="nav-item <%= _path === 'Fee Payments' ? 'active' : '' %>">
+                        <span class="nav-icon">💳</span> Payments
+                    </a>
+                    <a href="/fees/admin/fine-rules" class="nav-item <%= _path === 'Fine Rules' ? 'active' : '' %>">
+                        <span class="nav-icon">⏰</span> Fine Rules
+                    </a>
+                    <a href="/fees/admin/concessions" class="nav-item <%= _path === 'Concession Templates' ? 'active' : '' %>">
+                        <span class="nav-icon">🎁</span> Concessions
+                    </a>
+                    <a href="/fees/admin/ledger" class="nav-item <%= _path === 'Fee Ledger' ? 'active' : '' %>">
+                        <span class="nav-icon">📒</span> Ledger
+                    </a>
+                    <a href="/fees/admin/reports/collection" class="nav-item <%= _path === 'Collection Report' ? 'active' : '' %>">
+                        <span class="nav-icon">📈</span> Reports
+                    </a>
+                    <a href="/fees/admin/settings" class="nav-item <%= _path === 'Fee Settings' ? 'active' : '' %>">
+                        <span class="nav-icon">⚙️</span> Fee Settings
                     </a>
                     <% } %>
 
@@ -482,6 +517,19 @@
                     </a>
                     <% } %>
 
+                    <% if (_hasFees) { %>
+                    <div class="nav-section-label">Fees</div>
+                    <a href="/fees/student/my-fees" class="nav-item <%= _path === 'My Fees' ? 'active' : '' %>">
+                        <span class="nav-icon">💰</span> My Fees
+                    </a>
+                    <a href="/fees/student/payments" class="nav-item <%= _path === 'My Payments' ? 'active' : '' %>">
+                        <span class="nav-icon">💳</span> Payments
+                    </a>
+                    <a href="/fees/student/ledger" class="nav-item <%= _path === 'My Fee Ledger' ? 'active' : '' %>">
+                        <span class="nav-icon">📒</span> Ledger
+                    </a>
+                    <% } %>
+
                 <% } else if (session && session.userRole === 'parent') { %>
                     <div class="nav-section-label">My Child</div>
                     <a href="/parent/dashboard"
@@ -537,6 +585,13 @@
                     <div class="nav-section-label">Library</div>
                     <a href="/library/parent" class="nav-item <%= _path === "Child's Library Activity" ? 'active' : '' %>">
                         <span class="nav-icon">📚</span> Child's Library
+                    </a>
+                    <% } %>
+
+                    <% if (_hasFees) { %>
+                    <div class="nav-section-label">Fees</div>
+                    <a href="/parent/dashboard#fees" class="nav-item <%= _path && _path.includes('Fees') ? 'active' : '' %>">
+                        <span class="nav-icon">💰</span> Child's Fees
                     </a>
                     <% } %>
 

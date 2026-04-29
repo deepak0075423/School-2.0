@@ -1,0 +1,82 @@
+<div style="display:flex;align-items:center;gap:12px;margin-bottom:20px;">
+    <a href="/fees/admin/fine-rules" class="btn btn-secondary btn-sm">← Back</a>
+    <h2 style="margin:0;"><%= isEdit ? 'Edit' : 'Create' %> Fine Rule</h2>
+</div>
+
+<% if (error && error.length) { %><div class="alert alert-error"><%= error %></div><% } %>
+
+<div class="card" style="max-width:620px;">
+    <div class="card-body">
+        <form method="POST" action="/fees/admin/fine-rules/<%= isEdit ? rule._id + '/edit' : 'create' %>">
+
+            <div class="form-group">
+                <label class="form-label">Rule Name <span style="color:#dc2626;">*</span></label>
+                <input type="text" name="name" class="form-control" required
+                    value="<%= rule?.name || '' %>" placeholder="e.g. Monthly Late Fine">
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">Fine Type <span style="color:#dc2626;">*</span></label>
+                <select name="fineType" class="form-control" id="fineTypeSelect" onchange="toggleFineType()">
+                    <option value="flat"    <%= (rule?.fineType || 'flat') === 'flat'    ? 'selected' : '' %>>Flat Amount (one-time penalty)</option>
+                    <option value="per_day" <%= rule?.fineType === 'per_day' ? 'selected' : '' %>>Per Day (accrues daily)</option>
+                </select>
+            </div>
+
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
+                <div class="form-group" id="flatGroup">
+                    <label class="form-label">Flat Fine Amount (₹)</label>
+                    <input type="number" name="flatAmount" class="form-control" min="0" step="0.01"
+                        value="<%= rule?.flatAmount || 0 %>">
+                </div>
+                <div class="form-group" id="perDayGroup" style="display:none;">
+                    <label class="form-label">Per-Day Fine (₹)</label>
+                    <input type="number" name="perDayAmount" class="form-control" min="0" step="0.01"
+                        value="<%= rule?.perDayAmount || 0 %>">
+                </div>
+            </div>
+
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
+                <div class="form-group">
+                    <label class="form-label">Grace Period (days)</label>
+                    <input type="number" name="gracePeriodDays" class="form-control" min="0"
+                        value="<%= rule?.gracePeriodDays || 0 %>">
+                    <small style="color:var(--text-muted);font-size:0.78rem;">Fine applies after this many days past due date.</small>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Maximum Cap (₹) <small style="color:var(--text-muted);">(0 = no cap)</small></label>
+                    <input type="number" name="maxCap" class="form-control" min="0" step="0.01"
+                        value="<%= rule?.maxCap || 0 %>">
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">Applicable Categories</label>
+                <div style="display:flex;gap:16px;flex-wrap:wrap;margin-top:6px;">
+                    <% ['tuition','transport','admission','exam','library','sports','hostel','custom'].forEach(cat => { %>
+                    <label style="display:flex;align-items:center;gap:6px;cursor:pointer;">
+                        <input type="checkbox" name="applicableCategories" value="<%= cat %>"
+                            <%= rule?.applicableCategories?.includes(cat) ? 'checked' : '' %>>
+                        <span style="text-transform:capitalize;font-size:0.88rem;"><%= cat %></span>
+                    </label>
+                    <% }) %>
+                </div>
+                <small style="color:var(--text-muted);font-size:0.78rem;">Leave all unchecked to apply to all categories.</small>
+            </div>
+
+            <div style="display:flex;gap:10px;margin-top:8px;">
+                <button type="submit" class="btn btn-primary"><%= isEdit ? '💾 Update' : '✅ Create' %> Rule</button>
+                <a href="/fees/admin/fine-rules" class="btn btn-secondary">Cancel</a>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+function toggleFineType() {
+    const t = document.getElementById('fineTypeSelect').value;
+    document.getElementById('flatGroup').style.display   = t === 'flat'    ? '' : 'none';
+    document.getElementById('perDayGroup').style.display = t === 'per_day' ? '' : 'none';
+}
+toggleFineType();
+</script>

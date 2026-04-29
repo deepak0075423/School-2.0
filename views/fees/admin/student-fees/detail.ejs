@@ -1,0 +1,218 @@
+<div style="display:flex;align-items:center;gap:12px;margin-bottom:20px;">
+    <a href="/fees/admin/student-fees" class="btn btn-secondary btn-sm">← Students</a>
+    <h2 style="margin:0;">Fees — <%= student.name %></h2>
+    <span style="font-size:0.85rem;color:var(--text-muted);"><%= student.email %></span>
+</div>
+
+<% if (success && success.length) { %><div class="alert alert-success"><%= success %></div><% } %>
+<% if (error && error.length) { %><div class="alert alert-error"><%= error %></div><% } %>
+
+<div style="display:grid;grid-template-columns:2fr 1fr;gap:20px;">
+    <div>
+        <!-- Fee Summary -->
+        <div class="stats-grid" style="margin-bottom:16px;">
+            <div class="stat-card">
+                <div class="stat-icon <%= balance > 0 ? 'orange' : 'green' %>">
+                    <%= balance > 0 ? '⏳' : '✅' %>
+                </div>
+                <div class="stat-info">
+                    <div class="stat-value" style="color:<%= balance > 0 ? '#dc2626' : '#16a34a' %>;">
+                        ₹<%= Math.abs(balance).toLocaleString('en-IN') %>
+                    </div>
+                    <div class="stat-label"><%= balance > 0 ? 'Outstanding' : balance < 0 ? 'Credit Balance' : 'Fully Paid' %></div>
+                </div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon green">💳</div>
+                <div class="stat-info">
+                    <div class="stat-value">₹<%= payments.reduce((s,p) => s+p.amount, 0).toLocaleString('en-IN') %></div>
+                    <div class="stat-label">Total Paid</div>
+                </div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon purple" style="background:rgba(147,51,234,0.15);color:#9333ea;">🎁</div>
+                <div class="stat-info">
+                    <div class="stat-value">₹<%= concData.totalConcession.toLocaleString('en-IN') %></div>
+                    <div class="stat-label">Concession</div>
+                </div>
+            </div>
+            <% if (fineAmt > 0) { %>
+            <div class="stat-card">
+                <div class="stat-icon orange">⏰</div>
+                <div class="stat-info">
+                    <div class="stat-value" style="color:#d97706;">₹<%= fineAmt.toLocaleString('en-IN') %></div>
+                    <div class="stat-label">Pending Fine</div>
+                </div>
+            </div>
+            <% } %>
+        </div>
+
+        <!-- Resolved Fee Structure -->
+        <div class="card" style="margin-bottom:16px;">
+            <div class="card-header">
+                <div class="card-title">📋 Assigned Fee Structure</div>
+                <a href="/fees/admin/payments/record?studentId=<%= student._id %>" class="btn btn-primary btn-sm">💳 Record Payment</a>
+            </div>
+            <div class="card-body">
+                <% if (!resolved) { %>
+                <div class="empty-state" style="padding:20px;">
+                    <p style="margin:0;color:var(--text-muted);">No fee structure assigned. Create a class/section structure or assign one directly.</p>
+                </div>
+                <% } else { %>
+                <div style="margin-bottom:10px;font-size:0.82rem;color:var(--text-muted);">
+                    Resolution: <span class="badge badge-info" style="text-transform:capitalize;"><%= resolved.level?.replace(/_/g,' ') %></span>
+                </div>
+                <table style="width:100%;border-collapse:collapse;font-size:0.88rem;">
+                    <thead><tr style="background:var(--bg-secondary);">
+                        <th style="padding:8px;">Fee Component</th><th style="padding:8px;">Amount</th><th style="padding:8px;">Due Date</th>
+                    </tr></thead>
+                    <tbody>
+                        <% resolved.items.forEach(item => { %>
+                        <tr>
+                            <td style="padding:8px;"><%= item.feeName %></td>
+                            <td style="padding:8px;font-weight:600;">₹<%= (item.amount || 0).toLocaleString('en-IN') %></td>
+                            <td style="padding:8px;color:var(--text-muted);font-size:0.82rem;">
+                                <%= item.dueDate ? new Date(item.dueDate).toLocaleDateString('en-IN') : '—' %>
+                            </td>
+                        </tr>
+                        <% }) %>
+                        <tr style="background:#EBF5FB;font-weight:700;">
+                            <td style="padding:10px;">Total</td>
+                            <td style="padding:10px;color:#1d4ed8;">₹<%= resolved.items.reduce((s,i) => s+i.amount,0).toLocaleString('en-IN') %></td>
+                            <td></td>
+                        </tr>
+                    </tbody>
+                </table>
+                <% } %>
+            </div>
+        </div>
+
+        <!-- Ledger -->
+        <div class="card">
+            <div class="card-header">
+                <div class="card-title">📒 Recent Ledger</div>
+                <a href="/fees/admin/student-fees/<%= student._id %>/ledger" class="btn btn-secondary btn-sm">Full Ledger</a>
+            </div>
+            <div class="table-wrapper">
+                <% if (!ledgerEntries.length) { %>
+                <div class="empty-state" style="padding:20px;"><p>No ledger entries yet.</p></div>
+                <% } else { %>
+                <table>
+                    <thead><tr><th>Date</th><th>Category</th><th>Description</th><th>Debit</th><th>Credit</th><th>Balance</th></tr></thead>
+                    <tbody>
+                        <% ledgerEntries.slice(0,10).forEach(e => { %>
+                        <tr>
+                            <td style="font-size:0.78rem;color:var(--text-muted);">
+                                <%= new Date(e.createdAt).toLocaleDateString('en-IN') %>
+                            </td>
+                            <td><span class="badge badge-secondary" style="text-transform:capitalize;font-size:0.72rem;"><%= e.category.replace(/_/g,' ') %></span></td>
+                            <td style="font-size:0.82rem;"><%= e.description %></td>
+                            <td style="color:#dc2626;font-weight:600;"><%= e.entryType === 'debit'  ? '₹' + e.amount.toLocaleString('en-IN') : '' %></td>
+                            <td style="color:#16a34a;font-weight:600;"><%= e.entryType === 'credit' ? '₹' + e.amount.toLocaleString('en-IN') : '' %></td>
+                            <td style="font-weight:600;color:<%= e.runningBalance > 0 ? '#dc2626' : '#16a34a' %>;">
+                                ₹<%= Math.abs(e.runningBalance).toLocaleString('en-IN') %>
+                                <%= e.runningBalance > 0 ? 'Dr' : 'Cr' %>
+                            </td>
+                        </tr>
+                        <% }) %>
+                    </tbody>
+                </table>
+                <% } %>
+            </div>
+        </div>
+    </div>
+
+    <div style="display:flex;flex-direction:column;gap:16px;">
+        <!-- Student Info -->
+        <div class="card">
+            <div class="card-header"><div class="card-title">👤 Student Info</div></div>
+            <div class="card-body" style="font-size:0.85rem;">
+                <% if (profile?.currentSection) { %>
+                <div style="margin-bottom:8px;"><span style="color:var(--text-muted);">Class:</span> <strong><%= profile.currentSection.class?.className || '—' %></strong></div>
+                <div style="margin-bottom:8px;"><span style="color:var(--text-muted);">Section:</span> <strong><%= profile.currentSection.sectionName %></strong></div>
+                <% } %>
+                <% if (profile?.admissionNumber) { %>
+                <div style="margin-bottom:8px;"><span style="color:var(--text-muted);">Adm. No.:</span> <strong><%= profile.admissionNumber %></strong></div>
+                <% } %>
+                <div style="margin-bottom:8px;"><span style="color:var(--text-muted);">Academic Year:</span> <strong><%= ay?.yearName || '—' %></strong></div>
+            </div>
+        </div>
+
+        <!-- Active Concessions -->
+        <div class="card">
+            <div class="card-header"><div class="card-title">🎁 Concessions</div></div>
+            <div class="card-body">
+                <% if (!studentConcessions.length) { %>
+                <p style="color:var(--text-muted);font-size:0.85rem;margin:0;">No concessions assigned.</p>
+                <% } else { %>
+                <% studentConcessions.forEach(sc => { %>
+                <div style="padding:8px;background:var(--bg-secondary);border-radius:6px;margin-bottom:8px;font-size:0.82rem;">
+                    <strong><%= sc.concession?.name || '—' %></strong><br>
+                    <span style="color:var(--text-muted);">
+                        <%= sc.concession?.concessionType === 'percentage' ? sc.concession.value + '%' : '₹' + sc.concession?.value %>
+                        — <%= sc.concession?.applicableTo === 'all' ? 'All Heads' : 'Specific Heads' %>
+                    </span>
+                    <form method="POST" action="/fees/admin/student-fees/<%= student._id %>/concessions/<%= sc._id %>/remove" style="display:inline;float:right;">
+                        <button type="submit" class="btn btn-danger btn-sm"
+                            onclick="return confirm('Remove this concession?')">✕</button>
+                    </form>
+                </div>
+                <% }) %>
+                <% } %>
+
+                <!-- Assign Concession Form -->
+                <details style="margin-top:12px;">
+                    <summary style="cursor:pointer;font-size:0.85rem;font-weight:600;color:#1d4ed8;">+ Assign Concession</summary>
+                    <form method="POST" action="/fees/admin/student-fees/<%= student._id %>/assign-concession" style="margin-top:10px;">
+                        <div class="form-group">
+                            <label class="form-label" style="font-size:0.82rem;">Template</label>
+                            <select name="concessionId" class="form-control" required>
+                                <option value="">— Select —</option>
+                                <% concessionTemplates.forEach(c => { %>
+                                <option value="<%= c._id %>">
+                                    <%= c.name %> (<%= c.concessionType === 'percentage' ? c.value + '%' : '₹' + c.value %>)
+                                </option>
+                                <% }) %>
+                            </select>
+                        </div>
+                        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+                            <div class="form-group">
+                                <label class="form-label" style="font-size:0.82rem;">Valid From</label>
+                                <input type="date" name="validFrom" class="form-control">
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label" style="font-size:0.82rem;">Valid To</label>
+                                <input type="date" name="validTo" class="form-control">
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label" style="font-size:0.82rem;">Remarks</label>
+                            <input type="text" name="remarks" class="form-control" placeholder="Optional">
+                        </div>
+                        <button type="submit" class="btn btn-success btn-sm">Assign</button>
+                    </form>
+                </details>
+            </div>
+        </div>
+
+        <!-- Recent Payments -->
+        <div class="card">
+            <div class="card-header"><div class="card-title">💳 Recent Payments</div></div>
+            <div class="card-body" style="padding:0;">
+                <% if (!payments.length) { %>
+                <p style="padding:12px;color:var(--text-muted);font-size:0.85rem;margin:0;">No payments yet.</p>
+                <% } else { %>
+                <% payments.slice(0,5).forEach(p => { %>
+                <div style="padding:10px 14px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;font-size:0.82rem;">
+                    <div>
+                        <div style="font-weight:600;color:#16a34a;">₹<%= (p.amount||0).toLocaleString('en-IN') %></div>
+                        <div style="color:var(--text-muted);"><%= new Date(p.paymentDate).toLocaleDateString('en-IN') %> — <%= p.paymentMode %></div>
+                    </div>
+                    <a href="/fees/admin/payments/<%= p._id %>/receipt" class="btn btn-secondary btn-sm" style="align-self:center;">View</a>
+                </div>
+                <% }) %>
+                <% } %>
+            </div>
+        </div>
+    </div>
+</div>

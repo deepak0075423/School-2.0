@@ -1,0 +1,71 @@
+<div style="display:flex;align-items:center;gap:12px;margin-bottom:20px;">
+    <a href="/fees/admin/payments" class="btn btn-secondary btn-sm">← Payments</a>
+    <h2 style="margin:0;">🧾 Receipt — <%= payment.receiptNumber %></h2>
+    <a href="/fees/admin/payments/<%= payment._id %>/download" class="btn btn-primary btn-sm">⬇️ Download PDF</a>
+</div>
+
+<div class="card" style="max-width:700px;margin:0 auto;">
+    <% if (settings?.receipt?.header) { %>
+    <div style="text-align:center;padding:10px;font-size:0.85rem;color:var(--text-muted);border-bottom:1px solid var(--border);">
+        <%= settings.receipt.header %>
+    </div>
+    <% } %>
+
+    <div style="background:#1B4F72;color:#fff;padding:20px;text-align:center;">
+        <div style="font-size:1.4rem;font-weight:700;"><%= session.schoolName %></div>
+        <div style="font-size:0.9rem;opacity:0.8;margin-top:4px;">FEE RECEIPT</div>
+    </div>
+
+    <div class="card-body">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:20px;font-size:0.88rem;">
+            <div><span style="color:var(--text-muted);">Receipt No.:</span> <strong><%= payment.receiptNumber %></strong></div>
+            <div><span style="color:var(--text-muted);">Student:</span> <strong><%= payment.student?.name || '—' %></strong></div>
+            <div><span style="color:var(--text-muted);">Date:</span> <strong><%= new Date(payment.paymentDate).toLocaleDateString('en-IN', { day:'2-digit',month:'short',year:'numeric' }) %></strong></div>
+            <div><span style="color:var(--text-muted);">Mode:</span> <strong><%= (payment.paymentMode || '').replace(/_/g,' ').replace(/\b\w/g,c=>c.toUpperCase()) %></strong></div>
+            <div><span style="color:var(--text-muted);">Status:</span> <span class="badge badge-<%= payment.paymentStatus === 'completed' ? 'success' : 'warning' %>"><%= payment.paymentStatus %></span></div>
+            <div><span style="color:var(--text-muted);">Ref.:</span> <strong><%= payment.transactionRef || '—' %></strong></div>
+            <% if (payment.collectedBy) { %>
+            <div><span style="color:var(--text-muted);">Collected by:</span> <strong><%= payment.collectedBy.name %></strong></div>
+            <% } %>
+        </div>
+
+        <div class="table-wrapper">
+            <table>
+                <thead><tr><th>Description</th><th style="text-align:right;">Amount</th></tr></thead>
+                <tbody>
+                    <% (payment.lines || []).forEach(line => { %>
+                    <tr>
+                        <td><%= line.feeName %></td>
+                        <td style="text-align:right;font-weight:600;">₹<%= (line.amount || 0).toLocaleString('en-IN', {minimumFractionDigits:2}) %></td>
+                    </tr>
+                    <% }) %>
+                </tbody>
+                <tfoot>
+                    <tr style="background:#1B4F72;color:#fff;">
+                        <td style="font-weight:700;padding:12px;">TOTAL PAID</td>
+                        <td style="text-align:right;font-weight:700;font-size:1.1rem;padding:12px;color:#F9E79F;">
+                            ₹<%= (payment.amount || 0).toLocaleString('en-IN', {minimumFractionDigits:2}) %>
+                        </td>
+                    </tr>
+                </tfoot>
+            </table>
+        </div>
+
+        <% if (payment.remarks) { %>
+        <div style="margin-top:16px;padding:10px;background:var(--bg-secondary);border-radius:6px;font-size:0.85rem;">
+            <strong>Remarks:</strong> <%= payment.remarks %>
+        </div>
+        <% } %>
+
+        <% if (settings?.receipt?.footer || settings?.receipt?.customNotes) { %>
+        <div style="margin-top:16px;text-align:center;font-size:0.78rem;color:var(--text-muted);border-top:1px solid var(--border);padding-top:12px;">
+            <%= settings.receipt.footer || '' %><br>
+            <%= settings.receipt.customNotes || '' %>
+        </div>
+        <% } else { %>
+        <div style="margin-top:16px;text-align:center;font-size:0.78rem;color:var(--text-muted);border-top:1px solid var(--border);padding-top:12px;">
+            Thank you for your payment. This is a computer-generated receipt.
+        </div>
+        <% } %>
+    </div>
+</div>

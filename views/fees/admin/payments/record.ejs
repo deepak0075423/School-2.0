@@ -1,0 +1,165 @@
+<div style="display:flex;align-items:center;gap:12px;margin-bottom:20px;">
+    <a href="/fees/admin/payments" class="btn btn-secondary btn-sm">← Back</a>
+    <h2 style="margin:0;">💳 Record Payment</h2>
+</div>
+
+<% if (error && error.length) { %><div class="alert alert-error"><%= error %></div><% } %>
+
+<div style="display:grid;grid-template-columns:2fr 1fr;gap:20px;">
+    <div class="card">
+        <div class="card-body">
+            <form method="POST" action="/fees/admin/payments/record" id="paymentForm">
+
+                <div class="form-group">
+                    <label class="form-label">Student <span style="color:#dc2626;">*</span></label>
+                    <select name="studentId" class="form-control" id="studentSelect" onchange="loadStudentBalance()" required>
+                        <option value="">— Select Student —</option>
+                        <% students.forEach(s => { %>
+                        <option value="<%= s._id %>" <%= studentId === s._id.toString() ? 'selected' : '' %>><%= s.name %></option>
+                        <% }) %>
+                    </select>
+                </div>
+
+                <div id="feeBreakdown" style="margin-bottom:16px;display:<%= resolved ? 'block' : 'none' %>;">
+                    <div style="font-size:0.85rem;font-weight:600;margin-bottom:8px;color:var(--text-muted);">Fee Components (tick to include in this payment)</div>
+                    <div id="feeItemsList">
+                        <% if (resolved && resolved.items) { resolved.items.forEach((item, i) => { %>
+                        <label style="display:flex;align-items:center;gap:10px;padding:8px;border:1px solid var(--border);border-radius:6px;margin-bottom:6px;cursor:pointer;">
+                            <input type="checkbox" name="feeHeadIds[]" value="<%= item.feeHeadId || '' %>"
+                                id="fhCheck-<%= i %>" onchange="syncAmount(<%= i %>)" checked>
+                            <input type="hidden" name="feeNames[]" value="<%= item.feeName %>">
+                            <div style="flex:1;"><strong><%= item.feeName %></strong>
+                                <% if (item.dueDate) { %><span style="font-size:0.78rem;color:var(--text-muted);"> — Due: <%= new Date(item.dueDate).toLocaleDateString('en-IN') %></span><% } %>
+                            </div>
+                            <input type="number" name="feeAmounts[]" class="form-control fee-amt" id="fhAmt-<%= i %>"
+                                value="<%= item.amount %>" min="0" step="0.01" style="width:110px;"
+                                onchange="recalcTotal()">
+                        </label>
+                        <% }) } %>
+                    </div>
+                </div>
+
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
+                    <div class="form-group">
+                        <label class="form-label">Total Amount (₹) <span style="color:#dc2626;">*</span></label>
+                        <input type="number" name="amount" id="totalAmount" class="form-control" required min="0.01" step="0.01"
+                            value="<%= balance > 0 ? balance.toFixed(2) : '' %>" placeholder="Enter amount">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Payment Mode <span style="color:#dc2626;">*</span></label>
+                        <select name="paymentMode" class="form-control" required>
+                            <% ['cash','cheque','bank_transfer','online','dd','upi'].forEach(m => { %>
+                            <option value="<%= m %>"><%= m.replace(/_/g,' ').replace(/\b\w/g,c=>c.toUpperCase()) %></option>
+                            <% }) %>
+                        </select>
+                    </div>
+                </div>
+
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
+                    <div class="form-group">
+                        <label class="form-label">Payment Date</label>
+                        <input type="date" name="paymentDate" class="form-control"
+                            value="<%= new Date().toISOString().split('T')[0] %>">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Transaction / Ref No.</label>
+                        <input type="text" name="transactionRef" class="form-control" placeholder="Optional">
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Remarks</label>
+                    <textarea name="remarks" class="form-control" rows="2" placeholder="Optional notes"></textarea>
+                </div>
+
+                <div style="display:flex;gap:10px;margin-top:8px;">
+                    <button type="submit" class="btn btn-primary">✅ Record Payment &amp; Generate Receipt</button>
+                    <a href="/fees/admin/payments" class="btn btn-secondary">Cancel</a>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div style="display:flex;flex-direction:column;gap:16px;">
+        <div class="card" id="balanceCard">
+            <div class="card-header"><div class="card-title">💰 Student Balance</div></div>
+            <div class="card-body" id="balanceInfo">
+                <% if (student) { %>
+                <div style="font-size:1.2rem;font-weight:700;color:<%= balance > 0 ? '#dc2626' : '#16a34a' %>;">
+                    <%= balance > 0 ? 'Outstanding' : 'Credit' %>: ₹<%= Math.abs(balance).toLocaleString('en-IN') %>
+                </div>
+                <% if (resolved) { %>
+                <div style="margin-top:10px;font-size:0.82rem;color:var(--text-muted);">
+                    Fee Level: <span style="text-transform:capitalize;font-weight:600;"><%= resolved.level?.replace(/_/g,' ') %></span>
+                </div>
+                <% } %>
+                <% } else { %>
+                <p style="color:var(--text-muted);font-size:0.88rem;">Select a student to see their balance.</p>
+                <% } %>
+            </div>
+        </div>
+        <div class="card">
+            <div class="card-header"><div class="card-title">💡 Tips</div></div>
+            <div class="card-body" style="font-size:0.82rem;color:var(--text-muted);">
+                <ul style="margin:0;padding-left:18px;line-height:1.8;">
+                    <li>Partial payments are supported.</li>
+                    <li>Each payment generates a unique receipt.</li>
+                    <li>All payments are recorded in the student's ledger.</li>
+                    <li>PDF receipt is available for download after recording.</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function recalcTotal() {
+    let total = 0;
+    document.querySelectorAll('.fee-amt').forEach(inp => {
+        const check = inp.closest('label').querySelector('input[type="checkbox"]');
+        if (check && check.checked) total += parseFloat(inp.value) || 0;
+    });
+    document.getElementById('totalAmount').value = total.toFixed(2);
+}
+
+function syncAmount(i) {
+    const check = document.getElementById('fhCheck-' + i);
+    const amt   = document.getElementById('fhAmt-'  + i);
+    if (amt) amt.disabled = !check.checked;
+    recalcTotal();
+}
+
+async function loadStudentBalance() {
+    const sid = document.getElementById('studentSelect').value;
+    if (!sid) return;
+    try {
+        const r = await fetch('/fees/api/students/' + sid + '/balance');
+        const d = await r.json();
+        if (!d.ok) return;
+        const bal = d.balance || 0;
+        document.getElementById('balanceInfo').innerHTML = `
+            <div style="font-size:1.2rem;font-weight:700;color:${bal > 0 ? '#dc2626' : '#16a34a'};">
+                ${bal > 0 ? 'Outstanding' : 'Credit'}: ₹${Math.abs(bal).toLocaleString('en-IN')}
+            </div>
+            ${d.resolved ? `<div style="margin-top:10px;font-size:0.82rem;color:var(--text-muted);">Fee Level: <strong style="text-transform:capitalize;">${(d.resolved.level || '').replace(/_/g,' ')}</strong></div>` : ''}
+        `;
+        document.getElementById('totalAmount').value = bal > 0 ? bal.toFixed(2) : '';
+
+        // Populate fee items
+        const fd = document.getElementById('feeBreakdown');
+        const fl = document.getElementById('feeItemsList');
+        if (d.resolved && d.resolved.items && d.resolved.items.length) {
+            fl.innerHTML = d.resolved.items.map((item, i) => `
+                <label style="display:flex;align-items:center;gap:10px;padding:8px;border:1px solid var(--border);border-radius:6px;margin-bottom:6px;cursor:pointer;">
+                    <input type="checkbox" name="feeHeadIds[]" value="${item.feeHeadId || ''}" id="fhCheck-${i}" onchange="syncAmount(${i})" checked>
+                    <input type="hidden" name="feeNames[]" value="${item.feeName}">
+                    <div style="flex:1;"><strong>${item.feeName}</strong>${item.dueDate ? `<span style="font-size:0.78rem;color:var(--text-muted);"> — Due: ${new Date(item.dueDate).toLocaleDateString('en-IN')}</span>` : ''}</div>
+                    <input type="number" name="feeAmounts[]" class="form-control fee-amt" id="fhAmt-${i}" value="${item.amount}" min="0" step="0.01" style="width:110px;" onchange="recalcTotal()">
+                </label>
+            `).join('');
+            fd.style.display = '';
+            recalcTotal();
+        } else { fd.style.display = 'none'; fl.innerHTML = ''; }
+    } catch(e) { console.error(e); }
+}
+</script>
