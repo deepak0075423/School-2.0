@@ -641,6 +641,7 @@ const ALL_MODULES = [
     { key: 'library',      label: 'Library Management',    icon: '📚', description: 'Full library system: book catalogue, physical copy tracking with unique barcodes, issue/return/renewal, FIFO reservation queue, fine management, and audit log.' },
     { key: 'payroll',      label: 'Payroll Management',    icon: '💰', description: 'Employee salary structures, monthly payroll runs, approval workflow (Draft → Reviewed → Approved → Published), payslip generation with PDF download, and department-wise reports.' },
     { key: 'fees',         label: 'Fees Management',       icon: '💳', description: 'School-configurable fee heads, class/section fee structures, fine rules, concession templates, student-level ledger, payment collection with PDF receipts, collection and dues reports.' },
+    { key: 'chat',         label: 'Chat Management',       icon: '💬', description: 'Real-time chat functionality for communication between students, parents, and staff.' },
 ];
 
 const getPermissions = async (req, res) => {

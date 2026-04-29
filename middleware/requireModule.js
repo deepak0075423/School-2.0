@@ -25,6 +25,7 @@ const MODULE_LABELS = {
     library:      'Library Management',
     payroll:      'Payroll Management',
     fees:         'Fees Management',
+    chat:        'Chat Management',
 };
 
 const requireModule = (moduleName) => (req, res, next) => {

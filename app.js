@@ -1,6 +1,5 @@
 require('dotenv').config();
 const express = require('express');
-const session = require('express-session');
 const flash = require('connect-flash');
 const expressLayouts = require('express-ejs-layouts');
 const methodOverride = require('method-override');
@@ -25,16 +24,9 @@ app.use(express.json());
 // Method override for DELETE/PUT from forms
 app.use(methodOverride('_method'));
 
-// Session
-app.use(session({
-    secret: process.env.SESSION_SECRET || 'fallback_secret',
-    resave: false,
-    saveUninitialized: false,
-    cookie: {
-        secure: false,
-        maxAge: 24 * 60 * 60 * 1000, // 24 hours
-    },
-}));
+// Session — shared with Socket.io via config/sessionMiddleware.js
+const sessionMiddleware = require('./config/sessionMiddleware');
+app.use(sessionMiddleware);
 
 // Flash messages
 app.use(flash());
@@ -70,8 +62,11 @@ app.use((req, res, next) => {
 
 // Global notification count injected into every authenticated view
 const NotificationReceipt = require('./models/NotificationReceipt');
+const ChatMember          = require('./models/ChatMember');
+const Message             = require('./models/Message');
 app.use(async (req, res, next) => {
     res.locals.unreadNotificationCount = 0;
+    res.locals.unreadChatCount         = 0;
     if (req.session && req.session.userId) {
         try {
             res.locals.unreadNotificationCount = await NotificationReceipt.countDocuments({
@@ -79,6 +74,24 @@ app.use(async (req, res, next) => {
                 isRead: false,
                 isCleared: false,
             });
+        } catch { /* non-fatal */ }
+        try {
+            const memberships = await ChatMember.find({
+                user: req.session.userId,
+                school: req.session.schoolId,
+                isActive: true,
+                isMuted: false,
+            }).select('chat lastReadAt').lean();
+            let total = 0;
+            for (const m of memberships) {
+                total += await Message.countDocuments({
+                    chat:      m.chat,
+                    sender:    { $ne: req.session.userId },
+                    isDeleted: false,
+                    createdAt: { $gt: m.lastReadAt || new Date(0) },
+                });
+            }
+            res.locals.unreadChatCount = total;
         } catch { /* non-fatal */ }
     }
     next();
@@ -96,6 +109,9 @@ app.use('/notifications', require('./routes/notifications'));
 app.use('/library', require('./routes/library'));
 app.use('/payroll', require('./routes/payroll'));
 app.use('/fees',   require('./routes/fees'));
+
+app.use('/chat',        require('./routes/chat'));
+app.use('/internal',    require('./routes/internal'));  // gateway-only, guarded by INTERNAL_SECRET
 
 // Home → redirect to login
 app.get('/', (req, res) => {
