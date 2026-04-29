@@ -93,6 +93,7 @@ router.get('/student/payments/:id/receipt',      studentGuard, studentCtrl.getMy
 router.get('/student/payments/:id/download',     studentGuard, studentCtrl.downloadMyReceipt);
 
 // ── Parent: Child Fees ───────────────────────────────────────────────────────
+router.get('/parent/fees', parentGuard, studentCtrl.getParentFeesRedirect);
 router.get('/parent/child/:childId/fees',                           parentGuard, studentCtrl.getParentChildFees);
 router.get('/parent/child/:childId/pay',                            parentGuard, studentCtrl.getParentPayNow);
 router.post('/parent/child/:childId/pay',                           parentGuard, studentCtrl.postParentPayNow);

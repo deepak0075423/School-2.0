@@ -590,8 +590,11 @@
 
                     <% if (_hasFees) { %>
                     <div class="nav-section-label">Fees</div>
-                    <a href="/parent/dashboard#fees" class="nav-item <%= _path && _path.includes('Fees') ? 'active' : '' %>">
+                    <a href="/fees/parent/fees" class="nav-item <%= _path && _path.includes('Fees') ? 'active' : '' %>">
                         <span class="nav-icon">💰</span> Child's Fees
+                    </a>
+                    <a href="/fees/parent/fees" class="nav-item <%= _path && _path.includes('Pay') ? 'active' : '' %>">
+                        <span class="nav-icon">💳</span> Pay Fees
                     </a>
                     <% } %>
 

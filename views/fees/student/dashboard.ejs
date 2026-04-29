@@ -58,7 +58,7 @@ const flash_error   = typeof error   !== 'undefined' ? error   : (locals.error  
             ✅ No Dues
         </div>
         <% } %>
-        <a href="/fees/student/ledger" style="background:rgba(255,255,255,0.15);color:#fff;padding:10px 20px;border-radius:8px;font-size:0.85rem;text-decoration:none;text-align:center;border:1px solid rgba(255,255,255,0.3);">
+        <a href="<%= ledgerUrl || '/fees/student/ledger' %>" style="background:rgba(255,255,255,0.15);color:#fff;padding:10px 20px;border-radius:8px;font-size:0.85rem;text-decoration:none;text-align:center;border:1px solid rgba(255,255,255,0.3);">
             📒 View Ledger
         </a>
     </div>
@@ -164,8 +164,8 @@ const flash_error   = typeof error   !== 'undefined' ? error   : (locals.error  
                 <% if (balance > 0) { %>
                 <a href="<%= payUrl || '/fees/student/pay' %>" class="btn btn-primary" style="text-align:center;">💳 Pay Fees</a>
                 <% } %>
-                <a href="/fees/student/ledger" class="btn btn-secondary" style="text-align:center;">📒 Full Ledger</a>
-                <a href="/fees/student/payments" class="btn btn-secondary" style="text-align:center;">🧾 Payment History</a>
+                <a href="<%= ledgerUrl || '/fees/student/ledger' %>" class="btn btn-secondary" style="text-align:center;">📒 Full Ledger</a>
+                <a href="<%= paymentsUrl || '/fees/student/payments' %>" class="btn btn-secondary" style="text-align:center;">🧾 Payment History</a>
             </div>
         </div>
 
@@ -193,7 +193,7 @@ const flash_error   = typeof error   !== 'undefined' ? error   : (locals.error  
         <div class="card">
             <div class="card-header">
                 <div class="card-title">Recent Payments</div>
-                <a href="/fees/student/payments" style="font-size:0.8rem;color:#3b82f6;text-decoration:none;">View all →</a>
+                <a href="<%= paymentsUrl || '/fees/student/payments' %>" style="font-size:0.8rem;color:#3b82f6;text-decoration:none;">View all →</a>
             </div>
             <div class="card-body" style="padding:0;">
                 <% if (!recentPayments.length) { %>

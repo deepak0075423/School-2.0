@@ -135,7 +135,9 @@ exports.getMyFees = async (req, res) => {
             title: 'My Fees', layout: 'layouts/main',
             resolved, balance, totalCharged, totalPaid, totalConcession, fineAmt,
             recentPayments, concessions, activeYear: ay, profile,
-            payUrl: '/fees/student/pay',
+            payUrl:         '/fees/student/pay',
+            ledgerUrl:      '/fees/student/ledger',
+            paymentsUrl:    '/fees/student/payments',
             receiptBaseUrl: '/fees/student/payments',
         });
     } catch (err) {
@@ -474,6 +476,21 @@ exports.postPayNow = async (req, res) => {
 };
 
 // ── PARENT: Child Fees ───────────────────────────────────────────────────────
+
+exports.getParentFeesRedirect = async (req, res) => {
+    try {
+        const StudentProfile = require('../models/StudentProfile');
+        const profile = await StudentProfile.findOne({ parent: req.session.userId })
+            .populate('user', '_id');
+        if (profile && profile.user) {
+            return res.redirect(`/fees/parent/child/${profile.user._id}/fees`);
+        }
+        req.flash('error', 'No child linked to your account. Contact the school admin.');
+        res.redirect('/parent/dashboard');
+    } catch (err) {
+        res.redirect('/parent/dashboard');
+    }
+};
 
 exports.getParentChildFees = async (req, res) => {
     try {
