@@ -1,0 +1,59 @@
+<div style="display:flex;align-items:center;gap:12px;margin-bottom:20px;">
+    <a href="/fees/admin/dashboard" class="btn btn-secondary btn-sm">← Dashboard</a>
+    <h2 style="margin:0;">📊 Dues Report</h2>
+    <% if (activeYear) { %><span class="badge badge-info"><%= activeYear.yearName %></span><% } %>
+</div>
+
+<div class="stats-grid" style="margin-bottom:20px;">
+    <div class="stat-card">
+        <div class="stat-icon orange">⏳</div>
+        <div class="stat-info">
+            <div class="stat-value"><%= result.length %></div>
+            <div class="stat-label">Students with Dues</div>
+        </div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-icon orange">💰</div>
+        <div class="stat-info">
+            <div class="stat-value" style="color:#dc2626;">₹<%= totalDues.toLocaleString('en-IN') %></div>
+            <div class="stat-label">Total Outstanding</div>
+        </div>
+    </div>
+</div>
+
+<div class="card">
+    <div class="table-wrapper">
+        <% if (!result.length) { %>
+        <div class="empty-state" style="padding:40px;">
+            <div style="font-size:2.5rem;">✅</div>
+            <p>All students are clear — no outstanding dues!</p>
+        </div>
+        <% } else { %>
+        <table>
+            <thead>
+                <tr><th>Student</th><th>Class / Section</th><th>Adm. No.</th><th>Outstanding</th><th>Actions</th></tr>
+            </thead>
+            <tbody>
+                <% result.forEach(r => { if (!r.student) return; %>
+                <tr>
+                    <td><strong><%= r.student.name %></strong><br><span style="font-size:0.78rem;color:var(--text-muted);"><%= r.student.email %></span></td>
+                    <td style="font-size:0.85rem;">
+                        <% if (r.profile?.currentSection) { %>
+                            <%= r.profile.currentSection.class?.className || '' %> — Sec <%= r.profile.currentSection.sectionName %>
+                        <% } else { %>—<% } %>
+                    </td>
+                    <td style="font-size:0.82rem;color:var(--text-muted);"><%= r.profile?.admissionNumber || '—' %></td>
+                    <td style="font-weight:700;color:#dc2626;">₹<%= r.outstanding.toLocaleString('en-IN') %></td>
+                    <td>
+                        <div style="display:flex;gap:6px;">
+                            <a href="/fees/admin/student-fees/<%= r.student._id %>" class="btn btn-secondary btn-sm">View</a>
+                            <a href="/fees/admin/payments/record?studentId=<%= r.student._id %>" class="btn btn-primary btn-sm">Pay</a>
+                        </div>
+                    </td>
+                </tr>
+                <% }) %>
+            </tbody>
+        </table>
+        <% } %>
+    </div>
+</div>

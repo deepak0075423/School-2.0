@@ -1,0 +1,61 @@
+<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;">
+    <h2 style="margin:0;">⏰ Fine Rules</h2>
+    <a href="/fees/admin/fine-rules/create" class="btn btn-primary">+ Create Rule</a>
+</div>
+
+<% if (success && success.length) { %><div class="alert alert-success"><%= success %></div><% } %>
+<% if (error && error.length) { %><div class="alert alert-error"><%= error %></div><% } %>
+
+<div style="font-size:0.85rem;color:var(--text-muted);margin-bottom:16px;">
+    Fine rules automatically apply penalties for late fee payments after the grace period.
+    The cron job calculates and records fine ledger entries daily.
+</div>
+
+<div class="card">
+    <div class="table-wrapper">
+        <% if (!fineRules.length) { %>
+        <div class="empty-state" style="padding:40px;">
+            <div style="font-size:2.5rem;">⏰</div>
+            <p>No fine rules configured. Create rules to automatically charge late fees.</p>
+            <a href="/fees/admin/fine-rules/create" class="btn btn-primary">Create Fine Rule</a>
+        </div>
+        <% } else { %>
+        <table>
+            <thead>
+                <tr><th>Name</th><th>Type</th><th>Rate</th><th>Grace Period</th><th>Max Cap</th><th>Status</th><th>Actions</th></tr>
+            </thead>
+            <tbody>
+                <% fineRules.forEach(r => { %>
+                <tr>
+                    <td><strong><%= r.name %></strong></td>
+                    <td><span class="badge badge-<%= r.fineType === 'flat' ? 'info' : 'warning' %>">
+                        <%= r.fineType === 'flat' ? 'Flat Fine' : 'Per-Day Fine' %>
+                    </span></td>
+                    <td>
+                        <% if (r.fineType === 'flat') { %>
+                            ₹<%= (r.flatAmount || 0).toLocaleString('en-IN') %>
+                        <% } else { %>
+                            ₹<%= (r.perDayAmount || 0).toLocaleString('en-IN') %>/day
+                        <% } %>
+                    </td>
+                    <td><%= r.gracePeriodDays %> day(s)</td>
+                    <td><%= r.maxCap > 0 ? '₹' + r.maxCap.toLocaleString('en-IN') : 'No cap' %></td>
+                    <td><span class="badge badge-<%= r.isActive ? 'success' : 'secondary' %>"><%= r.isActive ? 'Active' : 'Inactive' %></span></td>
+                    <td>
+                        <div style="display:flex;gap:6px;">
+                            <a href="/fees/admin/fine-rules/<%= r._id %>/edit" class="btn btn-secondary btn-sm">Edit</a>
+                            <form method="POST" action="/fees/admin/fine-rules/<%= r._id %>/toggle" style="display:inline;">
+                                <button type="submit" class="btn btn-sm <%= r.isActive ? 'btn-warning' : 'btn-success' %>"
+                                    onclick="return confirm('<%= r.isActive ? 'Deactivate' : 'Activate' %> this rule?')">
+                                    <%= r.isActive ? 'Deactivate' : 'Activate' %>
+                                </button>
+                            </form>
+                        </div>
+                    </td>
+                </tr>
+                <% }) %>
+            </tbody>
+        </table>
+        <% } %>
+    </div>
+</div>

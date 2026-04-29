@@ -1,0 +1,63 @@
+<div style="display:flex;align-items:center;gap:12px;margin-bottom:20px;">
+    <a href="/fees/admin/dashboard" class="btn btn-secondary btn-sm">← Dashboard</a>
+    <h2 style="margin:0;">🎁 Concession Report</h2>
+    <% if (activeYear) { %><span class="badge badge-info"><%= activeYear.yearName %></span><% } %>
+</div>
+
+<div class="stats-grid" style="margin-bottom:20px;">
+    <div class="stat-card">
+        <div class="stat-icon purple" style="background:rgba(147,51,234,0.15);color:#9333ea;">🎁</div>
+        <div class="stat-info">
+            <div class="stat-value"><%= concessions.length %></div>
+            <div class="stat-label">Concessions Assigned</div>
+        </div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-icon orange">💰</div>
+        <div class="stat-info">
+            <div class="stat-value" style="color:#d97706;">₹<%= totalConcessionAmt.toLocaleString('en-IN') %></div>
+            <div class="stat-label">Total Concession Given</div>
+        </div>
+    </div>
+</div>
+
+<div class="card">
+    <div class="table-wrapper">
+        <% if (!concessions.length) { %>
+        <div class="empty-state" style="padding:40px;">
+            <div style="font-size:2.5rem;">🎁</div>
+            <p>No concessions assigned this academic year.</p>
+        </div>
+        <% } else { %>
+        <table>
+            <thead>
+                <tr><th>Student</th><th>Concession</th><th>Type / Value</th><th>Valid Period</th><th>Approved By</th><th>Status</th></tr>
+            </thead>
+            <tbody>
+                <% concessions.forEach(sc => { %>
+                <tr>
+                    <td>
+                        <strong><%= sc.student?.name || '—' %></strong>
+                        <br><a href="/fees/admin/student-fees/<%= sc.student?._id %>" style="font-size:0.78rem;color:#1d4ed8;">View Details</a>
+                    </td>
+                    <td><strong><%= sc.concession?.name || '—' %></strong></td>
+                    <td>
+                        <% if (sc.concession) { %>
+                        <span class="badge badge-<%= sc.concession.concessionType === 'percentage' ? 'info' : 'success' %>">
+                            <%= sc.concession.concessionType === 'percentage' ? sc.concession.value + '%' : '₹' + sc.concession.value %>
+                        </span>
+                        <% } else { %>—<% } %>
+                    </td>
+                    <td style="font-size:0.82rem;color:var(--text-muted);">
+                        <%= sc.validFrom ? new Date(sc.validFrom).toLocaleDateString('en-IN') : '—' %>
+                        <% if (sc.validTo) { %> to <%= new Date(sc.validTo).toLocaleDateString('en-IN') %><% } %>
+                    </td>
+                    <td style="font-size:0.82rem;"><%= sc.approvedBy?.name || '—' %></td>
+                    <td><span class="badge badge-<%= sc.isActive ? 'success' : 'secondary' %>"><%= sc.isActive ? 'Active' : 'Removed' %></span></td>
+                </tr>
+                <% }) %>
+            </tbody>
+        </table>
+        <% } %>
+    </div>
+</div>

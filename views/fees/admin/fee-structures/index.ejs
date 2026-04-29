@@ -1,0 +1,64 @@
+<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;">
+    <div>
+        <h2 style="margin:0;">🏗️ Fee Structures</h2>
+        <% if (activeYear) { %><span style="font-size:0.82rem;color:var(--text-muted);">Year: <%= activeYear.yearName %></span><% } %>
+    </div>
+    <a href="/fees/admin/fee-structures/create" class="btn btn-primary">+ Create Structure</a>
+</div>
+
+<% if (success && success.length) { %><div class="alert alert-success"><%= success %></div><% } %>
+<% if (error && error.length) { %><div class="alert alert-error"><%= error %></div><% } %>
+
+<div class="card">
+    <div class="table-wrapper">
+        <% if (!structures.length) { %>
+        <div class="empty-state" style="padding:40px;">
+            <div style="font-size:2.5rem;">🏗️</div>
+            <p>No fee structures yet. Create a class or section-level structure.</p>
+            <a href="/fees/admin/fee-structures/create" class="btn btn-primary">Create First Structure</a>
+        </div>
+        <% } else { %>
+        <table>
+            <thead>
+                <tr><th>Name</th><th>Level</th><th>Scope</th><th>Total Amount</th><th>Demand</th><th>Status</th><th>Actions</th></tr>
+            </thead>
+            <tbody>
+                <% structures.forEach(s => { %>
+                <tr>
+                    <td><strong><%= s.name %></strong></td>
+                    <td><span class="badge badge-<%= s.level === 'class' ? 'info' : 'warning' %>">
+                        <%= s.level === 'class' ? '🎓 Class' : '📚 Section' %>
+                    </span></td>
+                    <td style="font-size:0.85rem;">
+                        <% if (s.level === 'class' && s.class) { %>
+                            Class <%= s.class.classNumber %> — <%= s.class.className %>
+                        <% } else if (s.section) { %>
+                            Section <%= s.section.sectionName %>
+                        <% } else { %>—<% } %>
+                    </td>
+                    <td style="font-weight:600;color:#1d4ed8;">₹<%= (s.totalAmount || 0).toLocaleString('en-IN') %></td>
+                    <td>
+                        <span class="badge badge-<%= s.demandGenerated ? 'success' : 'secondary' %>">
+                            <%= s.demandGenerated ? '✓ Generated' : 'Pending' %>
+                        </span>
+                    </td>
+                    <td><span class="badge badge-<%= s.isActive ? 'success' : 'secondary' %>"><%= s.isActive ? 'Active' : 'Inactive' %></span></td>
+                    <td>
+                        <div style="display:flex;gap:6px;flex-wrap:wrap;">
+                            <a href="/fees/admin/fee-structures/<%= s._id %>" class="btn btn-secondary btn-sm">View</a>
+                            <a href="/fees/admin/fee-structures/<%= s._id %>/edit" class="btn btn-secondary btn-sm">Edit</a>
+                            <form method="POST" action="/fees/admin/fee-structures/<%= s._id %>/toggle" style="display:inline;">
+                                <button type="submit" class="btn btn-sm <%= s.isActive ? 'btn-warning' : 'btn-success' %>"
+                                    onclick="return confirm('<%= s.isActive ? 'Deactivate' : 'Activate' %> this structure?')">
+                                    <%= s.isActive ? 'Deactivate' : 'Activate' %>
+                                </button>
+                            </form>
+                        </div>
+                    </td>
+                </tr>
+                <% }) %>
+            </tbody>
+        </table>
+        <% } %>
+    </div>
+</div>

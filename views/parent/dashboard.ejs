@@ -20,21 +20,33 @@
         </div>
     </div>
 <% } else { %>
-    <div style="display:grid; grid-template-columns:repeat(auto-fit,minmax(280px,1fr)); gap:16px; margin-bottom:24px;">
+    <div id="fees" style="display:grid; grid-template-columns:repeat(auto-fit,minmax(300px,1fr)); gap:16px; margin-bottom:24px;">
         <% childProfiles.forEach(cp=> { %>
-            <div class="stat-card" style="flex-direction:column; align-items:flex-start; gap:12px;">
-                <div style="display:flex; align-items:center; gap:12px;">
-                    <div class="user-avatar" style="width:44px; height:44px; font-size:18px;">
-                        <%= cp.user ? cp.user.name.charAt(0).toUpperCase() : '?' %>
+            <% const childId = cp.user ? cp.user._id : null; %>
+            <div class="card" style="border-top:3px solid #3b82f6;">
+                <div class="card-body" style="padding:18px;">
+                    <div style="display:flex; align-items:center; gap:12px; margin-bottom:14px;">
+                        <div class="user-avatar" style="width:48px; height:48px; font-size:20px; background:#3b82f6; color:#fff;">
+                            <%= cp.user ? cp.user.name.charAt(0).toUpperCase() : '?' %>
+                        </div>
+                        <div>
+                            <div style="font-weight:700; font-size:1rem;"><%= cp.user ? cp.user.name : '—' %></div>
+                            <div style="font-size:0.75rem; color:var(--text-muted);">
+                                <span class="badge badge-cyan" style="font-size:0.7rem;">Class <%= cp.class || '—' %></span>
+                                <% if (cp.section) { %><span class="badge badge-purple" style="font-size:0.7rem;">Section <%= cp.section %></span><% } %>
+                            </div>
+                        </div>
                     </div>
-                    <div>
-                        <div class="fw-bold text-primary"><%= cp.user ? cp.user.name : '—' %></div>
-                        <div class="text-muted" style="font-size:12px;"><%= cp.user ? cp.user.email : '' %></div>
+                    <% if (childId) { %>
+                    <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px;">
+                        <a href="/fees/parent/child/<%= childId %>/fees" class="btn btn-secondary btn-sm" style="text-align:center; padding:8px;">
+                            💰 View Fees
+                        </a>
+                        <a href="/fees/parent/child/<%= childId %>/pay" class="btn btn-primary btn-sm" style="text-align:center; padding:8px;">
+                            💳 Pay Fees
+                        </a>
                     </div>
-                </div>
-                <div style="display:flex; gap:8px;">
-                    <span class="badge badge-cyan">Class <%= cp.class || '—' %></span>
-                    <% if (cp.section) { %><span class="badge badge-purple">Section <%= cp.section %></span><% } %>
+                    <% } %>
                 </div>
             </div>
         <% }) %>
@@ -88,8 +100,12 @@
             <div class="card-body" style="text-align:center; padding:28px 20px;">
                 <div style="font-size:36px; margin-bottom:12px;">💳</div>
                 <div class="card-title" style="margin-bottom:4px;">Fee Status</div>
-                <p class="text-muted" style="font-size:12px; margin-bottom:10px;">Track payment status</p>
-                <span class="badge badge-gray">Coming Soon</span>
+                <p class="text-muted" style="font-size:12px; margin-bottom:10px;">View & pay fees</p>
+                <% if (childProfiles.length > 0 && childProfiles[0].user) { %>
+                <a href="/fees/parent/child/<%= childProfiles[0].user._id %>/fees" class="btn btn-primary btn-sm">View Now</a>
+                <% } else { %>
+                <span class="badge badge-gray">No Child Linked</span>
+                <% } %>
             </div>
         </div>
     </div>

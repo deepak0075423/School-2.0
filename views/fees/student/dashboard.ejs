@@ -1,0 +1,222 @@
+<%
+const flash_success = typeof success !== 'undefined' ? success : (locals.success || '');
+const flash_error   = typeof error   !== 'undefined' ? error   : (locals.error   || '');
+%>
+
+<% if (flash_success && flash_success.length) { %><div class="alert alert-success"><%= flash_success %></div><% } %>
+<% if (flash_error   && flash_error.length)   { %><div class="alert alert-error"><%=   flash_error   %></div><% } %>
+
+<!-- Hero Balance Card -->
+<div style="background:linear-gradient(135deg,#1d4ed8 0%,#3b82f6 100%);border-radius:16px;padding:28px 32px;margin-bottom:24px;color:#fff;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:20px;">
+    <div>
+        <div style="font-size:0.9rem;opacity:0.85;margin-bottom:4px;">
+            💰 My Fees
+            <% if (activeYear) { %> · <span style="opacity:0.8;"><%= activeYear.yearName %></span><% } %>
+        </div>
+        <div style="font-size:0.82rem;opacity:0.75;margin-bottom:14px;">
+            <% if (profile && profile.currentSection) { %>
+                Class <%= profile.currentSection.class?.className || '' %> · Section <%= profile.currentSection.sectionName || '' %>
+            <% } else { %>
+                Student Fee Summary
+            <% } %>
+        </div>
+
+        <div style="display:flex;gap:32px;flex-wrap:wrap;">
+            <div>
+                <div style="font-size:0.75rem;opacity:0.75;text-transform:uppercase;letter-spacing:0.05em;">Outstanding</div>
+                <div style="font-size:2.2rem;font-weight:800;line-height:1.1;color:<%= balance > 0 ? '#fde68a' : '#a7f3d0' %>;">
+                    ₹<%= Math.abs(balance).toLocaleString('en-IN') %>
+                </div>
+                <div style="font-size:0.78rem;opacity:0.8;margin-top:2px;">
+                    <%= balance > 0 ? 'Due' : balance < 0 ? 'Credit Balance' : '✅ All Clear' %>
+                </div>
+            </div>
+            <div>
+                <div style="font-size:0.75rem;opacity:0.75;text-transform:uppercase;letter-spacing:0.05em;">Total Charged</div>
+                <div style="font-size:1.4rem;font-weight:700;">₹<%= totalCharged.toLocaleString('en-IN') %></div>
+            </div>
+            <div>
+                <div style="font-size:0.75rem;opacity:0.75;text-transform:uppercase;letter-spacing:0.05em;">Total Paid</div>
+                <div style="font-size:1.4rem;font-weight:700;color:#a7f3d0;">₹<%= totalPaid.toLocaleString('en-IN') %></div>
+            </div>
+            <% if (totalConcession > 0) { %>
+            <div>
+                <div style="font-size:0.75rem;opacity:0.75;text-transform:uppercase;letter-spacing:0.05em;">Concession</div>
+                <div style="font-size:1.4rem;font-weight:700;color:#c4b5fd;">₹<%= totalConcession.toLocaleString('en-IN') %></div>
+            </div>
+            <% } %>
+        </div>
+    </div>
+
+    <div style="display:flex;flex-direction:column;gap:12px;min-width:160px;">
+        <% if (balance > 0) { %>
+        <a href="<%= payUrl || '/fees/student/pay' %>" style="background:#fff;color:#1d4ed8;padding:14px 24px;border-radius:10px;font-weight:700;font-size:1rem;text-decoration:none;text-align:center;box-shadow:0 4px 14px rgba(0,0,0,0.15);transition:transform 0.1s;" onmouseover="this.style.transform='scale(1.03)'" onmouseout="this.style.transform='scale(1)'">
+            💳 Pay Now
+        </a>
+        <% } else { %>
+        <div style="background:rgba(255,255,255,0.15);border:2px solid rgba(255,255,255,0.4);color:#fff;padding:14px 24px;border-radius:10px;font-weight:700;text-align:center;">
+            ✅ No Dues
+        </div>
+        <% } %>
+        <a href="/fees/student/ledger" style="background:rgba(255,255,255,0.15);color:#fff;padding:10px 20px;border-radius:8px;font-size:0.85rem;text-decoration:none;text-align:center;border:1px solid rgba(255,255,255,0.3);">
+            📒 View Ledger
+        </a>
+    </div>
+</div>
+
+<% if (fineAmt > 0) { %>
+<div style="background:#FEF3C7;border:1px solid #F59E0B;border-radius:10px;padding:14px 18px;margin-bottom:20px;display:flex;align-items:center;gap:12px;">
+    <div style="font-size:1.5rem;">⚠️</div>
+    <div>
+        <div style="font-weight:700;color:#92400E;">Late Fine Applicable</div>
+        <div style="font-size:0.85rem;color:#78350F;">A late fine of <strong>₹<%= fineAmt.toLocaleString('en-IN') %></strong> may be added to your dues for overdue fee components.</div>
+    </div>
+</div>
+<% } %>
+
+<div style="display:grid;grid-template-columns:2fr 1fr;gap:20px;">
+
+    <!-- Fee Structure -->
+    <div class="card">
+        <div class="card-header">
+            <div class="card-title">📋 My Fee Structure</div>
+            <% if (resolved && resolved.structureName) { %>
+            <span class="badge badge-info" style="font-size:0.75rem;"><%= resolved.structureName %></span>
+            <% } %>
+        </div>
+        <div class="card-body" style="padding:0;">
+            <% if (!resolved) { %>
+            <div style="padding:40px;text-align:center;">
+                <div style="font-size:2.5rem;margin-bottom:12px;">📋</div>
+                <p style="color:var(--text-muted);margin:0;font-size:0.9rem;">No fee structure assigned yet.<br>Please contact the school admin.</p>
+            </div>
+            <% } else { %>
+            <table style="width:100%;border-collapse:collapse;font-size:0.9rem;">
+                <thead>
+                    <tr style="background:var(--bg-secondary);">
+                        <th style="padding:10px 16px;text-align:left;font-weight:600;font-size:0.8rem;text-transform:uppercase;letter-spacing:0.04em;">Fee Component</th>
+                        <th style="padding:10px 16px;text-align:right;font-weight:600;font-size:0.8rem;text-transform:uppercase;letter-spacing:0.04em;">Amount</th>
+                        <th style="padding:10px 16px;text-align:center;font-weight:600;font-size:0.8rem;text-transform:uppercase;letter-spacing:0.04em;">Due Date</th>
+                        <th style="padding:10px 16px;text-align:center;font-weight:600;font-size:0.8rem;text-transform:uppercase;letter-spacing:0.04em;">Status</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <% resolved.items.forEach(item => {
+                        const isOverdue = item.dueDate && new Date(item.dueDate) < new Date();
+                    %>
+                    <tr style="border-bottom:1px solid var(--border);">
+                        <td style="padding:12px 16px;">
+                            <div style="font-weight:500;"><%= item.feeName %></div>
+                            <div style="font-size:0.75rem;color:var(--text-muted);text-transform:capitalize;"><%= (item.category||'').replace(/_/g,' ') %></div>
+                        </td>
+                        <td style="padding:12px 16px;text-align:right;font-weight:700;color:#1d4ed8;font-size:1rem;">
+                            ₹<%= (item.amount||0).toLocaleString('en-IN') %>
+                        </td>
+                        <td style="padding:12px 16px;text-align:center;font-size:0.82rem;">
+                            <% if (item.dueDate) { %>
+                            <span style="color:<%= isOverdue ? '#dc2626' : 'var(--text-muted)' %>;font-weight:<%= isOverdue ? '600' : '400' %>;">
+                                <%= new Date(item.dueDate).toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'}) %>
+                                <%= isOverdue ? '⚠️' : '' %>
+                            </span>
+                            <% } else { %><span style="color:var(--text-muted);">—</span><% } %>
+                        </td>
+                        <td style="padding:12px 16px;text-align:center;">
+                            <% if (isOverdue) { %>
+                            <span class="badge" style="background:#FEE2E2;color:#dc2626;font-size:0.72rem;">Overdue</span>
+                            <% } else if (item.dueDate) { %>
+                            <span class="badge badge-info" style="font-size:0.72rem;">Upcoming</span>
+                            <% } else { %>
+                            <span class="badge badge-secondary" style="font-size:0.72rem;">—</span>
+                            <% } %>
+                        </td>
+                    </tr>
+                    <% }) %>
+                </tbody>
+                <tfoot>
+                    <tr style="background:#EBF5FB;border-top:2px solid #BFDBFE;">
+                        <td style="padding:14px 16px;font-weight:700;font-size:0.95rem;">Total</td>
+                        <td style="padding:14px 16px;text-align:right;font-weight:800;color:#1d4ed8;font-size:1.05rem;">
+                            ₹<%= resolved.items.reduce((s,i)=>s+i.amount,0).toLocaleString('en-IN') %>
+                        </td>
+                        <td colspan="2"></td>
+                    </tr>
+                </tfoot>
+            </table>
+
+            <% if (balance > 0) { %>
+            <div style="padding:16px;border-top:1px solid var(--border);">
+                <a href="<%= payUrl || '/fees/student/pay' %>" class="btn btn-primary" style="width:100%;text-align:center;padding:12px;font-size:0.95rem;">
+                    💳 Pay ₹<%= balance.toLocaleString('en-IN') %> Now
+                </a>
+            </div>
+            <% } %>
+            <% } %>
+        </div>
+    </div>
+
+    <!-- Right Column -->
+    <div style="display:flex;flex-direction:column;gap:16px;">
+
+        <!-- Quick Actions -->
+        <div class="card">
+            <div class="card-header"><div class="card-title">Quick Actions</div></div>
+            <div class="card-body" style="display:flex;flex-direction:column;gap:10px;">
+                <% if (balance > 0) { %>
+                <a href="<%= payUrl || '/fees/student/pay' %>" class="btn btn-primary" style="text-align:center;">💳 Pay Fees</a>
+                <% } %>
+                <a href="/fees/student/ledger" class="btn btn-secondary" style="text-align:center;">📒 Full Ledger</a>
+                <a href="/fees/student/payments" class="btn btn-secondary" style="text-align:center;">🧾 Payment History</a>
+            </div>
+        </div>
+
+        <!-- Concessions -->
+        <% if (concessions.length) { %>
+        <div class="card">
+            <div class="card-header"><div class="card-title">🎁 My Concessions</div></div>
+            <div class="card-body" style="padding:0;">
+                <% concessions.forEach((sc, idx) => { %>
+                <div style="padding:12px 16px;border-bottom:<%= idx < concessions.length-1 ? '1px solid var(--border)' : 'none' %>;">
+                    <div style="font-weight:600;font-size:0.88rem;"><%= sc.concession?.name || '—' %></div>
+                    <div style="font-size:0.78rem;color:#16a34a;margin-top:2px;">
+                        <%= sc.concession?.concessionType === 'percentage'
+                            ? sc.concession.value + '% off'
+                            : '₹' + (sc.concession?.value||0).toLocaleString('en-IN') + ' waiver' %>
+                        · <%= sc.concession?.applicableTo === 'all' ? 'All Fee Heads' : 'Specific Heads' %>
+                    </div>
+                </div>
+                <% }) %>
+            </div>
+        </div>
+        <% } %>
+
+        <!-- Recent Payments -->
+        <div class="card">
+            <div class="card-header">
+                <div class="card-title">Recent Payments</div>
+                <a href="/fees/student/payments" style="font-size:0.8rem;color:#3b82f6;text-decoration:none;">View all →</a>
+            </div>
+            <div class="card-body" style="padding:0;">
+                <% if (!recentPayments.length) { %>
+                <div style="padding:20px;text-align:center;color:var(--text-muted);font-size:0.85rem;">No payments yet.</div>
+                <% } else { %>
+                <% recentPayments.slice(0,5).forEach((p, idx) => { %>
+                <div style="padding:12px 16px;border-bottom:<%= idx < Math.min(recentPayments.length,5)-1 ? '1px solid var(--border)' : 'none' %>;display:flex;justify-content:space-between;align-items:center;">
+                    <div>
+                        <div style="font-weight:600;color:<%= p.paymentStatus==='completed'?'#16a34a':p.paymentStatus==='pending'?'#d97706':'#dc2626' %>;">
+                            ₹<%= (p.amount||0).toLocaleString('en-IN') %>
+                        </div>
+                        <div style="font-size:0.72rem;color:var(--text-muted);">
+                            <%= new Date(p.paymentDate).toLocaleDateString('en-IN',{day:'2-digit',month:'short'}) %>
+                            · <span class="badge badge-<%= p.paymentStatus==='completed'?'success':p.paymentStatus==='pending'?'warning':'danger' %>" style="font-size:0.68rem;"><%= p.paymentStatus %></span>
+                        </div>
+                    </div>
+                    <% if (p.paymentStatus === 'completed') { %>
+                    <a href="<%= (receiptBaseUrl || '/fees/student/payments') %>/<%= p._id %>/receipt" class="btn btn-secondary btn-sm" style="font-size:0.72rem;padding:4px 10px;">Receipt</a>
+                    <% } %>
+                </div>
+                <% }) %>
+                <% } %>
+            </div>
+        </div>
+    </div>
+</div>
