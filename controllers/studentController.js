@@ -1,4 +1,7 @@
 const StudentProfile = require('../models/StudentProfile');
+const ClassSection = require('../models/ClassSection');
+const Attendance = require('../models/Attendance');
+const AttendanceRecord = require('../models/AttendanceRecord');
 const Holiday = require('../models/Holiday');
 
 const getDashboard = async (req, res) => {
@@ -6,7 +9,8 @@ const getDashboard = async (req, res) => {
         const profile = await StudentProfile.findOne({ user: req.session.userId })
             .populate('parent').populate('school');
 
-        const schoolModules = (req.user && req.user.school && req.user.school.modules) || {};
+        const schoolModules = (res.locals.currentUser && res.locals.currentUser.school && res.locals.currentUser.school.modules) || {};
+
         let calendarHolidays = [], upcomingHolidays = [];
         if (schoolModules.holiday) {
             const now = new Date();
@@ -18,6 +22,42 @@ const getDashboard = async (req, res) => {
             ]);
         }
 
+        // Attendance map for calendar: { 'YYYY-MM-DD': 'Present'|'Absent'|'Late' }
+        let attendanceMap = {}, attendanceStats = null;
+        if (schoolModules.attendance) {
+            const section = await ClassSection.findOne({
+                enrolledStudents: req.session.userId,
+                school: req.session.schoolId,
+            }).lean();
+
+            if (section) {
+                const sessions = await Attendance.find({ section: section._id }).lean();
+                const sessionIds = sessions.map(s => s._id);
+                const records = await AttendanceRecord.find({
+                    attendance: { $in: sessionIds },
+                    student: req.session.userId,
+                }).lean();
+
+                const sessionDateMap = {};
+                sessions.forEach(s => { sessionDateMap[s._id.toString()] = s.date; });
+
+                records.forEach(r => {
+                    const date = sessionDateMap[r.attendance.toString()];
+                    if (date) attendanceMap[new Date(date).toISOString().split('T')[0]] = r.status;
+                });
+
+                // Sessions with no record → teacher took attendance but student unmarked → treat as Absent
+                sessions.forEach(s => {
+                    const dateStr = new Date(s.date).toISOString().split('T')[0];
+                    if (!attendanceMap[dateStr]) attendanceMap[dateStr] = 'Absent';
+                });
+
+                const total   = records.length;
+                const present = records.filter(r => r.status === 'Present').length;
+                attendanceStats = { percentage: total > 0 ? Math.round((present / total) * 100) : null };
+            }
+        }
+
         res.render('student/dashboard', {
             title: 'Student Dashboard',
             layout: 'layouts/main',
@@ -26,6 +66,9 @@ const getDashboard = async (req, res) => {
             calendarHolidays,
             upcomingHolidays,
             holidayViewUrl: '/student/holidays',
+            hasAttendance: !!schoolModules.attendance,
+            attendanceMap,
+            attendanceStats,
         });
     } catch (err) {
         console.error(err);
@@ -33,6 +76,7 @@ const getDashboard = async (req, res) => {
             title: 'Student Dashboard', layout: 'layouts/main',
             profile: null,
             hasHoliday: false, calendarHolidays: [], upcomingHolidays: [], holidayViewUrl: '/student/holidays',
+            hasAttendance: false, attendanceMap: {}, attendanceStats: null,
         });
     }
 };

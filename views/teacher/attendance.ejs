@@ -12,13 +12,24 @@
 
 <% if (!section) { %>
     <div class="card">
-        <div class="empty-state">
+        <div class="empty-state" style="padding:40px;">
             <div class="empty-icon">📋</div>
             <h3>No Section Assigned</h3>
-            <p>You are not assigned to any section.</p>
+            <p style="max-width:420px; margin:8px auto 0;">
+                You have not been assigned as a Class Teacher or Vice Class Teacher for any section yet.
+                Contact your School Admin to assign you to a section before you can mark attendance.
+            </p>
+            <div style="margin-top:20px; padding:16px; background:rgba(79,70,229,0.08); border-radius:10px; font-size:13px; color:var(--text-muted); max-width:380px; margin-left:auto; margin-right:auto; text-align:left;">
+                <strong style="color:var(--text);">Admin steps:</strong>
+                <ol style="margin:8px 0 0 16px; padding:0; line-height:2;">
+                    <li>Go to <strong>Classes</strong> → select a class → open a section</li>
+                    <li>Under <strong>Teacher Assignment</strong>, choose you as Class Teacher</li>
+                    <li>Click <strong>Update Teachers</strong></li>
+                </ol>
+            </div>
         </div>
     </div>
-    <% } else { %>
+<% } else { %>
         <div class="card" style="margin-bottom:16px;">
             <div class="card-body">
                 <form method="GET" style="display:flex; align-items:center; gap:12px;">
@@ -40,7 +51,7 @@
                 <div class="card">
                     <div class="card-header">
                         <div class="card-title">
-                            📋 Attendance — <%= new Date(date).toDateString() %>
+                            📋 Attendance — <%= new Date(date + 'T00:00:00Z').toLocaleDateString('en-IN', { weekday:'long', day:'numeric', month:'long', year:'numeric', timeZone:'UTC' }) %>
                                 <% if (attendance) { %><span class="badge badge-green" style="margin-left:8px;">Already
                                         Marked</span>
                                     <% } %>

@@ -29,24 +29,30 @@ const getMySection = async (req, res) => {
             return res.render('teacher/mySection', {
                 title: 'My Section', layout: 'layouts/main',
                 section: null, students: [], monitors: [], announcements: [],
+                isClassTeacher: false, monitorStudentIds: [],
             });
         }
 
         // Use first (primary) section
         const section = sections[0];
-        const students = await StudentProfile.find({ currentSection: section._id, school: req.session.schoolId })
-            .populate('user', 'name email phone');
+        // Use enrolledStudents (User IDs on ClassSection) — the authoritative source kept in sync by admin
+        const students = await StudentProfile.find({
+            user: { $in: section.enrolledStudents || [] },
+            school: req.session.schoolId,
+        }).populate('user', 'name email phone');
 
         const monitors = await ClassMonitor.find({ section: section._id, status: 'active' })
             .populate('student', 'name email');
-        const monitorStudentIds = monitors.map(m => m.student._id.toString());
+        // Guard against orphaned monitor records whose student was deleted
+        const validMonitors = monitors.filter(m => m.student != null);
+        const monitorStudentIds = validMonitors.map(m => m.student._id.toString());
 
         const announcements = await ClassAnnouncement.find({ section: section._id })
             .populate('createdBy', 'name').sort({ createdAt: -1 }).limit(10);
 
         res.render('teacher/mySection', {
             title: 'My Section', layout: 'layouts/main',
-            section, students, monitors, monitorStudentIds, announcements,
+            section, students, monitors: validMonitors, monitorStudentIds, announcements,
             isClassTeacher: section.classTeacher && section.classTeacher.toString() === req.session.userId,
         });
     } catch (err) {
@@ -149,22 +155,27 @@ const getAttendance = async (req, res) => {
             school: req.session.schoolId,
             $or: [{ classTeacher: req.session.userId }, { substituteTeacher: req.session.userId }],
         }).populate('class', 'className');
-        if (!section) { req.flash('error', 'No section assigned.'); return res.redirect('/teacher/dashboard'); }
-
-        const students = await StudentProfile.find({ currentSection: section._id, school: req.session.schoolId })
-            .populate('user', 'name email');
-
+        // Render the page even with no section — the view handles the empty state gracefully
         const dateStr = req.query.date || new Date().toISOString().split('T')[0];
-        const date = new Date(dateStr);
+        let students = [], attendance = null, recordMap = {};
 
-        // Check if attendance already marked
-        const attendance = await Attendance.findOne({ section: section._id, date: { $gte: new Date(dateStr), $lt: new Date(new Date(dateStr).getTime() + 86400000) } });
-        let records = [];
-        if (attendance) {
-            records = await AttendanceRecord.find({ attendance: attendance._id }).populate('student', 'name');
+        if (section) {
+            // Use enrolledStudents (User IDs on ClassSection) — the authoritative source kept in sync by admin
+            students = await StudentProfile.find({
+                user: { $in: section.enrolledStudents || [] },
+                school: req.session.schoolId,
+            }).populate('user', 'name email');
+
+            // Check if attendance already marked (UTC-normalised range)
+            const dayStart = new Date(dateStr + 'T00:00:00.000Z');
+            const dayEnd   = new Date(dayStart.getTime() + 86399999);
+            attendance = await Attendance.findOne({ section: section._id, date: { $gte: dayStart, $lte: dayEnd } });
+
+            if (attendance) {
+                const records = await AttendanceRecord.find({ attendance: attendance._id }).populate('student', 'name');
+                records.forEach(r => { if (r.student) recordMap[r.student._id.toString()] = r; });
+            }
         }
-        const recordMap = {};
-        records.forEach(r => { recordMap[r.student._id.toString()] = r; });
 
         res.render('teacher/attendance', {
             title: 'Attendance', layout: 'layouts/main',
@@ -185,17 +196,21 @@ const postMarkAttendance = async (req, res) => {
         });
         if (!section) { req.flash('error', 'Not authorized.'); return res.redirect('/teacher/attendance'); }
 
-        const attendanceDate = new Date(date);
-        let attendance = await Attendance.findOne({ section: sectionId, date: { $gte: attendanceDate, $lt: new Date(attendanceDate.getTime() + 86400000) } });
-        if (!attendance) {
-            attendance = await Attendance.create({ section: sectionId, date: attendanceDate, createdBy: req.session.userId });
-        }
+        // Normalize to UTC midnight to ensure consistent unique-index behaviour
+        const attendanceDate = new Date(date + 'T00:00:00.000Z');
+
+        // findOneAndUpdate with upsert avoids the find→create race condition
+        const attendance = await Attendance.findOneAndUpdate(
+            { section: sectionId, date: attendanceDate },
+            { $setOnInsert: { section: sectionId, date: attendanceDate, createdBy: req.session.userId } },
+            { upsert: true, new: true }
+        );
 
         if (statuses && typeof statuses === 'object') {
             for (const [studentId, status] of Object.entries(statuses)) {
                 await AttendanceRecord.findOneAndUpdate(
                     { attendance: attendance._id, student: studentId },
-                    { status },
+                    { $set: { status } },
                     { upsert: true }
                 );
             }
