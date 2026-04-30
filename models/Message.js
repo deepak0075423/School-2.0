@@ -80,6 +80,19 @@ const MessageSchema = new mongoose.Schema(
                 ref: 'User',
             },
         ],
+        isForwarded: {
+            type:    Boolean,
+            default: false,
+        },
+        reactions: {
+            type: [{
+                emoji:    { type: String, required: true },
+                user:     { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+                userName: { type: String, default: '' },
+            }],
+            default: [],
+            _id: false,
+        },
     },
     { timestamps: true }
 );
