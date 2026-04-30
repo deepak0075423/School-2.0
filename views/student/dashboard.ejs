@@ -41,7 +41,13 @@
     <div class="stat-card">
         <div class="stat-icon green">✅</div>
         <div class="stat-info">
-            <div class="stat-value" style="font-size:18px;">—</div>
+            <div class="stat-value" style="font-size:18px;">
+                <% if (locals.hasAttendance && locals.attendanceStats && locals.attendanceStats.percentage !== null) { %>
+                    <%= locals.attendanceStats.percentage %>%
+                <% } else { %>
+                    —
+                <% } %>
+            </div>
             <div class="stat-label">Attendance</div>
         </div>
     </div>
@@ -100,5 +106,5 @@
             </div>
         </div>
     </div>
-    <%- include('../partials/dashboard-calendar', { hasHoliday, calendarHolidays, upcomingHolidays, holidayViewUrl }) %>
+    <%- include('../partials/dashboard-calendar', { hasHoliday, calendarHolidays, upcomingHolidays, holidayViewUrl, hasAttendance: locals.hasAttendance || false, attendanceMap: locals.attendanceMap || {}, hasLeave: false, approvedLeaves: [] }) %>
 </div>

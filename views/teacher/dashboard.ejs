@@ -111,28 +111,61 @@
 
 <!-- Feature tiles -->
 <div style="display:grid; grid-template-columns:repeat(3,1fr); gap:16px; margin-top:20px;">
-    <div class="card" style="cursor:pointer;">
+    <% if (locals.currentUser && (locals.currentUser.school?.modules?.attendance || locals.currentUser.role === 'super_admin')) { %>
+    <a href="/teacher/attendance" style="text-decoration:none;">
+        <div class="card" style="cursor:pointer; transition:transform 0.15s; border:1px solid var(--border);" onmouseover="this.style.transform='translateY(-2px)'" onmouseout="this.style.transform=''">
+            <div class="card-body" style="text-align:center; padding:24px;">
+                <div style="font-size:36px; margin-bottom:12px;">📋</div>
+                <div class="card-title" style="margin-bottom:4px;">Mark Attendance</div>
+                <p class="text-muted" style="font-size:12px;">Mark class attendance for today</p>
+                <span class="badge badge-green" style="margin-top:8px;">Active</span>
+            </div>
+        </div>
+    </a>
+    <a href="/teacher/attendance-dashboard" style="text-decoration:none;">
+        <div class="card" style="cursor:pointer; transition:transform 0.15s; border:1px solid var(--border);" onmouseover="this.style.transform='translateY(-2px)'" onmouseout="this.style.transform=''">
+            <div class="card-body" style="text-align:center; padding:24px;">
+                <div style="font-size:36px; margin-bottom:12px;">📊</div>
+                <div class="card-title" style="margin-bottom:4px;">Attendance Analytics</div>
+                <p class="text-muted" style="font-size:12px;">View class attendance stats</p>
+                <span class="badge badge-green" style="margin-top:8px;">Active</span>
+            </div>
+        </div>
+    </a>
+    <a href="/teacher/my-attendance" style="text-decoration:none;">
+        <div class="card" style="cursor:pointer; transition:transform 0.15s; border:1px solid var(--border);" onmouseover="this.style.transform='translateY(-2px)'" onmouseout="this.style.transform=''">
+            <div class="card-body" style="text-align:center; padding:24px;">
+                <div style="font-size:36px; margin-bottom:12px;">🗓️</div>
+                <div class="card-title" style="margin-bottom:4px;">My Attendance</div>
+                <p class="text-muted" style="font-size:12px;">Track your own attendance</p>
+                <span class="badge badge-green" style="margin-top:8px;">Active</span>
+            </div>
+        </div>
+    </a>
+    <% } else { %>
+    <div class="card" style="opacity:0.6;">
         <div class="card-body" style="text-align:center; padding:24px;">
             <div style="font-size:36px; margin-bottom:12px;">📋</div>
             <div class="card-title" style="margin-bottom:4px;">Attendance</div>
             <p class="text-muted" style="font-size:12px;">Mark & view attendance</p>
-            <span class="badge badge-gray" style="margin-top:8px;">Coming Soon</span>
+            <span class="badge badge-gray" style="margin-top:8px;">Module Disabled</span>
         </div>
     </div>
-    <div class="card" style="cursor:pointer;">
-        <div class="card-body" style="text-align:center; padding:24px;">
-            <div style="font-size:36px; margin-bottom:12px;">📝</div>
-            <div class="card-title" style="margin-bottom:4px;">Assignments</div>
-            <p class="text-muted" style="font-size:12px;">Upload & manage</p>
-            <span class="badge badge-gray" style="margin-top:8px;">Coming Soon</span>
-        </div>
-    </div>
-    <div class="card" style="cursor:pointer;">
+    <div class="card" style="opacity:0.6;">
         <div class="card-body" style="text-align:center; padding:24px;">
             <div style="font-size:36px; margin-bottom:12px;">📊</div>
-            <div class="card-title" style="margin-bottom:4px;">Grades</div>
-            <p class="text-muted" style="font-size:12px;">Enter & review grades</p>
-            <span class="badge badge-gray" style="margin-top:8px;">Coming Soon</span>
+            <div class="card-title" style="margin-bottom:4px;">Analytics</div>
+            <p class="text-muted" style="font-size:12px;">View class stats</p>
+            <span class="badge badge-gray" style="margin-top:8px;">Module Disabled</span>
         </div>
     </div>
+    <div class="card" style="opacity:0.6;">
+        <div class="card-body" style="text-align:center; padding:24px;">
+            <div style="font-size:36px; margin-bottom:12px;">🗓️</div>
+            <div class="card-title" style="margin-bottom:4px;">My Attendance</div>
+            <p class="text-muted" style="font-size:12px;">Track your attendance</p>
+            <span class="badge badge-gray" style="margin-top:8px;">Module Disabled</span>
+        </div>
+    </div>
+    <% } %>
 </div>

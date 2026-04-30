@@ -4,8 +4,8 @@
             <h1>📂 My Section</h1>
             <% if (section) { %>
                 <p>
-                    <%= section.class?.className %> – Section <%= section.sectionName %> &middot;
-                            <code><%= section.sectionCode %></code>
+                    <%= section.class?.className %> – Section <%= section.sectionName %>
+                    <% if (section.academicYear?.yearName) { %>&middot; <span class="text-muted"><%= section.academicYear.yearName %></span><% } %>
                 </p>
                 <% } %>
         </div>
@@ -21,14 +21,23 @@
 
     <% if (!section) { %>
         <div class="card">
-            <div class="empty-state">
+            <div class="empty-state" style="padding:40px;">
                 <div class="empty-icon">📂</div>
                 <h3>No Section Assigned</h3>
-                <p>You have not been assigned as a class teacher for any section yet. Please contact your School Admin.
+                <p style="max-width:420px; margin:8px auto 0;">
+                    You have not been assigned as a Class Teacher or Vice Class Teacher for any section yet.
                 </p>
+                <div style="margin-top:20px; padding:16px; background:rgba(79,70,229,0.08); border-radius:10px; font-size:13px; color:var(--text-muted); max-width:380px; margin-left:auto; margin-right:auto; text-align:left;">
+                    <strong style="color:var(--text);">Admin steps to fix this:</strong>
+                    <ol style="margin:8px 0 0 16px; padding:0; line-height:2;">
+                        <li>Go to <strong>Classes</strong> → select a class → open a section</li>
+                        <li>Under <strong>Teacher Assignment</strong>, choose you as Class Teacher</li>
+                        <li>Click <strong>Update Teachers</strong></li>
+                    </ol>
+                </div>
             </div>
         </div>
-        <% } else { %>
+    <% } else { %>
 
             <%# Stats %>
                 <div class="stats-grid" style="margin-bottom:20px;">

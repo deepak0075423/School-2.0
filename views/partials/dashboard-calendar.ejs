@@ -87,6 +87,9 @@ const _dc_mo    = _dc_now.getMonth();
         e: new Date(l.toDate).toISOString()
     }))) %>;
 
+    const DC_ATTENDANCE     = <%- JSON.stringify(typeof attendanceMap !== 'undefined' ? attendanceMap : {}) %>;
+    const DC_HAS_ATTENDANCE = <%= typeof hasAttendance !== 'undefined' ? !!hasAttendance : false %>;
+
     /* ── Constants ────────────────────────────── */
     const TODAY  = new Date(); TODAY.setHours(0,0,0,0);
     const MONTHS = ['January','February','March','April','May','June',
@@ -161,19 +164,42 @@ const _dc_mo    = _dc_now.getMonth();
             const hasHol    = hols.length > 0;
             const hasLeave  = leaves.length > 0;
 
+            const dateStr   = VY + '-' + String(VM + 1).padStart(2, '0') + '-' + String(day).padStart(2, '0');
+            const attStatus = DC_HAS_ATTENDANCE ? DC_ATTENDANCE[dateStr] : null;
+
+            // Attendance background tint — only when status is known
+            const attBg = attStatus === 'Present' ? 'background:rgba(16,185,129,0.10);border-radius:4px;'
+                        : attStatus === 'Absent'  ? 'background:rgba(239,68,68,0.10);border-radius:4px;'
+                        : attStatus === 'Late'    ? 'background:rgba(245,158,11,0.10);border-radius:4px;'
+                        : '';
+
             const bgStyle = hasLeave
                 ? 'background:rgba(180,83,9,0.12);border-radius:4px;'
-                : '';
+                : attBg;
 
-            const circleStyle = isToday
-                ? 'background:var(--primary);color:#fff;'
-                : hasLeave ? `background:${LEAVE_COLOR};color:#fff;`
-                : hasHol   ? 'color:var(--text);font-weight:700;'
-                : 'color:var(--text-muted);';
+            // Circle colour priority: attendance status (if marked) → today → leave → holiday → normal
+            // Future dates will never have attStatus since teacher form blocks future marking
+            let circleStyle;
+            if (attStatus === 'Present') {
+                circleStyle = 'background:#10b981;color:#fff;';
+            } else if (attStatus === 'Absent') {
+                circleStyle = 'background:#ef4444;color:#fff;';
+            } else if (attStatus === 'Late') {
+                circleStyle = 'background:#f59e0b;color:#fff;';
+            } else if (isToday) {
+                circleStyle = 'background:var(--primary);color:#fff;';
+            } else if (hasLeave) {
+                circleStyle = `background:${LEAVE_COLOR};color:#fff;`;
+            } else if (hasHol) {
+                circleStyle = 'color:var(--text);font-weight:700;';
+            } else {
+                circleStyle = 'color:var(--text-muted);';
+            }
 
             const leaveTitle = leaves.map(l => l.name).join(', ');
             const holTitle   = hols.map(h => h.name).join(', ');
-            const titleAttr  = [leaveTitle, holTitle].filter(Boolean).join(' | ');
+            const attTitle   = attStatus ? 'Attendance: ' + attStatus : '';
+            const titleAttr  = [attTitle, leaveTitle, holTitle].filter(Boolean).join(' | ');
 
             const dots = (hasHol || hasLeave)
                 ? '<div style="display:flex;gap:2px;margin-top:1px;height:5px;align-items:center;">'
@@ -192,13 +218,24 @@ const _dc_mo    = _dc_now.getMonth();
         });
         document.getElementById('dc-grid').innerHTML = html;
 
-        /* Legend — holiday types + leave indicator */
+        /* Legend — attendance + holiday types + leave indicator */
         const legendEl  = document.getElementById('dc-legend');
         const typesNow  = [...new Set(Object.values(map).flat().map(h => h.type))];
         const hasLeaveThisMonth = Object.keys(leaveSet).length > 0;
-        if (typesNow.length || hasLeaveThisMonth) {
+
+        // Check if any attendance data exists for this month
+        const monthPrefix = VY + '-' + String(VM + 1).padStart(2, '0') + '-';
+        const hasAttendanceThisMonth = DC_HAS_ATTENDANCE &&
+            Object.keys(DC_ATTENDANCE).some(d => d.startsWith(monthPrefix));
+
+        if (typesNow.length || hasLeaveThisMonth || hasAttendanceThisMonth) {
             legendEl.innerHTML =
                 '<div style="display:flex;gap:8px;flex-wrap:wrap;padding:6px 12px 8px;border-top:1px solid var(--border);">'
+                + (hasAttendanceThisMonth
+                    ? '<div style="display:flex;align-items:center;gap:3px;font-size:10px;color:var(--text-muted);"><span style="width:7px;height:7px;border-radius:50%;background:#10b981;display:inline-block;"></span>Present</div>'
+                    + '<div style="display:flex;align-items:center;gap:3px;font-size:10px;color:var(--text-muted);"><span style="width:7px;height:7px;border-radius:50%;background:#ef4444;display:inline-block;"></span>Absent</div>'
+                    + '<div style="display:flex;align-items:center;gap:3px;font-size:10px;color:var(--text-muted);"><span style="width:7px;height:7px;border-radius:50%;background:#f59e0b;display:inline-block;"></span>Late</div>'
+                    : '')
                 + (hasLeaveThisMonth ? `<div style="display:flex;align-items:center;gap:3px;font-size:10px;color:var(--text-muted);">
                         <span style="width:7px;height:7px;border-radius:50%;background:${LEAVE_COLOR};display:inline-block;"></span>
                         My Leave
