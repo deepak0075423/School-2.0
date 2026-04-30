@@ -43,6 +43,7 @@ function init(io) {
         socket.on('chat:read',          (d) => _onRead(io, socket, d));
         socket.on('chat:edit',          (d) => _onEdit(io, socket, d));
         socket.on('chat:delete',        (d) => _onDelete(io, socket, d));
+        socket.on('chat:react',         (d) => _onReact(io, socket, d));
         socket.on('chat:join_room',     (d) => _onJoinRoom(socket, d));
 
         socket.on('disconnect', () => {
@@ -83,7 +84,7 @@ async function _verifyMembership(chatId, userId, schoolId) {
 
 async function _onSend(io, socket, data) {
     try {
-        const { chatId, content, type = 'text', replyTo, attachments = [], tempId } = data || {};
+        const { chatId, content, type = 'text', replyTo, attachments = [], tempId, isForwarded = false } = data || {};
         if (!chatId) return _err(socket, 'chatId required');
         if (!content && type === 'text') return _err(socket, 'Empty message');
 
@@ -99,14 +100,15 @@ async function _onSend(io, socket, data) {
         }
 
         const msg = await Message.create({
-            chat:       chatId,
-            school:     socket.schoolId,
-            sender:     socket.userId,
-            senderRole: socket.userRole,
-            content:    (content || '').trim(),
+            chat:        chatId,
+            school:      socket.schoolId,
+            sender:      socket.userId,
+            senderRole:  socket.userRole,
+            content:     (content || '').trim(),
             type,
             attachments,
-            replyTo:    replyTo || null,
+            replyTo:     replyTo || null,
+            isForwarded: !!isForwarded,
         });
 
         await Chat.findByIdAndUpdate(chatId, {
@@ -225,6 +227,45 @@ async function _onDelete(io, socket, data) {
         });
     } catch (err) {
         console.error('[Socket] _onDelete:', err.message);
+    }
+}
+
+async function _onReact(io, socket, data) {
+    try {
+        const { messageId, emoji } = data || {};
+        if (!messageId || !emoji) return _err(socket, 'messageId and emoji required');
+
+        const msg = await Message.findOne({ _id: messageId, isDeleted: false }).lean();
+        if (!msg) return _err(socket, 'Message not found');
+
+        const userId   = socket.userId;
+        const existing = msg.reactions.find(r => String(r.user) === userId);
+
+        let update;
+        if (existing && existing.emoji === emoji) {
+            // Same emoji — toggle off
+            update = { $pull: { reactions: { user: userId } } };
+        } else if (existing) {
+            // Different emoji — replace
+            update = {
+                $pull: { reactions: { user: userId } },
+            };
+            await Message.findByIdAndUpdate(messageId, update);
+            update = { $push: { reactions: { emoji, user: userId, userName: socket.userName || '' } } };
+        } else {
+            // New reaction
+            update = { $push: { reactions: { emoji, user: userId, userName: socket.userName || '' } } };
+        }
+
+        const updated = await Message.findByIdAndUpdate(messageId, update, { new: true }).lean();
+
+        io.to(`chat:${msg.chat}`).emit('chat:reaction', {
+            messageId,
+            chatId:    String(msg.chat),
+            reactions: updated.reactions,
+        });
+    } catch (err) {
+        console.error('[Socket] _onReact:', err.message);
     }
 }
 

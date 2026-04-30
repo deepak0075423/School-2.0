@@ -1,284 +1,409 @@
 <%
-  /* Passed from controller */
-  const _myId       = session && session.userId   ? String(session.userId)   : '';
-  const _myRole     = session && session.userRole ? session.userRole         : '';
-  const _myName     = session && session.userName ? session.userName         : 'Me';
-  const _canGroup   = typeof canCreateGroup !== 'undefined' ? canCreateGroup : false;
+  const _myId     = session && session.userId   ? String(session.userId)   : '';
+  const _myRole   = session && session.userRole ? session.userRole         : '';
+  const _myName   = session && session.userName ? session.userName         : 'Me';
+  const _canGroup = typeof canCreateGroup !== 'undefined' ? canCreateGroup : false;
 %>
 
 <style>
-/* ── Layout ─────────────────────────────────────────────────────────── */
-.chat-shell{display:flex;height:calc(100vh - 120px);border:1px solid var(--border,#2a2d3e);border-radius:16px;overflow:hidden;background:var(--card-bg,#1a1d2e);}
+/* ═══════════════════════ CHAT SHELL ═══════════════════════════════════════ */
+.cs{display:flex;height:calc(100vh - 110px);border-radius:18px;overflow:hidden;background:#0d1117;border:1px solid #21262d;box-shadow:0 24px 80px rgba(0,0,0,.5);}
 
-/* ── Left panel ─────────────────────────────────────────────────────── */
-.chat-left{width:320px;min-width:260px;max-width:380px;display:flex;flex-direction:column;border-right:1px solid var(--border,#2a2d3e);flex-shrink:0;}
-.chat-left-header{padding:16px;border-bottom:1px solid var(--border,#2a2d3e);display:flex;align-items:center;justify-content:space-between;}
-.chat-left-header h3{margin:0;font-size:16px;font-weight:700;color:var(--text,#e2e8f0);}
-.chat-header-btns{display:flex;gap:6px;}
-.icon-btn{background:rgba(59,130,246,.1);border:1px solid rgba(59,130,246,.25);border-radius:8px;padding:6px 10px;cursor:pointer;color:#3b82f6;font-size:13px;transition:background .2s;}
-.icon-btn:hover{background:rgba(59,130,246,.2);}
-.chat-search{padding:10px 16px;border-bottom:1px solid var(--border,#2a2d3e);}
-.chat-search input{width:100%;padding:8px 12px;border-radius:8px;border:1px solid var(--border,#2a2d3e);background:rgba(255,255,255,.05);color:var(--text,#e2e8f0);font-size:13px;box-sizing:border-box;}
-.chat-search input:focus{outline:none;border-color:#3b82f6;}
-.chat-list{flex:1;overflow-y:auto;}
-.chat-item{display:flex;align-items:center;gap:10px;padding:12px 16px;cursor:pointer;border-bottom:1px solid rgba(255,255,255,.04);transition:background .15s;position:relative;}
-.chat-item:hover{background:rgba(255,255,255,.04);}
-.chat-item.active{background:rgba(59,130,246,.12);}
-.chat-avatar{width:42px;height:42px;border-radius:50%;background:#3b82f6;color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:16px;flex-shrink:0;overflow:hidden;}
-.chat-avatar img{width:100%;height:100%;object-fit:cover;border-radius:50%;}
-.chat-item-info{flex:1;min-width:0;}
-.chat-item-top{display:flex;justify-content:space-between;align-items:baseline;}
-.chat-item-name{font-weight:600;font-size:13px;color:var(--text,#e2e8f0);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:160px;}
-.chat-item-time{font-size:10px;color:var(--text-muted,#94a3b8);flex-shrink:0;}
-.chat-item-preview{font-size:12px;color:var(--text-muted,#94a3b8);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin-top:2px;}
-.chat-unread-badge{position:absolute;right:14px;bottom:14px;background:#3b82f6;color:#fff;border-radius:10px;min-width:18px;height:18px;font-size:10px;font-weight:700;display:flex;align-items:center;justify-content:center;padding:0 4px;}
+/* ═══════════════════════ LEFT PANEL ════════════════════════════════════════ */
+.cl{width:310px;min-width:260px;max-width:340px;display:flex;flex-direction:column;border-right:1px solid #21262d;background:#161b22;flex-shrink:0;}
+.cl-hdr{padding:14px 16px 10px;background:linear-gradient(135deg,#1c2230,#161b22);border-bottom:1px solid #21262d;}
+.cl-hdr-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;}
+.cl-hdr-top h3{margin:0;font-size:15px;font-weight:700;color:#e6edf3;letter-spacing:.3px;}
+.cl-btns{display:flex;gap:5px;}
+.cl-btn{background:rgba(56,139,253,.12);border:1px solid rgba(56,139,253,.2);border-radius:8px;padding:5px 9px;cursor:pointer;color:#58a6ff;font-size:13px;transition:all .2s;line-height:1;}
+.cl-btn:hover{background:rgba(56,139,253,.22);border-color:rgba(56,139,253,.4);}
+.cl-search{position:relative;}
+.cl-search input{width:100%;padding:7px 12px 7px 34px;border-radius:8px;border:1px solid #30363d;background:rgba(255,255,255,.04);color:#c9d1d9;font-size:12px;box-sizing:border-box;transition:border .2s;}
+.cl-search input:focus{outline:none;border-color:#388bfd;background:rgba(255,255,255,.06);}
+.cl-search::before{content:'🔍';position:absolute;left:10px;top:50%;transform:translateY(-50%);font-size:12px;opacity:.5;pointer-events:none;}
 
-/* ── Right panel ────────────────────────────────────────────────────── */
-.chat-right{flex:1;display:flex;flex-direction:column;min-width:0;}
-.chat-empty{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;color:var(--text-muted,#94a3b8);}
-.chat-empty-icon{font-size:64px;opacity:.3;}
+/* Chat list */
+.cl-list{flex:1;overflow-y:auto;}
+.cl-list::-webkit-scrollbar{width:4px;}
+.cl-list::-webkit-scrollbar-thumb{background:#30363d;border-radius:4px;}
+.ci{display:flex;align-items:center;gap:10px;padding:11px 14px;cursor:pointer;border-bottom:1px solid rgba(255,255,255,.03);transition:background .15s;position:relative;}
+.ci:hover{background:rgba(255,255,255,.04);}
+.ci.active{background:rgba(56,139,253,.1);border-left:2px solid #388bfd;}
+.ci.active .ci-name{color:#58a6ff;}
+.ca{width:40px;height:40px;border-radius:50%;background:linear-gradient(135deg,#388bfd,#1f6feb);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:15px;flex-shrink:0;overflow:hidden;}
+.ca img{width:100%;height:100%;object-fit:cover;border-radius:50%;}
+.ca.grp{background:linear-gradient(135deg,#3fb950,#238636);}
+.ca.bcast{background:linear-gradient(135deg,#e3b341,#9e6a03);}
+.ci-body{flex:1;min-width:0;}
+.ci-top{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:2px;}
+.ci-name{font-weight:600;font-size:13px;color:#c9d1d9;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:150px;}
+.ci-time{font-size:10px;color:#6e7681;flex-shrink:0;}
+.ci-preview{font-size:12px;color:#6e7681;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.ci-badge{position:absolute;right:12px;top:50%;transform:translateY(-50%);background:#388bfd;color:#fff;border-radius:10px;min-width:18px;height:18px;font-size:10px;font-weight:700;display:flex;align-items:center;justify-content:center;padding:0 5px;}
 
-/* ── Active chat header ──────────────────────────────────────────────── */
-.chat-win-header{padding:12px 18px;border-bottom:1px solid var(--border,#2a2d3e);display:flex;align-items:center;gap:12px;flex-shrink:0;}
-.chat-win-info{flex:1;min-width:0;}
-.chat-win-name{font-weight:700;font-size:15px;color:var(--text,#e2e8f0);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
-.chat-win-sub{font-size:11px;color:var(--text-muted,#94a3b8);}
-.chat-win-actions{display:flex;gap:6px;}
+/* ═══════════════════════ RIGHT PANEL ═══════════════════════════════════════ */
+.cr{flex:1;display:flex;flex-direction:column;min-width:0;background:#0d1117;}
 
-/* ── Messages ─────────────────────────────────────────────────────────── */
-.chat-messages{flex:1;overflow-y:auto;padding:16px;display:flex;flex-direction:column;gap:4px;}
-.msg-date-divider{text-align:center;margin:10px 0;font-size:11px;color:var(--text-muted,#94a3b8);}
-.msg-date-divider span{background:rgba(255,255,255,.06);padding:3px 10px;border-radius:10px;}
-.msg-row{display:flex;gap:8px;margin-bottom:2px;}
+/* Empty state */
+.cr-empty{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;color:#484f58;}
+.cr-empty-icon{font-size:56px;opacity:.25;}
+.cr-empty-title{font-size:15px;font-weight:600;color:#8b949e;}
+.cr-empty-sub{font-size:12px;color:#484f58;}
+
+/* Chat window header */
+.cw-hdr{padding:11px 16px;border-bottom:1px solid #21262d;display:flex;align-items:center;gap:11px;flex-shrink:0;background:#161b22;}
+.cw-info{flex:1;min-width:0;}
+.cw-name{font-weight:700;font-size:14px;color:#e6edf3;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.cw-sub{font-size:11px;color:#6e7681;margin-top:1px;}
+.cw-actions{display:flex;gap:5px;}
+
+/* Messages */
+.cw-msgs{flex:1;overflow-y:auto;padding:14px 16px;display:flex;flex-direction:column;gap:3px;}
+.cw-msgs::-webkit-scrollbar{width:4px;}
+.cw-msgs::-webkit-scrollbar-thumb{background:#21262d;border-radius:4px;}
+.msg-date{text-align:center;margin:10px 0 6px;font-size:11px;color:#484f58;}
+.msg-date span{background:#161b22;border:1px solid #21262d;padding:3px 10px;border-radius:10px;}
+.msg-row{display:flex;gap:8px;margin-bottom:1px;align-items:flex-end;}
 .msg-row.mine{flex-direction:row-reverse;}
-.msg-avatar-wrap{width:32px;flex-shrink:0;}
-.msg-bubble-wrap{max-width:68%;display:flex;flex-direction:column;}
-.msg-row.mine .msg-bubble-wrap{align-items:flex-end;}
-.msg-sender-name{font-size:11px;color:#3b82f6;font-weight:600;margin-bottom:2px;padding-left:4px;}
-.msg-bubble{background:rgba(255,255,255,.06);border-radius:12px 12px 12px 3px;padding:9px 13px;position:relative;word-break:break-word;}
-.msg-row.mine .msg-bubble{background:rgba(59,130,246,.18);border-radius:12px 12px 3px 12px;}
-.msg-bubble.deleted{color:var(--text-muted,#94a3b8);font-style:italic;font-size:12px;}
-.msg-text{font-size:13px;color:var(--text,#e2e8f0);line-height:1.5;white-space:pre-wrap;}
-.msg-meta{display:flex;align-items:center;gap:5px;margin-top:4px;}
-.msg-time{font-size:10px;color:var(--text-muted,#94a3b8);}
-.msg-edited{font-size:10px;color:var(--text-muted,#94a3b8);font-style:italic;}
-.msg-status{font-size:11px;}
-.msg-actions{display:none;gap:4px;margin-top:4px;}
-.msg-bubble-wrap:hover .msg-actions{display:flex;}
-.msg-action-btn{background:rgba(255,255,255,.08);border:none;border-radius:6px;padding:3px 7px;cursor:pointer;color:var(--text-muted,#94a3b8);font-size:11px;transition:background .15s;}
-.msg-action-btn:hover{background:rgba(255,255,255,.15);color:var(--text,#e2e8f0);}
-.msg-reply-preview{background:rgba(59,130,246,.1);border-left:3px solid #3b82f6;border-radius:4px;padding:5px 8px;margin-bottom:6px;font-size:11px;color:var(--text-muted,#94a3b8);}
-.msg-attach-image{max-width:220px;border-radius:8px;cursor:pointer;margin-top:6px;display:block;}
-.msg-attach-file{display:flex;align-items:center;gap:8px;background:rgba(255,255,255,.06);border-radius:8px;padding:8px;margin-top:6px;}
-.msg-attach-file a{color:#3b82f6;font-size:12px;text-decoration:none;}
-.typing-indicator{font-size:12px;color:var(--text-muted,#94a3b8);padding:4px 8px;font-style:italic;}
+.msg-av{width:28px;flex-shrink:0;}
+.msg-bw{max-width:70%;display:flex;flex-direction:column;}
+.msg-row.mine .msg-bw{align-items:flex-end;}
+.msg-sname{font-size:11px;color:#388bfd;font-weight:600;margin-bottom:2px;padding-left:2px;}
+.msg-bubble{background:#1c2230;border-radius:14px 14px 14px 3px;padding:9px 12px;position:relative;word-break:break-word;border:1px solid #21262d;}
+.msg-row.mine .msg-bubble{background:rgba(56,139,253,.16);border-radius:14px 14px 3px 14px;border-color:rgba(56,139,253,.2);}
+.msg-bubble.deleted{color:#484f58;font-style:italic;background:#161b22;border-color:#21262d;}
+.msg-text{font-size:13px;color:#c9d1d9;line-height:1.55;white-space:pre-wrap;}
+.msg-meta{display:flex;align-items:center;gap:5px;margin-top:5px;}
+.msg-time{font-size:10px;color:#484f58;}
+.msg-edited{font-size:10px;color:#484f58;font-style:italic;}
+.msg-status{font-size:10px;color:#388bfd;}
+.msg-reply{background:rgba(56,139,253,.08);border-left:2px solid #388bfd;border-radius:4px;padding:5px 8px;margin-bottom:7px;font-size:11px;color:#8b949e;}
+/* WhatsApp-style message dropdown */
+.msg-dd-btn{display:none;position:absolute;top:5px;right:5px;background:rgba(0,0,0,.28);border:none;border-radius:50%;width:20px;height:20px;cursor:pointer;font-size:10px;color:rgba(255,255,255,.8);align-items:center;justify-content:center;z-index:5;padding:0;line-height:1;transition:background .15s;}
+.msg-bw:hover .msg-dd-btn, .msg-dd-btn.open{display:flex;}
+.msg-dd-btn:hover{background:rgba(0,0,0,.45);}
+/* Dropdown and react-picker use position:fixed so overflow:auto on .cw-msgs never clips them */
+.msg-dropdown{display:none;position:fixed;min-width:160px;background:#1c2230;border:1px solid #30363d;border-radius:10px;box-shadow:0 10px 28px rgba(0,0,0,.6);z-index:9000;overflow:hidden;}
+.msg-dropdown.open{display:block;}
+.msg-dd-item{padding:10px 15px;font-size:13px;color:#c9d1d9;cursor:pointer;display:flex;align-items:center;gap:9px;white-space:nowrap;transition:background .12s;}
+.msg-dd-item:hover{background:rgba(56,139,253,.12);}
+.msg-dd-item.danger{color:#f85149;}
+/* Forwarded / flags */
+.msg-forwarded{font-size:10px;color:#6e7681;margin-bottom:5px;display:flex;align-items:center;gap:3px;opacity:.85;}
+/* Seen / Sent status */
+.msg-seen{font-size:10px;color:#3fb950;font-weight:600;}
+.msg-sent{font-size:10px;color:#484f58;}
+/* Emoji reactions */
+.msg-reactions{display:flex;flex-wrap:wrap;gap:4px;margin-top:6px;padding:0 2px;}
+.msg-react-pill{display:inline-flex;align-items:center;gap:3px;background:rgba(255,255,255,.06);border:1px solid #30363d;border-radius:20px;padding:3px 9px 3px 7px;font-size:14px;cursor:pointer;transition:all .15s;user-select:none;line-height:1.3;}
+.msg-react-pill:hover{background:rgba(56,139,253,.15);border-color:rgba(56,139,253,.4);}
+.msg-react-pill.mine{background:rgba(56,139,253,.18);border-color:rgba(56,139,253,.5);}
+.msg-react-pill .rp-count{font-size:11px;color:#8b949e;font-weight:600;}
+/* React picker — also position:fixed to escape the scroll container */
+.react-picker{display:none;position:fixed;background:#1c2230;border:1px solid #30363d;border-radius:12px;padding:7px 10px;box-shadow:0 8px 24px rgba(0,0,0,.7);z-index:9000;white-space:nowrap;}
+.react-picker.open{display:flex;gap:5px;}
+.react-picker .rp-opt{font-size:22px;cursor:pointer;padding:3px 5px;border-radius:6px;transition:background .12s;line-height:1;}
+.react-picker .rp-opt:hover{background:rgba(255,255,255,.12);}
+/* Forward multi-select */
+.fwd-section-label{font-size:10px;font-weight:700;color:#6e7681;text-transform:uppercase;letter-spacing:.5px;padding:8px 4px 4px;}
+.fwd-disabled{opacity:.38;cursor:not-allowed!important;pointer-events:none;}
+/* Per-chat search bar */
+.chat-search-bar{display:none;background:#161b22;border-bottom:1px solid #21262d;padding:10px 14px 6px;}
+.chat-search-bar.open{display:block;}
+.chat-search-bar input{width:100%;padding:7px 12px;border-radius:8px;border:1px solid #30363d;background:#0d1117;color:#c9d1d9;font-size:13px;box-sizing:border-box;outline:none;transition:border .2s;}
+.chat-search-bar input:focus{border-color:#388bfd;}
+.chat-search-results{max-height:220px;overflow-y:auto;margin-top:6px;}
+.chat-search-results::-webkit-scrollbar{width:3px;}
+.chat-search-results::-webkit-scrollbar-thumb{background:#30363d;border-radius:3px;}
+.csr-item{padding:9px 10px;cursor:pointer;border-radius:8px;border-bottom:1px solid rgba(255,255,255,.03);transition:background .12s;}
+.csr-item:hover{background:rgba(56,139,253,.1);}
+.csr-sender{font-size:11px;color:#388bfd;font-weight:600;margin-bottom:2px;}
+.csr-text{font-size:12px;color:#c9d1d9;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.csr-time{font-size:10px;color:#6e7681;margin-top:2px;}
+/* Jump-to-message highlight */
+@keyframes msgJumpFade{0%,20%{box-shadow:0 0 0 3px rgba(56,139,253,.6);}100%{box-shadow:none;}}
+.msg-jump-highlight .msg-bubble{animation:msgJumpFade 2s ease forwards;}
+.msg-dd-item.danger:hover{background:rgba(248,81,73,.1);}
+.typing-bar{font-size:12px;color:#6e7681;padding:4px 16px 0;font-style:italic;min-height:20px;}
 
-/* ── Input area ─────────────────────────────────────────────────────── */
-.chat-input-area{border-top:1px solid var(--border,#2a2d3e);padding:12px 16px;flex-shrink:0;}
-.reply-strip{display:none;background:rgba(59,130,246,.1);border-left:3px solid #3b82f6;border-radius:6px;padding:6px 10px;margin-bottom:8px;font-size:12px;color:var(--text-muted,#94a3b8);position:relative;}
-.reply-strip .close-reply{position:absolute;right:6px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:var(--text-muted,#94a3b8);font-size:16px;}
-.file-preview-strip{display:none;align-items:center;gap:8px;background:rgba(255,255,255,.06);border-radius:8px;padding:8px 12px;margin-bottom:8px;}
-.file-preview-strip .fp-name{font-size:12px;color:var(--text,#e2e8f0);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
-.file-preview-strip .fp-clear{background:none;border:none;cursor:pointer;color:var(--text-muted,#94a3b8);font-size:16px;}
-.chat-input-row{display:flex;gap:8px;align-items:flex-end;}
-.chat-input-row textarea{flex:1;background:rgba(255,255,255,.05);border:1px solid var(--border,#2a2d3e);border-radius:10px;color:var(--text,#e2e8f0);padding:10px 13px;font-size:14px;resize:none;min-height:42px;max-height:120px;font-family:inherit;line-height:1.5;}
-.chat-input-row textarea:focus{outline:none;border-color:#3b82f6;}
-.send-btn{background:#3b82f6;border:none;border-radius:10px;padding:10px 18px;color:#fff;cursor:pointer;font-size:16px;flex-shrink:0;transition:background .2s;}
-.send-btn:hover{background:#2563eb;}
-.attach-btn{background:rgba(255,255,255,.06);border:1px solid var(--border,#2a2d3e);border-radius:10px;padding:10px 13px;cursor:pointer;color:var(--text-muted,#94a3b8);font-size:16px;flex-shrink:0;}
-.attach-btn:hover{background:rgba(255,255,255,.1);}
-.readonly-notice{padding:10px;text-align:center;font-size:12px;color:var(--text-muted,#94a3b8);font-style:italic;}
+/* Input area */
+.cw-input{border-top:1px solid #21262d;padding:12px 14px;flex-shrink:0;background:#161b22;}
+.reply-strip{display:none;background:rgba(56,139,253,.08);border-left:2px solid #388bfd;border-radius:6px;padding:6px 10px;margin-bottom:8px;font-size:12px;color:#8b949e;position:relative;}
+.reply-strip .rs-close{position:absolute;right:8px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:#6e7681;font-size:18px;line-height:1;}
+.ro-notice{padding:10px;text-align:center;font-size:12px;color:#6e7681;font-style:italic;}
+.cw-input-row{display:flex;gap:8px;align-items:flex-end;}
+.cw-input-row textarea{flex:1;background:#0d1117;border:1px solid #30363d;border-radius:10px;color:#c9d1d9;padding:9px 12px;font-size:13px;resize:none;min-height:40px;max-height:120px;font-family:inherit;line-height:1.5;transition:border .2s;}
+.cw-input-row textarea:focus{outline:none;border-color:#388bfd;}
+.emoji-btn{background:#1c2230;border:1px solid #30363d;border-radius:10px;padding:9px 11px;cursor:pointer;font-size:16px;flex-shrink:0;transition:background .2s;line-height:1;}
+.emoji-btn:hover{background:#21262d;}
+.send-btn{background:#1f6feb;border:none;border-radius:10px;padding:9px 16px;color:#fff;cursor:pointer;font-size:15px;flex-shrink:0;transition:background .2s;line-height:1;}
+.send-btn:hover{background:#388bfd;}
 
-/* ── Modals ─────────────────────────────────────────────────────────── */
-.modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:9999;align-items:center;justify-content:center;}
-.modal-box{background:var(--card-bg,#1a1d2e);border:1px solid var(--border,#2a2d3e);border-radius:16px;width:min(500px,92vw);max-height:85vh;overflow-y:auto;padding:28px;position:relative;}
-.modal-title{font-size:17px;font-weight:700;color:var(--text,#e2e8f0);margin-bottom:20px;}
-.modal-close{position:absolute;top:14px;right:14px;background:none;border:none;cursor:pointer;color:var(--text-muted,#94a3b8);font-size:22px;}
-.form-group{margin-bottom:14px;}
-.form-group label{font-size:12px;color:var(--text-muted,#94a3b8);font-weight:600;margin-bottom:5px;display:block;}
-.form-group input,.form-group textarea,.form-group select{width:100%;padding:9px 12px;border-radius:8px;border:1px solid var(--border,#2a2d3e);background:rgba(255,255,255,.05);color:var(--text,#e2e8f0);font-size:13px;box-sizing:border-box;}
-.form-group input:focus,.form-group textarea:focus,.form-group select:focus{outline:none;border-color:#3b82f6;}
-.contact-grid{max-height:220px;overflow-y:auto;border:1px solid var(--border,#2a2d3e);border-radius:8px;}
-.contact-item{display:flex;align-items:center;gap:10px;padding:9px 12px;cursor:pointer;border-bottom:1px solid rgba(255,255,255,.04);transition:background .15s;}
-.contact-item:hover,.contact-item.selected{background:rgba(59,130,246,.1);}
-.contact-item input[type=checkbox]{margin:0;accent-color:#3b82f6;}
-.contact-name{font-size:13px;color:var(--text,#e2e8f0);font-weight:500;}
-.contact-role{font-size:11px;color:var(--text-muted,#94a3b8);}
-.btn-primary{background:#3b82f6;border:none;border-radius:8px;padding:10px 20px;color:#fff;cursor:pointer;font-size:14px;font-weight:600;width:100%;margin-top:6px;}
-.btn-primary:hover{background:#2563eb;}
-.search-result-item{padding:10px 14px;border-bottom:1px solid rgba(255,255,255,.04);cursor:pointer;}
-.search-result-item:hover{background:rgba(255,255,255,.05);}
-.sr-chat{font-size:10px;color:#3b82f6;margin-bottom:2px;}
-.sr-text{font-size:13px;color:var(--text,#e2e8f0);}
-.sr-time{font-size:10px;color:var(--text-muted,#94a3b8);}
-.members-list-item{display:flex;align-items:center;gap:10px;padding:9px 14px;border-bottom:1px solid rgba(255,255,255,.04);}
-.online-dot{width:8px;height:8px;border-radius:50%;background:#22c55e;flex-shrink:0;}
-.offline-dot{width:8px;height:8px;border-radius:50%;background:#4b5563;flex-shrink:0;}
-@media(max-width:640px){.chat-left{width:100%;max-width:100%;}.chat-right{display:none;}.chat-right.mobile-open{display:flex;position:absolute;inset:0;z-index:10;}.chat-shell{position:relative;}}
+/* Emoji picker */
+.emoji-picker{display:none;position:absolute;bottom:68px;left:14px;background:#161b22;border:1px solid #30363d;border-radius:12px;padding:10px;z-index:200;box-shadow:0 8px 32px rgba(0,0,0,.5);max-width:280px;}
+.emoji-picker.open{display:flex;flex-wrap:wrap;gap:4px;}
+.ep-emoji{font-size:20px;cursor:pointer;padding:4px;border-radius:6px;transition:background .15s;line-height:1;}
+.ep-emoji:hover{background:rgba(255,255,255,.1);}
+
+/* ═══════════════════════ MODALS ════════════════════════════════════════════ */
+.mo{display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:9999;align-items:center;justify-content:center;backdrop-filter:blur(4px);}
+.mb{background:#161b22;border:1px solid #30363d;border-radius:16px;width:min(460px,92vw);max-height:85vh;overflow-y:auto;padding:24px;position:relative;}
+.mb::-webkit-scrollbar{width:4px;}
+.mb::-webkit-scrollbar-thumb{background:#30363d;border-radius:4px;}
+.mb-title{font-size:15px;font-weight:700;color:#e6edf3;margin-bottom:18px;padding-right:28px;}
+.mb-close{position:absolute;top:14px;right:14px;background:none;border:none;cursor:pointer;color:#6e7681;font-size:20px;line-height:1;transition:color .2s;}
+.mb-close:hover{color:#c9d1d9;}
+.fg{margin-bottom:13px;}
+.fg label{font-size:11px;color:#8b949e;font-weight:600;margin-bottom:5px;display:block;text-transform:uppercase;letter-spacing:.4px;}
+.fg input,.fg textarea,.fg select{width:100%;padding:8px 11px;border-radius:8px;border:1px solid #30363d;background:#0d1117;color:#c9d1d9;font-size:13px;box-sizing:border-box;transition:border .2s;}
+.fg input:focus,.fg textarea:focus,.fg select:focus{outline:none;border-color:#388bfd;}
+.fg select option{background:#161b22;}
+.cgrid{max-height:200px;overflow-y:auto;border:1px solid #21262d;border-radius:8px;}
+.cgrid::-webkit-scrollbar{width:3px;}
+.cgrid::-webkit-scrollbar-thumb{background:#30363d;border-radius:3px;}
+.cg-item{display:flex;align-items:center;gap:9px;padding:8px 11px;cursor:pointer;border-bottom:1px solid rgba(255,255,255,.03);transition:background .15s;}
+.cg-item:last-child{border-bottom:none;}
+.cg-item:hover,.cg-item.sel{background:rgba(56,139,253,.1);}
+.cg-item input[type=checkbox]{margin:0;accent-color:#388bfd;width:auto;flex-shrink:0;}
+.cg-name{font-size:13px;color:#c9d1d9;font-weight:500;}
+.cg-role{font-size:11px;color:#6e7681;}
+.btn-pri{background:#1f6feb;border:none;border-radius:8px;padding:9px 18px;color:#fff;cursor:pointer;font-size:13px;font-weight:600;width:100%;margin-top:8px;transition:background .2s;}
+.btn-pri:hover{background:#388bfd;}
+.btn-sec{background:#21262d;border:1px solid #30363d;border-radius:8px;padding:8px 16px;color:#c9d1d9;cursor:pointer;font-size:13px;font-weight:500;transition:background .2s;}
+.btn-sec:hover{background:#2d333b;}
+.sr-item{padding:10px 12px;border-bottom:1px solid rgba(255,255,255,.03);cursor:pointer;border-radius:6px;transition:background .15s;}
+.sr-item:hover{background:rgba(255,255,255,.04);}
+.sr-chat{font-size:10px;color:#388bfd;margin-bottom:2px;font-weight:600;}
+.sr-text{font-size:12px;color:#c9d1d9;}
+.sr-time{font-size:10px;color:#6e7681;margin-top:2px;}
+.ml-item{display:flex;align-items:center;gap:10px;padding:9px 12px;border-bottom:1px solid rgba(255,255,255,.03);}
+.ml-item:last-child{border-bottom:none;}
+.presence-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;}
+.presence-dot.on{background:#3fb950;}
+.presence-dot.off{background:#30363d;}
+.section-divider{border:none;border-top:1px solid #21262d;margin:14px 0;}
+.add-member-wrap{margin-top:14px;}
+.add-member-wrap .am-label{font-size:12px;font-weight:600;color:#c9d1d9;margin-bottom:10px;display:flex;align-items:center;justify-content:space-between;}
+
+@media(max-width:640px){
+  .cl{position:absolute;inset:0;z-index:5;width:100%!important;max-width:100%!important;border-right:none;}
+  .cr{display:none;}
+  .cs.chat-open .cl{display:none;}
+  .cs.chat-open .cr{display:flex!important;position:absolute;inset:0;z-index:5;}
+  .cs{position:relative;}
+}
 </style>
 
-<!-- ════════════════════════════════════════ SHELL ══════════════════════════════════════ -->
-<div class="chat-shell">
+<!-- ═════════════════════════ CHAT SHELL ════════════════════════════════════ -->
+<div class="cs" id="chatShell">
 
-  <!-- ── LEFT PANEL ────────────────────────────────────────────────────────── -->
-  <div class="chat-left">
-    <div class="chat-left-header">
-      <h3>💬 Chat</h3>
-      <div class="chat-header-btns">
-        <button class="icon-btn" onclick="openSearchModal()" title="Search messages">🔍</button>
-        <% if (_canGroup) { %>
-        <button class="icon-btn" onclick="openGroupModal()" title="New group">👥+</button>
-        <% } %>
-        <button class="icon-btn" onclick="openNewChatModal()" title="New chat">✏️</button>
+  <!-- ── LEFT PANEL ─────────────────────────────────────────────────────── -->
+  <div class="cl" id="chatLeft">
+    <!-- Normal header -->
+    <div class="cl-hdr" id="normalHdr">
+      <div class="cl-hdr-top">
+        <h3>Messages</h3>
+        <div class="cl-btns">
+          <% if (_myRole === 'school_admin') { %>
+          <button class="cl-btn" id="adminModeBtn" onclick="enterAdminMode()" title="Browse all users">👤</button>
+          <% } %>
+          <% if (_canGroup) { %>
+          <button class="cl-btn" onclick="openGroupModal()" title="New group">👥</button>
+          <% } %>
+          <button class="cl-btn" onclick="openNewChatModal()" title="New chat">✏️</button>
+        </div>
+      </div>
+      <div class="cl-search">
+        <input type="text" id="chatSearchInput" placeholder="Search conversations…" oninput="filterChatList(this.value)">
       </div>
     </div>
-    <div class="chat-search">
-      <input type="text" id="chatSearchInput" placeholder="Search chats…" oninput="filterChatList(this.value)">
+
+    <% if (_myRole === 'school_admin') { %>
+    <!-- Admin browse header (hidden by default) -->
+    <div class="cl-hdr" id="adminBrowseHdr" style="display:none;">
+      <div class="cl-hdr-top">
+        <h3 id="adminHdrTitle" style="font-size:14px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:180px;">Browse Users</h3>
+        <button class="cl-btn" onclick="exitAdminMode()" title="Back">← Back</button>
+      </div>
+      <div class="cl-search">
+        <input type="text" id="adminUserSearch" placeholder="Search by name or role…" oninput="onAdminUserSearch(this.value)" autocomplete="off">
+      </div>
     </div>
-    <div class="chat-list" id="chatList">
-      <div style="padding:24px;text-align:center;color:var(--text-muted,#94a3b8);font-size:13px;">Loading chats…</div>
+    <% } %>
+
+    <div class="cl-list" id="chatList">
+      <div style="padding:28px 16px;text-align:center;color:#484f58;font-size:12px;">Loading…</div>
     </div>
   </div>
 
-  <!-- ── RIGHT PANEL ───────────────────────────────────────────────────────── -->
-  <div class="chat-right" id="chatRight">
+  <!-- ── RIGHT PANEL ────────────────────────────────────────────────────── -->
+  <div class="cr" id="chatRight">
 
     <!-- Empty state -->
-    <div class="chat-empty" id="chatEmptyState">
-      <div class="chat-empty-icon">💬</div>
-      <div style="font-size:16px;font-weight:600;color:var(--text,#e2e8f0);">Select a chat to start messaging</div>
-      <div style="font-size:13px;">Or start a new conversation using the ✏️ button</div>
+    <div class="cr-empty" id="chatEmpty">
+      <div class="cr-empty-icon">💬</div>
+      <div class="cr-empty-title">Your messages</div>
+      <div class="cr-empty-sub">Start a conversation with the ✏️ button</div>
     </div>
 
     <!-- Active chat window -->
-    <div id="chatWindow" style="display:none;flex:1;display:none;flex-direction:column;min-height:0;">
+    <div id="chatWindow" style="display:none;flex:1;flex-direction:column;min-height:0;">
 
       <!-- Header -->
-      <div class="chat-win-header">
-        <div class="chat-avatar" id="winAvatar" style="width:38px;height:38px;font-size:14px;"></div>
-        <div class="chat-win-info">
-          <div class="chat-win-name" id="winName">—</div>
-          <div class="chat-win-sub"  id="winSub">—</div>
+      <div class="cw-hdr">
+        <button id="backBtn" style="display:none;background:none;border:none;cursor:pointer;color:#8b949e;font-size:18px;padding:0 6px 0 0;" onclick="closeChat()">←</button>
+        <div class="ca" id="winAvatar" style="width:36px;height:36px;font-size:14px;flex-shrink:0;"></div>
+        <div class="cw-info">
+          <div class="cw-name" id="winName">—</div>
+          <div class="cw-sub"  id="winSub">—</div>
         </div>
-        <div class="chat-win-actions">
-          <button class="icon-btn" onclick="openMembersModal()" title="Members" id="membersBtn" style="display:none;">👥</button>
-          <button class="icon-btn" onclick="toggleMuteChat()"   title="Mute"    id="muteBtn">🔔</button>
-          <button class="icon-btn" onclick="toggleArchiveChat()" title="Archive" id="archiveBtn">📂</button>
+        <div class="cw-actions">
+          <button class="cl-btn" onclick="toggleChatSearch()" title="Search in chat" id="chatSearchBtn">🔍</button>
+          <button class="cl-btn" onclick="openMembersModal()" title="Members" id="membersBtn" style="display:none;">👥</button>
         </div>
       </div>
 
+      <!-- Per-chat search bar -->
+      <div class="chat-search-bar" id="chatSearchBar">
+        <input type="text" id="inChatSearchInput" placeholder="Search in this chat…" oninput="onChatSearch(this.value)" autocomplete="off">
+        <div class="chat-search-results" id="chatSearchResults"></div>
+      </div>
+
       <!-- Messages -->
-      <div class="chat-messages" id="chatMessages"></div>
-      <div class="typing-indicator" id="typingIndicator" style="display:none;"></div>
+      <div class="cw-msgs" id="chatMessages"></div>
+      <div class="typing-bar" id="typingBar"></div>
 
       <!-- Input -->
-      <div class="chat-input-area" id="chatInputArea">
+      <div class="cw-input" id="chatInputArea" style="position:relative;">
+        <!-- Emoji picker -->
+        <div class="emoji-picker" id="emojiPicker">
+          <%- ['😀','😂','😍','🥰','😊','😎','🤔','😅','😭','😡','👍','👎','❤️','🔥','✅','💯','🎉','🙏','😴','🤣','💪','🤦','🙌','👏','🤝','😤','😱','💀','🫡','😇','🥳','🫂','❓','‼️','💬','📝','✨','🌟','⭐','🚀'].map(e => `<span class="ep-emoji" data-emoji="${e}">${e}</span>`).join('') %>
+        </div>
         <div class="reply-strip" id="replyStrip">
           <span id="replyText"></span>
-          <button class="close-reply" onclick="clearReply()">×</button>
+          <button class="rs-close" onclick="clearReply()">×</button>
         </div>
-        <div class="file-preview-strip" id="filePreviewStrip">
-          <span>📎</span>
-          <span class="fp-name" id="fpName"></span>
-          <button class="fp-clear" onclick="clearFile()">×</button>
+        <div class="ro-notice" id="readonlyNotice" style="display:none;">
+          📢 This is a broadcast channel — only admins &amp; teachers can post.
         </div>
-        <div class="readonly-notice" id="readonlyNotice" style="display:none;">
-          📢 This is a broadcast channel — only admins/teachers can post.
-        </div>
-        <div class="chat-input-row" id="chatInputRow">
-          <input type="file" id="fileInput" style="display:none" onchange="handleFileSelect(this)">
-          <button class="attach-btn" onclick="document.getElementById('fileInput').click()">📎</button>
+        <div class="cw-input-row" id="chatInputRow">
+          <button class="emoji-btn" onclick="toggleEmojiPicker(event)" title="Emoji">😊</button>
           <textarea id="msgInput" rows="1" placeholder="Type a message…"
             onkeydown="handleInputKeydown(event)"
             oninput="handleInputChange(this)"></textarea>
           <button class="send-btn" onclick="sendMessage()">➤</button>
         </div>
       </div>
-
     </div>
   </div>
 </div>
 
-<!-- ════════════════════════════ MODALS ════════════════════════════════════════ -->
+<!-- ═══════════════════════════ MODALS ════════════════════════════════════ -->
 
 <!-- New Direct Chat -->
-<div class="modal-overlay" id="newChatModal" onclick="if(event.target===this)closeModal('newChatModal')">
-  <div class="modal-box">
-    <button class="modal-close" onclick="closeModal('newChatModal')">×</button>
-    <div class="modal-title">✏️ New Message</div>
-    <div class="form-group">
+<div class="mo" id="newChatModal" onclick="if(event.target===this)closeModal('newChatModal')">
+  <div class="mb">
+    <button class="mb-close" onclick="closeModal('newChatModal')">×</button>
+    <div class="mb-title">✏️ New Message</div>
+    <div class="fg">
       <label>Search contacts</label>
-      <input type="text" id="contactSearch" placeholder="Name or role…" oninput="filterContacts(this.value)">
+      <input type="text" id="contactSearch" placeholder="Name or role…" oninput="filterContacts(this.value)" autocomplete="off">
     </div>
-    <div class="contact-grid" id="contactGrid">
-      <div style="padding:20px;text-align:center;color:var(--text-muted,#94a3b8);">Loading…</div>
+    <div class="cgrid" id="contactGrid">
+      <div style="padding:20px;text-align:center;color:#484f58;font-size:12px;">Loading…</div>
     </div>
   </div>
 </div>
 
 <!-- New Group -->
-<div class="modal-overlay" id="groupModal" onclick="if(event.target===this)closeModal('groupModal')">
-  <div class="modal-box">
-    <button class="modal-close" onclick="closeModal('groupModal')">×</button>
-    <div class="modal-title">👥 Create Group</div>
-    <div class="form-group">
+<div class="mo" id="groupModal" onclick="if(event.target===this)closeModal('groupModal')">
+  <div class="mb">
+    <button class="mb-close" onclick="closeModal('groupModal')">×</button>
+    <div class="mb-title">👥 Create Group</div>
+    <div class="fg">
       <label>Group Name *</label>
       <input type="text" id="grpName" placeholder="e.g. Class 10-A Teachers">
     </div>
-    <div class="form-group">
+    <div class="fg">
       <label>Description</label>
-      <textarea id="grpDesc" rows="2" placeholder="Optional description"></textarea>
+      <textarea id="grpDesc" rows="2" placeholder="Optional description" style="font-family:inherit;"></textarea>
     </div>
-    <div class="form-group">
+    <div class="fg">
       <label>Type</label>
       <select id="grpType">
-        <option value="group">Group (interactive)</option>
-        <option value="broadcast">Broadcast (read-only for non-admins)</option>
+        <option value="group">Group — everyone can post</option>
+        <option value="broadcast">Broadcast — only admins/teachers can post</option>
       </select>
     </div>
-    <div class="form-group">
+    <div class="fg">
       <label>Add Members</label>
-      <input type="text" id="grpMemberSearch" placeholder="Search…" oninput="filterGroupContacts(this.value)" style="margin-bottom:6px;">
-      <div class="contact-grid" id="grpContactGrid">
-        <div style="padding:20px;text-align:center;color:var(--text-muted,#94a3b8);">Loading…</div>
+      <input type="text" id="grpMemberSearch" placeholder="Search…" oninput="filterGroupContacts(this.value)" autocomplete="off" style="margin-bottom:7px;">
+      <div class="cgrid" id="grpContactGrid">
+        <div style="padding:20px;text-align:center;color:#484f58;font-size:12px;">Loading…</div>
       </div>
     </div>
-    <div id="selectedMembersLabel" style="font-size:12px;color:#3b82f6;margin:6px 0;"></div>
-    <button class="btn-primary" onclick="createGroup()">Create Group</button>
-  </div>
-</div>
-
-<!-- Search Messages -->
-<div class="modal-overlay" id="searchModal" onclick="if(event.target===this)closeModal('searchModal')">
-  <div class="modal-box">
-    <button class="modal-close" onclick="closeModal('searchModal')">×</button>
-    <div class="modal-title">🔍 Search Messages</div>
-    <div class="form-group">
-      <input type="text" id="msgSearchInput" placeholder="Search text…" oninput="searchMessages(this.value)">
-    </div>
-    <div id="searchResults" style="margin-top:8px;"></div>
+    <div id="selectedMembersLabel" style="font-size:12px;color:#388bfd;margin:6px 0;min-height:16px;"></div>
+    <button class="btn-pri" onclick="createGroup()">Create Group</button>
   </div>
 </div>
 
 <!-- Group Members -->
-<div class="modal-overlay" id="membersModal" onclick="if(event.target===this)closeModal('membersModal')">
-  <div class="modal-box">
-    <button class="modal-close" onclick="closeModal('membersModal')">×</button>
-    <div class="modal-title">👥 Members</div>
+<div class="mo" id="membersModal" onclick="if(event.target===this)closeModal('membersModal')">
+  <div class="mb">
+    <button class="mb-close" onclick="closeModal('membersModal')">×</button>
+    <div class="mb-title" id="memberModalTitle">👥 Members</div>
     <div id="membersList"></div>
-    <% if (_myRole === 'school_admin' || _myRole === 'super_admin' || _myRole === 'teacher') { %>
-    <div style="margin-top:16px;padding-top:16px;border-top:1px solid var(--border,#2a2d3e);">
-      <div style="font-size:13px;font-weight:600;color:var(--text,#e2e8f0);margin-bottom:10px;">Group Settings</div>
-      <label style="display:flex;align-items:center;gap:8px;font-size:13px;color:var(--text,#e2e8f0);cursor:pointer;">
-        <input type="checkbox" id="readonlyToggle" onchange="updateReadonly(this.checked)" style="accent-color:#3b82f6;">
-        Read-only (only admins/teachers can post)
+
+    <!-- Add member section — visible to admins only (rendered server-side for role check) -->
+    <% if (_myRole === 'school_admin' || _myRole === 'teacher') { %>
+    <div class="add-member-wrap" id="addMemberWrap" style="display:none;">
+      <hr class="section-divider">
+      <div class="am-label">
+        <span>Add Members</span>
+        <button class="btn-sec" style="padding:4px 10px;font-size:11px;" onclick="toggleAddMemberPanel()">✕ Cancel</button>
+      </div>
+      <div class="fg" style="margin-bottom:8px;">
+        <input type="text" id="addMemberSearch" placeholder="Search contacts…" oninput="filterAddMemberContacts(this.value)" autocomplete="off">
+      </div>
+      <div class="cgrid" id="addMemberGrid" style="max-height:160px;">
+        <div style="padding:16px;text-align:center;color:#484f58;font-size:12px;">Loading…</div>
+      </div>
+    </div>
+    <% } %>
+
+    <!-- Group settings -->
+    <% if (_myRole === 'school_admin' || _myRole === 'teacher') { %>
+    <hr class="section-divider">
+    <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;">
+      <label style="display:flex;align-items:center;gap:8px;font-size:13px;color:#c9d1d9;cursor:pointer;">
+        <input type="checkbox" id="readonlyToggle" onchange="updateReadonly(this.checked)" style="accent-color:#388bfd;">
+        Broadcast mode (read-only for non-admins)
       </label>
+      <% if (_myRole === 'school_admin' || _myRole === 'teacher') { %>
+      <button class="btn-sec" style="font-size:11px;padding:5px 12px;" id="addMemberBtn" onclick="toggleAddMemberPanel()">+ Add Members</button>
+      <% } %>
     </div>
     <% } %>
   </div>
 </div>
 
-<!-- ════════════════════════════ SCRIPTS ═══════════════════════════════════════ -->
+<!-- Forward modal -->
+<div class="mo" id="forwardModal" onclick="if(event.target===this)closeModal('forwardModal')">
+  <div class="mb">
+    <button class="mb-close" onclick="closeModal('forwardModal')">×</button>
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;">
+      <div class="mb-title" style="margin-bottom:0;">↗ Forward to…</div>
+      <span id="fwdCounter" style="font-size:12px;color:#6e7681;font-weight:600;">0 / 5 selected</span>
+    </div>
+    <div class="fg" style="margin-bottom:10px;">
+      <input type="text" id="fwdSearch" placeholder="Search chats or people…" oninput="filterFwdChats(this.value)" autocomplete="off">
+    </div>
+    <div id="fwdList" style="max-height:280px;overflow-y:auto;"></div>
+    <button class="btn-pri" id="fwdSendBtn" style="margin-top:12px;opacity:.4;cursor:not-allowed;" disabled onclick="sendAllForwards()">↗ Forward</button>
+  </div>
+</div>
+
+<!-- ═════════════════════════ SCRIPTS ══════════════════════════════════════ -->
 <% if (gatewayUrl) { %>
 <script src="<%= gatewayUrl %>/socket.io/socket.io.js"></script>
 <% } else { %>
@@ -286,59 +411,60 @@
 <% } %>
 <script>
 'use strict';
-/* ════ State ═══════════════════════════════════════════════════════════════ */
+/* ════ Constants ════════════════════════════════════════════════════════════ */
 const MY_ID       = '<%= _myId %>';
 const MY_ROLE     = '<%= _myRole %>';
 const MY_NAME     = '<%= _myName %>';
 const GATEWAY_URL = '<%= gatewayUrl %>';
 
-let socket         = null;
-let allChats       = [];
-let activeChat     = null;   // current chat object
-let activeChatId   = null;
-let replyToMsg     = null;   // { _id, content, senderName }
-let pendingFile    = null;   // { attachment, type }
-let typingTimer    = null;
-let allContacts    = [];
-let groupContacts  = [];
+/* ════ State ════════════════════════════════════════════════════════════════ */
+let socket              = null;
+let allChats            = [];
+let activeChat          = null;
+let activeChatId        = null;
+let replyToMsg          = null;
+let typingTimer         = null;
+let allContacts         = [];
+let groupContacts       = [];
+let addMemberContacts   = [];
 let selectedGroupMembers = new Set();
-let isAmIAdmin     = false;
-let loadingMore    = false;
-let hasMoreMessages = false;
-let onlineUsers    = new Set();
-let searchTimer    = null;
+let isAmIAdmin          = false;
+let loadingMore         = false;
+let hasMoreMessages     = false;
+let onlineUsers         = new Set();
+let searchTimer         = null;
+let currentMembers      = [];   // cached for add-member filtering
 
-/* ════ Socket.io ════════════════════════════════════════════════════════════ */
+/* ════ Socket ═══════════════════════════════════════════════════════════════ */
 function initSocket() {
     socket = GATEWAY_URL
         ? io(GATEWAY_URL, { transports: ['websocket', 'polling'], withCredentials: true })
         : io({ transports: ['websocket', 'polling'] });
 
-    socket.on('connect', () => console.log('[Socket] connected:', socket.id));
-    socket.on('connect_error', e => console.warn('[Socket] error:', e.message));
+    socket.on('connect',       () => console.log('[Socket] connected:', socket.id));
+    socket.on('connect_error', e  => console.warn('[Socket] error:', e.message));
 
-    socket.on('chat:message',        onIncomingMessage);
-    socket.on('chat:typing',         onTyping);
-    socket.on('chat:message_read',   onMessageRead);
-    socket.on('chat:message_edited', onMessageEdited);
-    socket.on('chat:message_deleted',onMessageDeleted);
-    socket.on('chat:user_online',    d => { onlineUsers.add(d.userId); updatePresence(d.userId, true); });
-    socket.on('chat:user_offline',   d => { onlineUsers.delete(d.userId); updatePresence(d.userId, false); });
-    socket.on('chat:group_created',  onGroupCreated);
-    socket.on('chat:group_updated',  onGroupUpdated);
-    socket.on('chat:member_removed', onMemberRemoved);
-    socket.on('chat:error',          d => showToastChat('⚠️ ' + d.message, '#ef4444'));
+    socket.on('chat:message',         onIncomingMessage);
+    socket.on('chat:typing',          onTypingStart);
+    socket.on('chat:stop_typing',     onTypingStop);
+    socket.on('chat:message_read',    onMessageRead);
+    socket.on('chat:message_edited',  onMessageEdited);
+    socket.on('chat:message_deleted', onMessageDeleted);
+    socket.on('chat:user_online',     d => { onlineUsers.add(d.userId);    updatePresence(d.userId, true); });
+    socket.on('chat:user_offline',    d => { onlineUsers.delete(d.userId); updatePresence(d.userId, false); });
+    socket.on('chat:group_created',   onGroupCreated);
+    socket.on('chat:group_updated',   onGroupUpdated);
+    socket.on('chat:member_removed',  onMemberRemoved);
+    socket.on('chat:member_added',    () => loadChats());
+    socket.on('chat:reaction',        onReactionUpdate);
+    socket.on('chat:error',           d => toast('⚠️ ' + d.message, '#f85149'));
 }
 
-/* ════ Init ═════════════════════════════════════════════════════════════════ */
+/* ════ Boot ═════════════════════════════════════════════════════════════════ */
 document.addEventListener('DOMContentLoaded', async () => {
     initSocket();
     await loadChats();
-
-    // Infinite scroll for messages
-    document.getElementById('chatMessages').addEventListener('scroll', onMessagesScroll);
-
-    // Open chat if URL has #chatId
+    document.getElementById('chatMessages').addEventListener('scroll', onMsgsScroll);
     const hash = location.hash.replace('#', '');
     if (hash) openChat(hash);
 });
@@ -346,7 +472,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 /* ════ Chat list ════════════════════════════════════════════════════════════ */
 async function loadChats() {
     try {
-        const r = await apiFetch('/chat/api/chats');
+        const r = await api('/chat/api/chats');
         allChats = r.chats || [];
         renderChatList(allChats);
     } catch { }
@@ -355,24 +481,24 @@ async function loadChats() {
 function renderChatList(chats) {
     const el = document.getElementById('chatList');
     if (!chats.length) {
-        el.innerHTML = '<div style="padding:24px;text-align:center;color:var(--text-muted,#94a3b8);font-size:13px;">No conversations yet.<br>Start one with the ✏️ button!</div>';
+        el.innerHTML = '<div style="padding:28px 16px;text-align:center;color:#484f58;font-size:12px;">No conversations yet.<br>Tap ✏️ to start one!</div>';
         return;
     }
     el.innerHTML = chats.map(c => {
-        const name     = esc(c.displayName || c.name || 'Group');
-        const preview  = chatPreview(c.lastMessage);
-        const time     = c.lastActivity ? timeAgo(c.lastActivity) : '';
-        const badge    = c.unreadCount  ? `<div class="chat-unread-badge">${c.unreadCount > 99 ? '99+' : c.unreadCount}</div>` : '';
-        const avatar   = avatarHtml(name, c.displayAvatar, 42);
-        const typeIcon = c.type === 'broadcast' ? '📢 ' : c.type === 'group' ? '👥 ' : '';
-        return `<div class="chat-item${activeChatId===String(c._id)?' active':''}" id="ci-${c._id}" onclick="openChat('${c._id}')">
-            ${avatar}
-            <div class="chat-item-info">
-              <div class="chat-item-top">
-                <div class="chat-item-name">${typeIcon}${name}</div>
-                <div class="chat-item-time">${time}</div>
+        const name    = esc(c.displayName || c.name || 'Group');
+        const preview = chatPreview(c.lastMessage);
+        const time    = c.lastActivity ? timeAgo(c.lastActivity) : '';
+        const badge   = c.unreadCount  ? `<div class="ci-badge">${c.unreadCount > 99 ? '99+' : c.unreadCount}</div>` : '';
+        const avClass = c.type === 'broadcast' ? 'bcast' : c.type === 'group' ? 'grp' : '';
+        const typePrefix = c.type === 'broadcast' ? '📢 ' : c.type === 'group' ? '👥 ' : '';
+        return `<div class="ci${activeChatId===String(c._id)?' active':''}" id="ci-${c._id}" onclick="openChat('${c._id}')">
+            <div class="ca ${avClass}">${c.displayAvatar ? `<img src="${esc(c.displayAvatar)}" alt="">` : name.charAt(0).toUpperCase()}</div>
+            <div class="ci-body">
+              <div class="ci-top">
+                <div class="ci-name">${typePrefix}${name}</div>
+                <div class="ci-time">${time}</div>
               </div>
-              <div class="chat-item-preview">${preview}</div>
+              <div class="ci-preview">${preview}</div>
             </div>
             ${badge}
           </div>`;
@@ -382,9 +508,7 @@ function renderChatList(chats) {
 function filterChatList(q) {
     if (!q) { renderChatList(allChats); return; }
     const s = q.toLowerCase();
-    renderChatList(allChats.filter(c =>
-        (c.displayName || c.name || '').toLowerCase().includes(s)
-    ));
+    renderChatList(allChats.filter(c => (c.displayName || c.name || '').toLowerCase().includes(s)));
 }
 
 /* ════ Open chat ════════════════════════════════════════════════════════════ */
@@ -393,63 +517,86 @@ async function openChat(chatId) {
     const chat   = allChats.find(c => String(c._id) === activeChatId);
     activeChat   = chat;
 
-    // Highlight in list
-    document.querySelectorAll('.chat-item').forEach(el => el.classList.remove('active'));
-    const ci = document.getElementById(`ci-${chatId}`);
-    if (ci) { ci.classList.add('active'); const badge = ci.querySelector('.chat-unread-badge'); if (badge) badge.remove(); }
+    // Fix: reset unread so re-renders don't show stale badge
+    if (chat) chat.unreadCount = 0;
 
-    // Update header
-    const name   = chat ? (chat.displayName || chat.name || 'Group') : '…';
+    // Close and reset per-chat search bar when switching chats
+    const csb = document.getElementById('chatSearchBar');
+    if (csb) { csb.classList.remove('open'); }
+    const csi = document.getElementById('inChatSearchInput');
+    if (csi) csi.value = '';
+    const csr = document.getElementById('chatSearchResults');
+    if (csr) csr.innerHTML = '';
+
+    document.querySelectorAll('.ci').forEach(el => el.classList.remove('active'));
+    const ci = document.getElementById(`ci-${chatId}`);
+    if (ci) { ci.classList.add('active'); const b = ci.querySelector('.ci-badge'); if (b) b.remove(); }
+
+    const name    = chat ? (chat.displayName || chat.name || 'Group') : '…';
     const isGroup = chat && (chat.type === 'group' || chat.type === 'broadcast');
     document.getElementById('winName').textContent = name;
-    document.getElementById('winSub').textContent  = isGroup ? (chat.type === 'broadcast' ? '📢 Broadcast channel' : '👥 Group') : roleLabel(chat && chat.otherUser && chat.otherUser.role);
+    document.getElementById('winSub').textContent  = isGroup
+        ? (chat.type === 'broadcast' ? '📢 Broadcast channel' : '👥 Group')
+        : roleLabel(chat && chat.otherUser && chat.otherUser.role);
+
     const av = document.getElementById('winAvatar');
+    av.className = 'ca ' + (isGroup ? (chat.type === 'broadcast' ? 'bcast' : 'grp') : '');
     av.innerHTML = (chat && chat.displayAvatar)
         ? `<img src="${esc(chat.displayAvatar)}" alt="">`
         : `<span>${name.charAt(0).toUpperCase()}</span>`;
 
     document.getElementById('membersBtn').style.display = isGroup ? '' : 'none';
 
-    // Read-only input control
     const isReadOnly = chat && chat.isReadOnly;
     const canPost    = !isReadOnly || ['school_admin','super_admin','teacher'].includes(MY_ROLE);
     document.getElementById('chatInputRow').style.display    = canPost ? '' : 'none';
-    document.getElementById('readonlyNotice').style.display  = (!canPost) ? '' : 'none';
+    document.getElementById('readonlyNotice').style.display  = canPost  ? 'none' : '';
 
     isAmIAdmin = chat && chat.memberRole === 'admin';
 
-    // Show window
-    document.getElementById('chatEmptyState').style.display = 'none';
+    document.getElementById('chatEmpty').style.display  = 'none';
     const win = document.getElementById('chatWindow');
-    win.style.display = 'flex';
+    win.style.display       = 'flex';
     win.style.flexDirection = 'column';
 
-    // Load messages
-    document.getElementById('chatMessages').innerHTML = '<div style="padding:24px;text-align:center;color:var(--text-muted,#94a3b8);">Loading…</div>';
+    // Mobile: show back button, switch panel
+    if (window.innerWidth <= 640) {
+        document.getElementById('chatShell').classList.add('chat-open');
+        document.getElementById('backBtn').style.display = '';
+    }
+
+    document.getElementById('chatMessages').innerHTML = '<div style="padding:40px;text-align:center;color:#484f58;font-size:12px;">Loading…</div>';
     hasMoreMessages = false;
     await loadMessages();
 
-    // Tell socket to join this room (in case it wasn't already)
-    if (socket) socket.emit('chat:join_room', { chatId });
-
-    // Mark as read
-    if (socket) socket.emit('chat:read', { chatId, messageId: null });
-
+    if (socket) {
+        socket.emit('chat:read', { chatId, messageId: null });
+    }
     location.hash = chatId;
 }
 
+function closeChat() {
+    activeChatId = null; activeChat = null;
+    document.getElementById('chatWindow').style.display  = 'none';
+    document.getElementById('chatEmpty').style.display   = '';
+    document.getElementById('chatShell').classList.remove('chat-open');
+    document.getElementById('backBtn').style.display     = 'none';
+    document.querySelectorAll('.ci').forEach(el => el.classList.remove('active'));
+    history.replaceState(null, '', location.pathname);
+}
+
 /* ════ Messages ══════════════════════════════════════════════════════════════ */
-let _messages = [];
+let _msgs = [];
 
 async function loadMessages(before) {
     try {
         let url = `/chat/api/chats/${activeChatId}/messages?limit=40`;
         if (before) url += `&before=${before}`;
-        const r = await apiFetch(url);
-        if (!before) _messages = r.messages || [];
-        else         _messages = [...(r.messages || []), ..._messages];
+        const r = await api(url);
+        if (!before) _msgs = r.messages || [];
+        else         _msgs = [...(r.messages || []), ..._msgs];
         hasMoreMessages = r.hasMore;
-        renderMessages(_messages, !!before);
+        renderMessages(_msgs, !!before);
     } catch { }
 }
 
@@ -458,181 +605,188 @@ function renderMessages(msgs, prepend = false) {
     const prevH = el.scrollHeight;
 
     if (!msgs.length) {
-        el.innerHTML = '<div style="padding:40px;text-align:center;color:var(--text-muted,#94a3b8);">No messages yet. Say hello! 👋</div>';
+        el.innerHTML = '<div style="padding:48px 16px;text-align:center;color:#484f58;font-size:12px;">No messages yet. Say hello! 👋</div>';
         return;
     }
 
     el.innerHTML = '';
     let lastDate = '';
-    msgs.forEach(msg => {
-        const d = new Date(msg.createdAt).toLocaleDateString('en-IN', { day:'numeric', month:'short', year:'numeric' });
-        if (d !== lastDate) {
-            el.innerHTML += `<div class="msg-date-divider"><span>${d}</span></div>`;
-            lastDate = d;
-        }
-        el.innerHTML += buildMsgHtml(msg);
+    msgs.forEach(m => {
+        const d = new Date(m.createdAt).toLocaleDateString('en-IN', { day:'numeric', month:'short', year:'numeric' });
+        if (d !== lastDate) { el.innerHTML += `<div class="msg-date"><span>${d}</span></div>`; lastDate = d; }
+        el.innerHTML += buildMsg(m);
     });
 
-    if (prepend) {
-        el.scrollTop = el.scrollHeight - prevH;
-    } else {
-        el.scrollTop = el.scrollHeight;
-    }
+    if (prepend) el.scrollTop = el.scrollHeight - prevH;
+    else         el.scrollTop = el.scrollHeight;
 }
 
-function buildMsgHtml(msg) {
-    const isMine = String(msg.sender && msg.sender._id || msg.sender) === MY_ID;
-    const sender = msg.sender || {};
-    const sName  = sender.name || 'Unknown';
-    const sRole  = sender.role || '';
-    const time   = new Date(msg.createdAt).toLocaleTimeString('en-IN', { hour:'2-digit', minute:'2-digit' });
+function buildMsg(msg) {
+    const isObserver    = !!adminObserverChatId;
+    // In observer mode use the viewed user's ID as "me" so their messages appear on the right
+    const perspectiveId = isObserver && adminViewUser ? String(adminViewUser._id) : MY_ID;
+    const isMine        = String(msg.sender?._id || msg.sender) === perspectiveId;
+    const s          = msg.sender || {};
+    const time       = new Date(msg.createdAt).toLocaleTimeString('en-IN', { hour:'2-digit', minute:'2-digit' });
+
+    // Permissions: students and parents cannot edit or delete
+    const restricted = ['student', 'parent'].includes(MY_ROLE);
+    const canEdit    = isMine && !restricted && !isObserver;
+    const canDelete  = !isObserver && ((isMine && !restricted) || MY_ROLE === 'school_admin');
+    const showMenu   = !isObserver && !msg.isDeleted;
+
+    // Always show sender name for observer mode or group chats
+    const showSender = isObserver || (!isMine && activeChat && activeChat.type !== 'direct');
 
     if (msg.isDeleted) {
-        return `<div class="msg-row${isMine?' mine':''}">
-            <div class="msg-avatar-wrap">${!isMine ? avatarHtml(sName, sender.profileImage, 32, 32) : ''}</div>
-            <div class="msg-bubble-wrap">
+        return `<div class="msg-row${isMine?' mine':''}" id="msg-${msg._id}">
+            <div class="msg-av">${!isMine ? miniAv(s.name, s.profileImage) : ''}</div>
+            <div class="msg-bw">
               <div class="msg-bubble deleted">🚫 This message was deleted</div>
               <div class="msg-meta"><span class="msg-time">${time}</span></div>
-            </div>
-          </div>`;
+            </div></div>`;
     }
 
-    let replyHtml = '';
-    if (msg.replyTo && !msg.replyTo.isDeleted) {
-        const rSender = (msg.replyTo.sender && msg.replyTo.sender.name) || 'Unknown';
-        replyHtml = `<div class="msg-reply-preview">↩ <b>${esc(rSender)}</b>: ${esc(truncate(msg.replyTo.content, 60))}</div>`;
-    }
+    const replyHtml     = (msg.replyTo && !msg.replyTo.isDeleted)
+        ? `<div class="msg-reply">↩ <b>${esc((msg.replyTo.sender && msg.replyTo.sender.name) || 'Unknown')}</b>: ${esc(trunc(msg.replyTo.content || '', 60))}</div>`
+        : '';
+    const fwdHtml       = msg.isForwarded ? `<div class="msg-forwarded">↗ Forwarded</div>` : '';
+    const contentHtml   = `<div class="msg-text">${esc(msg.content || '')}</div>`;
+    const editBadge     = msg.isEdited ? '<span class="msg-edited"> · edited</span>' : '';
+    const statusIcon    = isMine ? (msg._delivered ? '<span class="msg-seen">Seen</span>' : '<span class="msg-sent">Sent</span>') : '';
+    const reactionsHtml = _buildReactionsHtml(msg._id, msg.reactions || []);
 
-    let contentHtml = '';
-    if (msg.type === 'image' && msg.attachments && msg.attachments[0]) {
-        const att = msg.attachments[0];
-        contentHtml = `<img class="msg-attach-image" src="${esc(att.fileUrl)}" alt="${esc(att.originalName)}" onclick="window.open(this.src,'_blank')">`;
-        if (msg.content) contentHtml += `<div class="msg-text">${esc(msg.content)}</div>`;
-    } else if (msg.type === 'file' && msg.attachments && msg.attachments[0]) {
-        const att = msg.attachments[0];
-        contentHtml = `<div class="msg-attach-file">📎 <a href="${esc(att.fileUrl)}" target="_blank">${esc(att.originalName)}</a> <span style="font-size:10px;color:var(--text-muted,#94a3b8);">(${fmtSize(att.fileSize)})</span></div>`;
-        if (msg.content) contentHtml += `<div class="msg-text">${esc(msg.content)}</div>`;
-    } else {
-        contentHtml = `<div class="msg-text">${esc(msg.content)}</div>`;
-    }
-
-    const editedBadge = msg.isEdited ? '<span class="msg-edited">(edited)</span>' : '';
-    const statusIcon  = isMine ? (msg._delivered ? '✓✓' : '✓') : '';
-
-    const actionsHtml = `<div class="msg-actions">
-        <button class="msg-action-btn" onclick="setReply('${msg._id}','${esc(sName)}','${esc(truncate(msg.content,40))}')">↩ Reply</button>
-        ${isMine ? `<button class="msg-action-btn" onclick="startEdit('${msg._id}','${esc(msg.content)}')">✏️ Edit</button>` : ''}
-        ${(isMine || MY_ROLE === 'school_admin' || MY_ROLE === 'super_admin') ? `<button class="msg-action-btn" onclick="deleteMsg('${msg._id}')" style="color:#ef4444;">🗑 Delete</button>` : ''}
-      </div>`;
-
-    return `<div class="msg-row${isMine?' mine':''}" id="msg-${msg._id}">
-        <div class="msg-avatar-wrap">${!isMine ? avatarHtml(sName, sender.profileImage, 32, 32) : ''}</div>
-        <div class="msg-bubble-wrap">
-          ${!isMine && activeChat && activeChat.type !== 'direct' ? `<div class="msg-sender-name">${esc(sName)} <span style="font-size:10px;opacity:.6;">(${roleLabel(sRole)})</span></div>` : ''}
-          <div class="msg-bubble">
-            ${replyHtml}
-            ${contentHtml}
-            <div class="msg-meta">
-              <span class="msg-time">${time}</span>
-              ${editedBadge}
-              ${statusIcon ? `<span class="msg-status">${statusIcon}</span>` : ''}
-            </div>
-          </div>
-          ${actionsHtml}
+    const menuHtml = showMenu ? `
+        <button class="msg-dd-btn" onclick="toggleMsgMenu(event,'${msg._id}')">▾</button>
+        <div class="msg-dropdown" id="dd-${msg._id}">
+          <div class="msg-dd-item" onclick="doReply('${msg._id}')">↩ Reply</div>
+          <div class="msg-dd-item" onclick="doForward('${msg._id}')">↗ Forward</div>
+          <div class="msg-dd-item" onclick="doReact(event,'${msg._id}')">😊 React</div>
+          ${canEdit   ? `<div class="msg-dd-item" onclick="doEdit('${msg._id}')">✏️ Edit</div>` : ''}
+          ${canDelete ? `<div class="msg-dd-item danger" onclick="doDelete('${msg._id}')">🗑 Delete</div>` : ''}
         </div>
-      </div>`;
+        <div class="react-picker" id="rp-${msg._id}">
+          ${['👍','❤️','😂','😮','😢','🙏'].map(e => `<span class="rp-opt" onclick="sendReaction('${msg._id}','${e}')">${e}</span>`).join('')}
+        </div>` : '';
+
+    return `<div class="msg-row${isMine?' mine':''}" id="msg-${msg._id}"
+        data-sender="${escAttr(s.name||'Unknown')}"
+        data-content="${escAttr(trunc(msg.content||'', 80))}">
+        <div class="msg-av">${!isMine ? miniAv(s.name, s.profileImage) : ''}</div>
+        <div class="msg-bw">
+          ${showSender ? `<div class="msg-sname">${esc(s.name||'Unknown')} <span style="font-weight:400;opacity:.6;font-size:10px;">${roleLabel(s.role)}</span></div>` : ''}
+          <div class="msg-bubble">
+            ${fwdHtml}${replyHtml}${contentHtml}
+            <div class="msg-meta"><span class="msg-time">${time}</span>${editBadge}${statusIcon}</div>
+            ${menuHtml}
+          </div>
+          ${reactionsHtml}
+        </div></div>`;
 }
 
-/* ════ Incoming Socket events ═══════════════════════════════════════════════ */
+/* ════ Notification sound (Web Audio API — no file needed) ══════════════════ */
+let _audioCtx = null;
+function _playNotifSound() {
+    try {
+        if (!_audioCtx) _audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        const ctx = _audioCtx;
+        // Two-tone "ping": 880 Hz then 1100 Hz
+        const beep = (freq, startAt, dur) => {
+            const osc  = ctx.createOscillator();
+            const gain = ctx.createGain();
+            osc.connect(gain);
+            gain.connect(ctx.destination);
+            osc.type      = 'sine';
+            osc.frequency.value = freq;
+            gain.gain.setValueAtTime(0, ctx.currentTime + startAt);
+            gain.gain.linearRampToValueAtTime(0.18, ctx.currentTime + startAt + 0.01);
+            gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + startAt + dur);
+            osc.start(ctx.currentTime + startAt);
+            osc.stop(ctx.currentTime  + startAt + dur);
+        };
+        beep(880,  0,    0.12);
+        beep(1100, 0.13, 0.14);
+    } catch { /* AudioContext not available — silently skip */ }
+}
+
+/* ════ Incoming socket events ════════════════════════════════════════════════ */
 function onIncomingMessage(msg) {
-    // Remove optimistic if tempId matches
-    if (msg.tempId) {
-        const el = document.getElementById(`opt-${msg.tempId}`);
-        if (el) el.remove();
-    }
+    if (msg.tempId) { const el = document.getElementById(`opt-${msg.tempId}`); if (el) el.remove(); }
 
     const isCurrent = activeChatId && String(msg.chat) === activeChatId;
+    // Play notification sound only when the message is from someone else and NOT in the active chat
+    if (!isCurrent && String(msg.sender?._id || msg.sender) !== MY_ID) {
+        _playNotifSound();
+    }
+
     if (isCurrent) {
-        _messages.push(msg);
-        const el = document.getElementById('chatMessages');
-        const atBottom = el.scrollHeight - el.clientHeight - el.scrollTop < 80;
-        const d = new Date(msg.createdAt).toLocaleDateString('en-IN', { day:'numeric', month:'short', year:'numeric' });
-        // Add date divider if needed
-        const lastDiv = el.querySelector('.msg-date-divider:last-of-type');
-        if (!lastDiv || lastDiv.textContent.trim() !== d) {
-            el.innerHTML += `<div class="msg-date-divider"><span>${d}</span></div>`;
+        _msgs.push(msg);
+        const el     = document.getElementById('chatMessages');
+        const atBot  = el.scrollHeight - el.clientHeight - el.scrollTop < 100;
+        const d      = new Date(msg.createdAt).toLocaleDateString('en-IN', { day:'numeric', month:'short', year:'numeric' });
+        const lastD  = el.querySelector('.msg-date:last-of-type');
+        if (!lastD || lastD.textContent.trim() !== d) {
+            el.innerHTML += `<div class="msg-date"><span>${d}</span></div>`;
         }
-        el.innerHTML += buildMsgHtml(msg);
-        if (atBottom) el.scrollTop = el.scrollHeight;
+        el.innerHTML += buildMsg(msg);
+        if (atBot) el.scrollTop = el.scrollHeight;
         if (socket) socket.emit('chat:read', { chatId: activeChatId, messageId: msg._id });
     }
-
-    // Update chat list preview
-    updateChatPreviewInList(String(msg.chat), msg);
+    updateListPreview(String(msg.chat), msg);
 }
 
-function onTyping(data) {
-    if (!activeChatId || String(data.chatId) !== activeChatId) return;
-    const el = document.getElementById('typingIndicator');
-    if (data.isTyping && data.userId !== MY_ID) {
-        el.textContent = 'Someone is typing…';
-        el.style.display = '';
-    } else {
-        el.style.display = 'none';
-    }
+function onTypingStart(data) {
+    if (!activeChatId || String(data.chatId) !== activeChatId || data.userId === MY_ID) return;
+    document.getElementById('typingBar').textContent = 'Someone is typing…';
+}
+
+function onTypingStop(data) {
+    if (!activeChatId || String(data.chatId) !== activeChatId || data.userId === MY_ID) return;
+    document.getElementById('typingBar').textContent = '';
 }
 
 function onMessageRead(data) {
-    // Could update tick icons — simplified: no-op
+    if (!data || !data.chatId || String(data.chatId) !== activeChatId) return;
+    // When the other side reads, mark all my "Sent" messages in this chat as "Seen"
+    document.querySelectorAll('#chatMessages .msg-row.mine .msg-sent').forEach(el => {
+        el.className = 'msg-seen';
+        el.textContent = 'Seen';
+    });
 }
 
 function onMessageEdited(data) {
     if (!activeChatId || String(data.chatId) !== activeChatId) return;
-    const idx = _messages.findIndex(m => String(m._id) === String(data.messageId));
-    if (idx >= 0) {
-        _messages[idx].content  = data.content;
-        _messages[idx].isEdited = true;
-    }
-    const msgEl = document.getElementById(`msg-${data.messageId}`);
-    if (msgEl) {
-        const textEl = msgEl.querySelector('.msg-text');
-        if (textEl) textEl.textContent = data.content;
-        const meta = msgEl.querySelector('.msg-meta');
-        if (meta && !meta.querySelector('.msg-edited')) {
-            meta.insertAdjacentHTML('beforeend', '<span class="msg-edited">(edited)</span>');
-        }
-    }
+    const idx = _msgs.findIndex(m => String(m._id) === String(data.messageId));
+    if (idx >= 0) { _msgs[idx].content = data.content; _msgs[idx].isEdited = true; }
+    const el = document.getElementById(`msg-${data.messageId}`);
+    if (!el) return;
+    const t = el.querySelector('.msg-text'); if (t) t.textContent = data.content;
+    const meta = el.querySelector('.msg-meta');
+    if (meta && !meta.querySelector('.msg-edited')) meta.insertAdjacentHTML('beforeend', '<span class="msg-edited"> · edited</span>');
 }
 
 function onMessageDeleted(data) {
     if (!activeChatId || String(data.chatId) !== activeChatId) return;
-    const idx = _messages.findIndex(m => String(m._id) === String(data.messageId));
-    if (idx >= 0) _messages[idx].isDeleted = true;
-    const msgEl = document.getElementById(`msg-${data.messageId}`);
-    if (msgEl) {
-        const bubble = msgEl.querySelector('.msg-bubble');
-        if (bubble) { bubble.className = 'msg-bubble deleted'; bubble.innerHTML = '🚫 This message was deleted'; }
-        const actions = msgEl.querySelector('.msg-actions');
-        if (actions) actions.remove();
+    const idx = _msgs.findIndex(m => String(m._id) === String(data.messageId));
+    if (idx >= 0) _msgs[idx].isDeleted = true;
+    const el = document.getElementById(`msg-${data.messageId}`);
+    if (el) {
+        const b = el.querySelector('.msg-bubble');
+        if (b) { b.className = 'msg-bubble deleted'; b.innerHTML = '🚫 This message was deleted'; }
+        const a = el.querySelector('.msg-actions'); if (a) a.remove();
     }
 }
 
-function onGroupCreated(data) {
-    showToastChat(`New group created: ${data.name}`, '#22c55e');
-    loadChats();
-}
+function onGroupCreated(data) { toast(`New group created: ${data.name}`, '#3fb950'); loadChats(); }
 
 function onGroupUpdated(data) {
     if (activeChat && String(activeChat._id) === String(data.chatId)) {
-        if (data.name !== undefined) {
-            activeChat.name = data.name;
-            document.getElementById('winName').textContent = data.name;
-        }
+        if (data.name !== undefined) { activeChat.name = data.name; document.getElementById('winName').textContent = data.name; }
         if (data.isReadOnly !== undefined) {
             activeChat.isReadOnly = data.isReadOnly;
-            const canPost = !data.isReadOnly || ['school_admin','super_admin','teacher'].includes(MY_ROLE);
-            document.getElementById('chatInputRow').style.display   = canPost ? '' : 'none';
-            document.getElementById('readonlyNotice').style.display = !canPost  ? '' : 'none';
+            const can = !data.isReadOnly || ['school_admin','super_admin','teacher'].includes(MY_ROLE);
+            document.getElementById('chatInputRow').style.display   = can ? '' : 'none';
+            document.getElementById('readonlyNotice').style.display = can ? 'none' : '';
         }
     }
     loadChats();
@@ -640,220 +794,230 @@ function onGroupUpdated(data) {
 
 function onMemberRemoved(data) {
     if (data.userId === MY_ID) {
-        showToastChat('You were removed from this group.', '#ef4444');
-        activeChatId = null; activeChat = null;
-        document.getElementById('chatWindow').style.display = 'none';
-        document.getElementById('chatEmptyState').style.display = '';
+        toast('You were removed from this group.', '#f85149');
+        closeChat();
     }
     loadChats();
 }
 
 function updatePresence(userId, online) {
-    if (activeChat && activeChat.type === 'direct' &&
-        activeChat.otherUser && String(activeChat.otherUser._id) === userId) {
-        document.getElementById('winSub').textContent = online ? '🟢 Online' : 'Offline';
+    if (activeChat && activeChat.type === 'direct' && activeChat.otherUser && String(activeChat.otherUser._id) === userId) {
+        document.getElementById('winSub').textContent = online ? '🟢 Online' : '⚫ Offline';
     }
 }
 
 /* ════ Send message ══════════════════════════════════════════════════════════ */
 async function sendMessage() {
-    const textarea = document.getElementById('msgInput');
-    const content  = textarea.value.trim();
-    if (!content && !pendingFile) return;
-    if (!activeChatId) return;
+    const ta      = document.getElementById('msgInput');
+    if (ta.dataset.editingId) return;   // startEdit's own keydown handler owns Enter in edit mode
+    const content = ta.value.trim();
+    if (!content || !activeChatId) return;
 
     const tempId = 'tmp-' + Date.now();
+    const optMsg = {
+        _id: tempId, chat: activeChatId,
+        sender: { _id: MY_ID, name: MY_NAME, role: MY_ROLE },
+        content, type: 'text', createdAt: new Date().toISOString(),
+        replyTo: replyToMsg ? { _id: replyToMsg._id, content: replyToMsg.content, sender: { name: replyToMsg.senderName } } : null,
+    };
+    const el = document.getElementById('chatMessages');
+    el.innerHTML += `<div id="opt-${tempId}">${buildMsg(optMsg)}</div>`;
+    el.scrollTop = el.scrollHeight;
 
-    if (pendingFile) {
-        // Send with attachment via REST first, then emit
-        const { attachment, type } = pendingFile;
-        const payload = { chatId: activeChatId, content, type, attachments: [attachment], replyTo: replyToMsg?._id, tempId };
-        clearReply(); clearFile(); textarea.value = ''; autoResize(textarea);
-        if (socket) socket.emit('chat:send', payload);
-    } else {
-        // Optimistic render
-        const optMsg = {
-            _id: tempId, chat: activeChatId,
-            sender: { _id: MY_ID, name: MY_NAME, role: MY_ROLE },
-            content, type: 'text', createdAt: new Date().toISOString(),
-            replyTo: replyToMsg ? { _id: replyToMsg._id, content: replyToMsg.content, sender: { name: replyToMsg.senderName } } : null,
-        };
-        const el = document.getElementById('chatMessages');
-        el.innerHTML += `<div id="opt-${tempId}">${buildMsgHtml(optMsg)}</div>`;
-        el.scrollTop = el.scrollHeight;
-
-        if (socket) socket.emit('chat:send', {
-            chatId: activeChatId,
-            content,
-            type: 'text',
-            replyTo: replyToMsg?._id || null,
-            tempId,
-        });
-        clearReply(); textarea.value = ''; autoResize(textarea);
-    }
+    socket && socket.emit('chat:send', {
+        chatId: activeChatId, content, type: 'text',
+        replyTo: replyToMsg?._id || null, tempId,
+    });
+    clearReply(); ta.value = ''; autoResize(ta);
 }
 
 /* ════ Input helpers ═════════════════════════════════════════════════════════ */
 function handleInputKeydown(e) {
-    if (e.key === 'Enter' && !e.shiftKey) {
-        e.preventDefault();
-        sendMessage();
-    }
+    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); }
 }
 
 function handleInputChange(el) {
     autoResize(el);
     if (!activeChatId || !socket) return;
-    socket.emit('chat:typing_start', { chatId: activeChatId });
+    socket.emit('chat:typing', { chatId: activeChatId });
     clearTimeout(typingTimer);
-    typingTimer = setTimeout(() => {
-        socket.emit('chat:typing_stop', { chatId: activeChatId });
-    }, 2000);
+    typingTimer = setTimeout(() => socket.emit('chat:stop_typing', { chatId: activeChatId }), 2000);
 }
 
-function autoResize(el) {
-    el.style.height = 'auto';
-    el.style.height = Math.min(el.scrollHeight, 120) + 'px';
+function autoResize(el) { el.style.height = 'auto'; el.style.height = Math.min(el.scrollHeight, 120) + 'px'; }
+
+/* ════ Emoji picker ═══════════════════════════════════════════════════════════ */
+function toggleEmojiPicker(e) {
+    e.stopPropagation();
+    document.getElementById('emojiPicker').classList.toggle('open');
 }
+// Use event delegation — avoids encoding issues with multi-codepoint emojis
+document.getElementById('emojiPicker').addEventListener('click', function(e) {
+    e.stopPropagation();
+    const btn = e.target.closest('.ep-emoji');
+    if (!btn) return;
+    const emoji = btn.dataset.emoji;
+    if (!emoji) return;
+    const ta  = document.getElementById('msgInput');
+    const pos = ta.selectionStart != null ? ta.selectionStart : ta.value.length;
+    ta.value  = ta.value.slice(0, pos) + emoji + ta.value.slice(pos);
+    ta.focus();
+    ta.setSelectionRange(pos + emoji.length, pos + emoji.length);
+    autoResize(ta);
+    document.getElementById('emojiPicker').classList.remove('open');
+});
+document.addEventListener('click', () => {
+    const p = document.getElementById('emojiPicker');
+    if (p) p.classList.remove('open');
+});
+
+/* ════ Message dropdown ═══════════════════════════════════════════════════ */
+function toggleMsgMenu(e, msgId) {
+    e.stopPropagation();
+    const btn    = e.currentTarget;
+    const dd     = document.getElementById(`dd-${msgId}`);
+    if (!dd) return;
+    const wasOpen = dd.classList.contains('open');
+    closeAllDropdowns();
+    if (!wasOpen) {
+        const r      = btn.getBoundingClientRect();
+        const isMine = !!btn.closest('.msg-row.mine');
+        const ddW    = 168;  // matches min-width in CSS
+        const ddH    = 200;  // conservative max height
+
+        // Vertical: open below button, flip up if near bottom edge
+        let top = r.bottom + 4;
+        if (top + ddH > window.innerHeight - 8) top = r.top - ddH - 4;
+
+        // Horizontal: for "mine" right-align, for others left-align
+        dd.style.top   = top + 'px';
+        dd.style.left  = 'auto';
+        dd.style.right = 'auto';
+        if (isMine) {
+            // Right edge of dropdown = right edge of button; clamp to viewport
+            let right = window.innerWidth - r.right;
+            if (r.right - ddW < 8) right = window.innerWidth - r.left - ddW;
+            dd.style.right = right + 'px';
+        } else {
+            // Left edge of dropdown = left edge of button; clamp to viewport
+            let left = r.left;
+            if (left + ddW > window.innerWidth - 8) left = window.innerWidth - ddW - 8;
+            dd.style.left = left + 'px';
+        }
+
+        dd.classList.add('open');
+        btn.classList.add('open');
+    }
+}
+
+function closeAllDropdowns() {
+    document.querySelectorAll('.msg-dropdown.open').forEach(el => el.classList.remove('open'));
+    document.querySelectorAll('.msg-dd-btn.open').forEach(el => el.classList.remove('open'));
+}
+
+// Read raw content from data attributes (avoids encoding issues)
+function doReply(msgId) {
+    closeAllDropdowns();
+    const el = document.getElementById(`msg-${msgId}`);
+    if (!el) return;
+    setReply(msgId, el.dataset.sender || 'Unknown', el.dataset.content || '');
+}
+
+function doEdit(msgId) {
+    closeAllDropdowns();
+    const el = document.getElementById(`msg-${msgId}`);
+    if (!el) return;
+    const textEl = el.querySelector('.msg-text');
+    startEdit(msgId, textEl ? textEl.textContent : '');
+}
+
+function doDelete(msgId) {
+    closeAllDropdowns();
+    deleteMsg(msgId);
+}
+
+document.addEventListener('click', closeAllDropdowns);
 
 /* ════ Reply ═══════════════════════════════════════════════════════════════ */
-function setReply(msgId, senderName, content) {
-    replyToMsg = { _id: msgId, content, senderName };
-    const strip = document.getElementById('replyStrip');
+function setReply(id, senderName, content) {
+    replyToMsg = { _id: id, content, senderName };
+    // Use textContent (not innerHTML) with raw strings — no double-encoding
     document.getElementById('replyText').textContent = `↩ ${senderName}: ${content}`;
-    strip.style.display = '';
+    const strip = document.getElementById('replyStrip');
+    strip.style.display = 'block';
+    strip.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
     document.getElementById('msgInput').focus();
 }
-function clearReply() {
-    replyToMsg = null;
-    document.getElementById('replyStrip').style.display = 'none';
-}
+function clearReply() { replyToMsg = null; document.getElementById('replyStrip').style.display = 'none'; }
 
 /* ════ Edit / Delete ════════════════════════════════════════════════════════ */
 function startEdit(msgId, currentContent) {
-    const input = document.getElementById('msgInput');
-    input.value = currentContent;
-    input.dataset.editingId = msgId;
-    autoResize(input);
-    input.focus();
-    input.placeholder = 'Editing message… (Enter to save, Esc to cancel)';
+    const ta = document.getElementById('msgInput');
+    ta.value = currentContent; ta.dataset.editingId = msgId;
+    autoResize(ta); ta.focus();
+    ta.placeholder = 'Editing… Enter to save · Esc to cancel';
 
-    input.addEventListener('keydown', function onKey(e) {
+    function onKey(e) {
         if (e.key === 'Escape') {
-            input.value = ''; input.dataset.editingId = '';
-            input.placeholder = 'Type a message…';
-            input.removeEventListener('keydown', onKey);
+            ta.value = ''; ta.dataset.editingId = ''; ta.placeholder = 'Type a message…';
+            ta.removeEventListener('keydown', onKey);
         }
         if (e.key === 'Enter' && !e.shiftKey) {
             e.preventDefault();
-            const newContent = input.value.trim();
-            if (!newContent) return;
-            if (socket) socket.emit('chat:edit', { messageId: msgId, content: newContent });
-            input.value = ''; input.dataset.editingId = '';
-            input.placeholder = 'Type a message…';
-            input.removeEventListener('keydown', onKey);
+            const c = ta.value.trim(); if (!c) return;
+            socket && socket.emit('chat:edit', { messageId: msgId, content: c });
+            ta.value = ''; ta.dataset.editingId = ''; ta.placeholder = 'Type a message…';
+            ta.removeEventListener('keydown', onKey);
         }
-    }, { once: false });
+    }
+    ta.addEventListener('keydown', onKey);
 }
 
-async function deleteMsg(msgId) {
+async function deleteMsg(id) {
     if (!confirm('Delete this message?')) return;
-    if (socket) socket.emit('chat:delete', { messageId: msgId });
-}
-
-/* ════ File upload ══════════════════════════════════════════════════════════ */
-function handleFileSelect(input) {
-    const file = input.files[0];
-    if (!file) return;
-    const fd = new FormData();
-    fd.append('file', file);
-
-    fetch('/chat/upload', { method: 'POST', body: fd })
-        .then(r => r.json())
-        .then(data => {
-            if (!data.success) { showToastChat('Upload failed: ' + data.message, '#ef4444'); return; }
-            pendingFile = { attachment: data.attachment, type: data.type };
-            document.getElementById('fpName').textContent = data.attachment.originalName;
-            document.getElementById('filePreviewStrip').style.display = 'flex';
-        })
-        .catch(() => showToastChat('Upload failed', '#ef4444'));
-
-    input.value = '';
-}
-function clearFile() {
-    pendingFile = null;
-    document.getElementById('filePreviewStrip').style.display = 'none';
+    socket && socket.emit('chat:delete', { messageId: id });
 }
 
 /* ════ Infinite scroll ══════════════════════════════════════════════════════ */
-async function onMessagesScroll(e) {
+async function onMsgsScroll(e) {
     if (loadingMore || !hasMoreMessages || !activeChatId) return;
     if (e.target.scrollTop < 100) {
         loadingMore = true;
-        const oldest = _messages[0];
+        const oldest = _msgs[0];
         if (oldest) await loadMessages(oldest.createdAt);
         loadingMore = false;
     }
 }
 
-/* ════ Mute / Archive ════════════════════════════════════════════════════════ */
-async function toggleMuteChat() {
-    if (!activeChatId) return;
-    const r = await apiFetch(`/chat/${activeChatId}/mute`, 'POST', {});
-    if (r.success) {
-        showToastChat(r.isMuted ? '🔕 Chat muted' : '🔔 Chat unmuted', '#3b82f6');
-        document.getElementById('muteBtn').textContent = r.isMuted ? '🔕' : '🔔';
-        const c = allChats.find(x => String(x._id) === activeChatId);
-        if (c) c.isMuted = r.isMuted;
-    }
-}
-
-async function toggleArchiveChat() {
-    if (!activeChatId) return;
-    const r = await apiFetch(`/chat/${activeChatId}/archive`, 'POST', {});
-    if (r.success) {
-        showToastChat(r.isArchived ? '📂 Archived' : '📂 Unarchived', '#3b82f6');
-        await loadChats();
-    }
-}
 
 /* ════ New chat modal ════════════════════════════════════════════════════════ */
 async function openNewChatModal() {
-    if (!allContacts.length) {
-        const r = await apiFetch('/chat/api/contacts');
-        allContacts = r.contacts || [];
-    }
+    if (!allContacts.length) { const r = await api('/chat/api/contacts'); allContacts = r.contacts || []; }
     renderContactGrid('contactGrid', allContacts, 'direct');
     openModal('newChatModal');
+    setTimeout(() => document.getElementById('contactSearch').focus(), 100);
 }
 
 function filterContacts(q) {
     const s = q.toLowerCase();
-    const filtered = allContacts.filter(c =>
-        c.name.toLowerCase().includes(s) || c.role.toLowerCase().includes(s)
-    );
-    renderContactGrid('contactGrid', filtered, 'direct');
+    renderContactGrid('contactGrid', allContacts.filter(c => c.name.toLowerCase().includes(s) || c.role.toLowerCase().includes(s)), 'direct');
 }
 
 function renderContactGrid(gridId, contacts, mode) {
     const el = document.getElementById(gridId);
-    if (!contacts.length) {
-        el.innerHTML = '<div style="padding:20px;text-align:center;color:var(--text-muted,#94a3b8);">No contacts found</div>';
-        return;
-    }
+    if (!contacts.length) { el.innerHTML = '<div style="padding:20px;text-align:center;color:#484f58;font-size:12px;">No contacts found</div>'; return; }
     if (mode === 'direct') {
-        el.innerHTML = contacts.map(c => `
-            <div class="contact-item" onclick="startDirectChat('${c._id}')">
-              ${avatarHtml(c.name, c.profileImage, 32, 32)}
-              <div><div class="contact-name">${esc(c.name)}</div><div class="contact-role">${roleLabel(c.role)}</div></div>
-            </div>`).join('');
+        el.innerHTML = contacts.map(c => `<div class="cg-item" onclick="startDirectChat('${c._id}')">
+            ${miniAv(c.name, c.profileImage)}
+            <div><div class="cg-name">${esc(c.name)}</div><div class="cg-role">${roleLabel(c.role)}</div></div>
+          </div>`).join('');
     } else {
         el.innerHTML = contacts.map(c => {
             const checked = selectedGroupMembers.has(String(c._id));
-            return `<div class="contact-item${checked?' selected':''}" onclick="toggleGroupMember('${c._id}', this)">
+            return `<div class="cg-item${checked?' sel':''}" onclick="toggleGrpMember('${c._id}', this)">
               <input type="checkbox" ${checked?'checked':''} readonly>
-              ${avatarHtml(c.name, c.profileImage, 28, 28)}
-              <div><div class="contact-name">${esc(c.name)}</div><div class="contact-role">${roleLabel(c.role)}</div></div>
+              ${miniAv(c.name, c.profileImage)}
+              <div><div class="cg-name">${esc(c.name)}</div><div class="cg-role">${roleLabel(c.role)}</div></div>
             </div>`;
         }).join('');
     }
@@ -862,197 +1026,376 @@ function renderContactGrid(gridId, contacts, mode) {
 async function startDirectChat(receiverId) {
     closeModal('newChatModal');
     try {
-        const r = await apiFetch('/chat/direct', 'POST', { receiverId });
-        if (r.success) {
-            await loadChats();
-            openChat(r.chatId);
-        } else {
-            showToastChat('⚠️ ' + r.message, '#ef4444');
-        }
-    } catch { showToastChat('Failed to start chat', '#ef4444'); }
+        const r = await api('/chat/direct', 'POST', { receiverId });
+        if (r.success) { await loadChats(); openChat(r.chatId); }
+        else toast('⚠️ ' + r.message, '#f85149');
+    } catch { toast('Failed to start chat', '#f85149'); }
 }
 
 /* ════ Group modal ═══════════════════════════════════════════════════════════ */
 async function openGroupModal() {
     selectedGroupMembers.clear();
-    if (!groupContacts.length) {
-        const r = await apiFetch('/chat/api/contacts');
-        groupContacts = r.contacts || [];
-    }
+    if (!groupContacts.length) { const r = await api('/chat/api/contacts'); groupContacts = r.contacts || []; }
     renderContactGrid('grpContactGrid', groupContacts, 'group');
     openModal('groupModal');
 }
 
 function filterGroupContacts(q) {
     const s = q.toLowerCase();
-    const filtered = groupContacts.filter(c =>
-        c.name.toLowerCase().includes(s) || c.role.toLowerCase().includes(s)
-    );
-    renderContactGrid('grpContactGrid', filtered, 'group');
+    renderContactGrid('grpContactGrid', groupContacts.filter(c => c.name.toLowerCase().includes(s) || c.role.toLowerCase().includes(s)), 'group');
 }
 
-function toggleGroupMember(userId, el) {
-    if (selectedGroupMembers.has(userId)) {
-        selectedGroupMembers.delete(userId);
-        el.classList.remove('selected');
-        el.querySelector('input').checked = false;
-    } else {
-        selectedGroupMembers.add(userId);
-        el.classList.add('selected');
-        el.querySelector('input').checked = true;
-    }
-    document.getElementById('selectedMembersLabel').textContent =
-        selectedGroupMembers.size ? `${selectedGroupMembers.size} member(s) selected` : '';
+function toggleGrpMember(userId, el) {
+    if (selectedGroupMembers.has(userId)) { selectedGroupMembers.delete(userId); el.classList.remove('sel'); el.querySelector('input').checked = false; }
+    else { selectedGroupMembers.add(userId); el.classList.add('sel'); el.querySelector('input').checked = true; }
+    document.getElementById('selectedMembersLabel').textContent = selectedGroupMembers.size ? `${selectedGroupMembers.size} selected` : '';
 }
 
 async function createGroup() {
-    const name     = document.getElementById('grpName').value.trim();
-    const desc     = document.getElementById('grpDesc').value.trim();
-    const type     = document.getElementById('grpType').value;
-    const isRO     = type === 'broadcast';
-    if (!name) { showToastChat('Group name is required', '#ef4444'); return; }
+    const name = document.getElementById('grpName').value.trim();
+    const desc = document.getElementById('grpDesc').value.trim();
+    const type = document.getElementById('grpType').value;
+    if (!name) { toast('Group name is required', '#f85149'); return; }
     try {
-        const r = await apiFetch('/chat/group', 'POST', {
-            name, description: desc, type,
-            isReadOnly: isRO,
-            memberIds: JSON.stringify([...selectedGroupMembers]),
-        });
-        if (r.success) {
-            closeModal('groupModal');
-            await loadChats();
-            openChat(r.chatId);
-        } else {
-            showToastChat('⚠️ ' + r.message, '#ef4444');
-        }
-    } catch { showToastChat('Failed to create group', '#ef4444'); }
+        const r = await api('/chat/group', 'POST', { name, description: desc, type, isReadOnly: type === 'broadcast', memberIds: JSON.stringify([...selectedGroupMembers]) });
+        if (r.success) { closeModal('groupModal'); await loadChats(); openChat(r.chatId); }
+        else toast('⚠️ ' + r.message, '#f85149');
+    } catch { toast('Failed to create group', '#f85149'); }
 }
 
-/* ════ Members modal ═════════════════════════════════════════════════════════ */
+/* ════ Members modal ══════════════════════════════════════════════════════════ */
 async function openMembersModal() {
     if (!activeChatId) return;
     try {
-        const r = await apiFetch(`/chat/api/chats/${activeChatId}/members`);
-        const el = document.getElementById('membersList');
+        const r    = await api(`/chat/api/chats/${activeChatId}/members`);
+        currentMembers = r.members || [];
         const chat = activeChat;
-        const isROChat = chat && chat.isReadOnly;
-        document.getElementById('readonlyToggle') && (document.getElementById('readonlyToggle').checked = isROChat);
+        const tog  = document.getElementById('readonlyToggle');
+        if (tog) tog.checked = !!(chat && chat.isReadOnly);
 
-        el.innerHTML = (r.members || []).map(m => {
+        document.getElementById('memberModalTitle').textContent = `👥 Members (${currentMembers.length})`;
+        document.getElementById('membersList').innerHTML = currentMembers.map(m => {
             const u = m.user || {};
-            const online = onlineUsers.has(String(u._id));
-            return `<div class="members-list-item">
-                ${avatarHtml(u.name, u.profileImage, 36, 36)}
-                <div class="chat-win-info">
-                  <div class="chat-win-name" style="font-size:13px;">${esc(u.name || '?')}</div>
-                  <div class="chat-win-sub">${roleLabel(u.role)}${m.role==='admin'?' · Admin':''}</div>
+            const on = onlineUsers.has(String(u._id));
+            return `<div class="ml-item">
+                ${miniAv(u.name, u.profileImage)}
+                <div style="flex:1;min-width:0;">
+                  <div style="font-size:13px;font-weight:600;color:#c9d1d9;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${esc(u.name || '?')}</div>
+                  <div style="font-size:11px;color:#6e7681;">${roleLabel(u.role)}${m.role==='admin' ? ' · <span style="color:#e3b341;">Admin</span>' : ''}</div>
                 </div>
-                <div class="${online?'online-dot':'offline-dot'}" title="${online?'Online':'Offline'}"></div>
+                <div class="presence-dot ${on?'on':'off'}" title="${on?'Online':'Offline'}"></div>
                 ${isAmIAdmin && String(u._id) !== MY_ID
-                    ? `<button class="msg-action-btn" onclick="removeMember('${u._id}')" style="color:#ef4444;">Remove</button>`
+                    ? `<button class="ma-btn danger" onclick="removeMember('${u._id}')" style="margin-left:4px;">Remove</button>`
                     : ''}
               </div>`;
         }).join('');
+
+        // Hide add-member panel when reopening
+        const amw = document.getElementById('addMemberWrap');
+        if (amw) amw.style.display = 'none';
+
         openModal('membersModal');
-    } catch { showToastChat('Failed to load members', '#ef4444'); }
+    } catch { toast('Failed to load members', '#f85149'); }
 }
 
 async function removeMember(userId) {
     if (!confirm('Remove this member?')) return;
-    const r = await apiFetch(`/chat/group/${activeChatId}/member/${userId}`, 'DELETE');
+    const r = await api(`/chat/group/${activeChatId}/member/${userId}`, 'DELETE');
     if (r.success) { closeModal('membersModal'); openMembersModal(); }
-    else showToastChat('⚠️ ' + r.message, '#ef4444');
+    else toast('⚠️ ' + r.message, '#f85149');
 }
 
 async function updateReadonly(checked) {
     if (!activeChatId) return;
-    await apiFetch(`/chat/group/${activeChatId}/settings`, 'PATCH', { isReadOnly: checked });
+    await api(`/chat/group/${activeChatId}/settings`, 'PATCH', { isReadOnly: checked });
 }
 
-/* ════ Search messages ═══════════════════════════════════════════════════════ */
-function openSearchModal() { openModal('searchModal'); document.getElementById('msgSearchInput').focus(); }
+/* ════ Add member ════════════════════════════════════════════════════════════ */
+function toggleAddMemberPanel() {
+    const wrap = document.getElementById('addMemberWrap');
+    if (!wrap) return;
+    const isOpen = wrap.style.display !== 'none';
+    wrap.style.display = isOpen ? 'none' : '';
+    if (!isOpen) {
+        addMemberContacts = allContacts.length ? allContacts : [];
+        if (!addMemberContacts.length) {
+            api('/chat/api/contacts').then(r => {
+                allContacts = r.contacts || [];
+                addMemberContacts = allContacts;
+                renderAddMemberGrid(addMemberContacts);
+            });
+        } else {
+            renderAddMemberGrid(addMemberContacts);
+        }
+        setTimeout(() => document.getElementById('addMemberSearch').focus(), 100);
+    }
+}
 
-function searchMessages(q) {
-    clearTimeout(searchTimer);
-    if (!q || q.length < 2) { document.getElementById('searchResults').innerHTML = ''; return; }
-    searchTimer = setTimeout(async () => {
-        const r = await apiFetch(`/chat/api/search?q=${encodeURIComponent(q)}`);
-        const el = document.getElementById('searchResults');
+function filterAddMemberContacts(q) {
+    const s = q.toLowerCase();
+    const existingIds = new Set(currentMembers.map(m => m.user && String(m.user._id)));
+    const filtered = addMemberContacts.filter(c => !existingIds.has(String(c._id)) && (c.name.toLowerCase().includes(s) || c.role.toLowerCase().includes(s)));
+    renderAddMemberGrid(filtered);
+}
+
+function renderAddMemberGrid(contacts) {
+    const existingIds = new Set(currentMembers.map(m => m.user && String(m.user._id)));
+    const filtered    = contacts.filter(c => !existingIds.has(String(c._id)));
+    const el          = document.getElementById('addMemberGrid');
+    if (!filtered.length) { el.innerHTML = '<div style="padding:16px;text-align:center;color:#484f58;font-size:12px;">No contacts to add</div>'; return; }
+    el.innerHTML = filtered.map(c => `<div class="cg-item" onclick="doAddMember('${c._id}')">
+        ${miniAv(c.name, c.profileImage)}
+        <div style="flex:1;"><div class="cg-name">${esc(c.name)}</div><div class="cg-role">${roleLabel(c.role)}</div></div>
+        <button class="btn-sec" style="padding:3px 10px;font-size:11px;">Add</button>
+      </div>`).join('');
+}
+
+async function doAddMember(memberId) {
+    const r = await api(`/chat/group/${activeChatId}/member`, 'POST', { memberId });
+    if (r.success) { toast('Member added!', '#3fb950'); closeModal('membersModal'); openMembersModal(); }
+    else toast('⚠️ ' + r.message, '#f85149');
+}
+
+/* ════ Per-chat search ════════════════════════════════════════════════════════ */
+let _chatSearchTimer = null;
+
+function toggleChatSearch() {
+    if (!activeChatId) return;
+    const bar = document.getElementById('chatSearchBar');
+    const inp = document.getElementById('inChatSearchInput');
+    if (bar.classList.contains('open')) {
+        bar.classList.remove('open');
+        inp.value = '';
+        document.getElementById('chatSearchResults').innerHTML = '';
+    } else {
+        bar.classList.add('open');
+        setTimeout(() => inp.focus(), 50);
+    }
+}
+
+function onChatSearch(q) {
+    clearTimeout(_chatSearchTimer);
+    const el = document.getElementById('chatSearchResults');
+    if (!q || q.length < 2) { el.innerHTML = ''; return; }
+    _chatSearchTimer = setTimeout(async () => {
+        el.innerHTML = '<div style="padding:10px;text-align:center;color:#484f58;font-size:12px;">Searching…</div>';
+        const r = await api(`/chat/api/search?q=${encodeURIComponent(q)}&chatId=${activeChatId}`);
         if (!r.messages || !r.messages.length) {
-            el.innerHTML = '<div style="padding:16px;text-align:center;color:var(--text-muted,#94a3b8);">No results</div>';
+            el.innerHTML = '<div style="padding:12px;text-align:center;color:#484f58;font-size:12px;">No results found.</div>';
             return;
         }
         el.innerHTML = r.messages.map(m => {
-            const chat = m.chat || {};
-            const chatName = chat.name || 'Direct';
-            return `<div class="search-result-item" onclick="closeModal('searchModal');openChat('${chat._id}')">
-                <div class="sr-chat">💬 ${esc(chatName)}</div>
-                <div class="sr-text">${esc(truncate(m.content, 80))}</div>
-                <div class="sr-time">${timeAgo(m.createdAt)}</div>
-              </div>`;
+            const sender = (m.sender && m.sender.name) || 'Unknown';
+            return `<div class="csr-item" onclick="jumpToMessage('${m._id}','${m.createdAt}')">
+                <div class="csr-sender">${esc(sender)}</div>
+                <div class="csr-text">${esc(trunc(m.content || '', 90))}</div>
+                <div class="csr-time">${timeAgo(m.createdAt)}</div>
+            </div>`;
         }).join('');
     }, 350);
 }
 
-/* ════ Utilities ═════════════════════════════════════════════════════════════ */
-function updateChatPreviewInList(chatId, msg) {
+async function jumpToMessage(msgId, createdAt) {
+    // Collapse search bar
+    document.getElementById('chatSearchBar').classList.remove('open');
+    document.getElementById('inChatSearchInput').value = '';
+    document.getElementById('chatSearchResults').innerHTML = '';
+
+    const doHighlight = () => {
+        const el = document.getElementById(`msg-${msgId}`);
+        if (!el) return false;
+        el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        el.classList.add('msg-jump-highlight');
+        setTimeout(() => el.classList.remove('msg-jump-highlight'), 2200);
+        return true;
+    };
+
+    if (doHighlight()) return;
+
+    // Message not in current window — load the 40-message window that contains it
+    try {
+        const before = new Date(new Date(createdAt).getTime() + 1000).toISOString();
+        const r = await api(`/chat/api/chats/${activeChatId}/messages?limit=40&before=${encodeURIComponent(before)}`);
+        _msgs = r.messages || [];
+        hasMoreMessages = r.hasMore;
+        renderMessages(_msgs, false);
+    } catch { }
+
+    setTimeout(doHighlight, 150);
+}
+
+/* ════ Admin browse mode ══════════════════════════════════════════════════════ */
+let adminMode          = false;
+let adminViewUser      = null;
+let adminSearchTimer   = null;
+let adminObserverChatId = null; // chatId opened in read-only observer mode
+
+function enterAdminMode() {
+    adminMode = true; adminViewUser = null;
+    document.getElementById('normalHdr').style.display      = 'none';
+    document.getElementById('adminBrowseHdr').style.display = '';
+    document.getElementById('adminHdrTitle').textContent    = 'Browse Users';
+    document.getElementById('chatList').innerHTML =
+        '<div style="padding:28px 16px;text-align:center;color:#484f58;font-size:12px;">Search for a user above to browse their chats.</div>';
+    setTimeout(() => document.getElementById('adminUserSearch').focus(), 80);
+}
+
+function exitAdminMode() {
+    adminMode = false; adminViewUser = null; adminObserverChatId = null;
+    document.getElementById('adminBrowseHdr').style.display = 'none';
+    document.getElementById('normalHdr').style.display      = '';
+    // Restore input area if we were in observer mode
+    document.getElementById('chatInputRow').style.display   = '';
+    document.getElementById('readonlyNotice').style.display = 'none';
+    document.getElementById('adminUserSearch').value        = '';
+    loadChats();
+}
+
+function onAdminUserSearch(q) {
+    clearTimeout(adminSearchTimer);
+    if (!q || q.length < 1) {
+        document.getElementById('chatList').innerHTML =
+            '<div style="padding:20px 16px;text-align:center;color:#484f58;font-size:12px;">Type to search users…</div>';
+        return;
+    }
+    adminSearchTimer = setTimeout(async () => {
+        const r = await api(`/chat/api/admin/school-users?q=${encodeURIComponent(q)}`);
+        renderUserList(r.users || []);
+    }, 280);
+}
+
+function renderUserList(users) {
+    const el = document.getElementById('chatList');
+    if (!users.length) {
+        el.innerHTML = '<div style="padding:20px 16px;text-align:center;color:#484f58;font-size:12px;">No users found</div>';
+        return;
+    }
+    el.innerHTML = users.map(u =>
+        `<div class="ci" onclick="loadAdminUserChats('${u._id}','${esc(u.name)}')">
+            ${miniAv(u.name, u.profileImage, 40)}
+            <div class="ci-body">
+              <div class="ci-top"><div class="ci-name">${esc(u.name)}</div></div>
+              <div class="ci-preview">${roleLabel(u.role)}</div>
+            </div>
+            <span style="font-size:10px;color:#484f58;flex-shrink:0;">›</span>
+          </div>`
+    ).join('');
+}
+
+async function loadAdminUserChats(userId, userName) {
+    adminViewUser = { _id: userId, name: userName };
+    document.getElementById('adminHdrTitle').textContent =
+        (userName.length > 18 ? userName.slice(0,16) + '…' : userName) + "'s Chats";
+    document.getElementById('chatList').innerHTML =
+        '<div style="padding:20px 16px;text-align:center;color:#484f58;font-size:12px;">Loading…</div>';
+
+    const r     = await api(`/chat/api/admin/user-chats?userId=${userId}`);
+    const chats = r.chats || [];
+
+    if (!chats.length) {
+        document.getElementById('chatList').innerHTML =
+            '<div style="padding:20px 16px;text-align:center;color:#484f58;font-size:12px;">No chats found for this user</div>';
+        return;
+    }
+
+    document.getElementById('chatList').innerHTML = chats.map(c => {
+        const name    = esc(c.displayName || c.name || 'Group');
+        const preview = chatPreview(c.lastMessage);
+        const time    = c.lastActivity ? timeAgo(c.lastActivity) : '';
+        const avClass = c.type === 'broadcast' ? 'bcast' : c.type === 'group' ? 'grp' : '';
+        const tpre    = c.type === 'broadcast' ? '📢 ' : c.type === 'group' ? '👥 ' : '';
+        return `<div class="ci" onclick="openAdminObserverChat('${c._id}','${esc(c.displayName||c.name||'Chat')}')">
+            <div class="ca ${avClass}">${c.displayAvatar ? `<img src="${esc(c.displayAvatar)}" alt="">` : name.charAt(0).toUpperCase()}</div>
+            <div class="ci-body">
+              <div class="ci-top"><div class="ci-name">${tpre}${name}</div><div class="ci-time">${time}</div></div>
+              <div class="ci-preview">${preview}</div>
+            </div>
+          </div>`;
+    }).join('');
+}
+
+async function openAdminObserverChat(chatId, chatName) {
+    adminObserverChatId = String(chatId);
+    activeChatId        = adminObserverChatId;
+    activeChat          = { _id: chatId, type: 'group' }; // placeholder
+
+    document.querySelectorAll('.ci').forEach(el => el.classList.remove('active'));
+    document.getElementById(`ci-${chatId}`) && document.getElementById(`ci-${chatId}`).classList.add('active');
+
+    document.getElementById('chatEmpty').style.display  = 'none';
+    const win = document.getElementById('chatWindow');
+    win.style.display       = 'flex';
+    win.style.flexDirection = 'column';
+
+    document.getElementById('winName').textContent = chatName;
+    document.getElementById('winSub').textContent  = '👁 Admin view — read only';
+    document.getElementById('winAvatar').className = 'ca';
+    document.getElementById('winAvatar').innerHTML = chatName.charAt(0).toUpperCase();
+    document.getElementById('membersBtn').style.display = 'none';
+
+    // Hide input — admin is observer only
+    document.getElementById('chatInputRow').style.display   = 'none';
+    document.getElementById('readonlyNotice').style.display = '';
+    document.getElementById('readonlyNotice').textContent   = '👁 Admin view — read-only observer mode';
+
+    document.getElementById('chatMessages').innerHTML =
+        '<div style="padding:40px;text-align:center;color:#484f58;font-size:12px;">Loading…</div>';
+    hasMoreMessages = false;
+    _msgs = [];
+    await loadMessages(); // reuses normal loadMessages — backend now allows admin read
+}
+
+/* ════ Chat list utilities ═══════════════════════════════════════════════════ */
+function updateListPreview(chatId, msg) {
     const c = allChats.find(x => String(x._id) === chatId);
     if (c) {
         c.lastMessage  = msg;
         c.lastActivity = msg.createdAt;
+        // Only increment badge for OTHER chats (not the one currently open)
         if (String(chatId) !== activeChatId) c.unreadCount = (c.unreadCount || 0) + 1;
     } else {
-        loadChats();
+        loadChats(); return;
     }
     renderChatList(allChats);
 }
 
 function chatPreview(msg) {
-    if (!msg) return '<span style="font-style:italic;opacity:.6;">No messages yet</span>';
+    if (!msg) return '<span style="opacity:.4;font-style:italic;">No messages yet</span>';
     if (msg.isDeleted) return '🚫 Message deleted';
     if (msg.type === 'image') return '📷 Photo';
     if (msg.type === 'file')  return '📎 File';
-    const senderPrefix = msg.sender && msg.sender.name ? msg.sender.name.split(' ')[0] + ': ' : '';
-    return esc(senderPrefix + truncate(msg.content || '', 40));
+    const prefix = msg.sender && msg.sender.name ? msg.sender.name.split(' ')[0] + ': ' : '';
+    return esc(prefix + trunc(msg.content || '', 38));
 }
 
-function avatarHtml(name, imgUrl, size = 42, fSize = 16) {
-    const s = `width:${size}px;height:${size}px;font-size:${fSize}px;`;
-    if (imgUrl) return `<div class="chat-avatar" style="${s}"><img src="${esc(imgUrl)}" alt=""></div>`;
-    return `<div class="chat-avatar" style="${s}">${(name||'?').charAt(0).toUpperCase()}</div>`;
+/* ════ Helpers ═══════════════════════════════════════════════════════════════ */
+function miniAv(name, img, size = 30) {
+    const s = `width:${size}px;height:${size}px;font-size:${Math.round(size*0.4)}px;`;
+    if (img) return `<div class="ca" style="${s}flex-shrink:0;"><img src="${esc(img)}" alt=""></div>`;
+    return `<div class="ca" style="${s}flex-shrink:0;">${(name||'?').charAt(0).toUpperCase()}</div>`;
 }
 
 function roleLabel(role) {
-    return { super_admin:'Super Admin', school_admin:'Admin', teacher:'Teacher', student:'Student', parent:'Parent' }[role] || (role||'');
+    return { super_admin:'Super Admin', school_admin:'Admin', teacher:'Teacher', student:'Student', parent:'Parent' }[role] || (role || '');
 }
 
 function timeAgo(d) {
-    const diff = Date.now() - new Date(d).getTime();
-    const m = Math.floor(diff / 60000);
-    if (m < 1) return 'now';
+    const diff = Date.now() - new Date(d).getTime(), m = Math.floor(diff/60000);
+    if (m < 1)  return 'now';
     if (m < 60) return m + 'm';
-    const h = Math.floor(m / 60);
+    const h = Math.floor(m/60);
     if (h < 24) return h + 'h';
-    const dy = Math.floor(h / 24);
+    const dy = Math.floor(h/24);
     if (dy < 7) return dy + 'd';
     return new Date(d).toLocaleDateString('en-IN', { day:'numeric', month:'short' });
 }
 
-function esc(s) {
-    return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
-}
+function esc(s)      { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+function escAttr(s)  { return String(s||'').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+function escJs(s)    { return String(s||'').replace(/\\/g,'\\\\').replace(/'/g,"\\'").replace(/\n/g,'\\n').replace(/\r/g,''); }
+function trunc(s,n)  { return s && s.length > n ? s.slice(0,n)+'…' : (s||''); }
 
-function truncate(s, n) {
-    return s && s.length > n ? s.slice(0, n) + '…' : (s || '');
-}
-
-function fmtSize(bytes) {
-    if (!bytes) return '0B';
-    if (bytes < 1024) return bytes + 'B';
-    if (bytes < 1048576) return Math.round(bytes/1024) + 'KB';
-    return (bytes/1048576).toFixed(1) + 'MB';
-}
-
-async function apiFetch(url, method = 'GET', body = null) {
+async function api(url, method = 'GET', body = null) {
     const opts = { method, headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'XMLHttpRequest' } };
     if (body) opts.body = JSON.stringify(body);
     const r = await fetch(url, opts);
@@ -1062,19 +1405,241 @@ async function apiFetch(url, method = 'GET', body = null) {
 function openModal(id)  { document.getElementById(id).style.display = 'flex'; }
 function closeModal(id) { document.getElementById(id).style.display = 'none'; }
 
-function showToastChat(msg, color = '#3b82f6') {
+function toast(msg, color = '#388bfd') {
     const tc = document.getElementById('toastContainer');
     if (!tc) return;
     const t = document.createElement('div');
-    t.style.cssText = `pointer-events:auto;background:var(--card-bg,#1a1d2e);border:1px solid var(--border,#2a2d3e);border-left:4px solid ${color};border-radius:12px;padding:12px 16px;width:280px;box-shadow:0 8px 32px rgba(0,0,0,.5);animation:slideInToast .3s ease;position:relative;color:var(--text,#e2e8f0);font-size:13px;`;
+    t.style.cssText = `pointer-events:auto;background:#161b22;border:1px solid #30363d;border-left:3px solid ${color};border-radius:10px;padding:11px 15px;width:260px;box-shadow:0 8px 24px rgba(0,0,0,.5);animation:slideInToast .25s ease;color:#c9d1d9;font-size:13px;`;
     t.textContent = msg;
     tc.appendChild(t);
-    setTimeout(() => { t.style.opacity = '0'; t.style.transition = 'opacity .4s'; setTimeout(() => t.remove(), 400); }, 4000);
+    setTimeout(() => { t.style.opacity='0'; t.style.transition='opacity .35s'; setTimeout(() => t.remove(), 350); }, 3800);
 }
 
-document.addEventListener('keydown', e => {
-    if (e.key === 'Escape') {
-        document.querySelectorAll('.modal-overlay').forEach(el => { el.style.display = 'none'; });
+/* ════ Emoji reactions ══════════════════════════════════════════════════════ */
+function _buildReactionsHtml(msgId, reactions) {
+    if (!reactions || !reactions.length) return '';
+    // Group by emoji
+    const groups = {};
+    reactions.forEach(r => {
+        if (!groups[r.emoji]) groups[r.emoji] = { count: 0, mine: false, names: [] };
+        groups[r.emoji].count++;
+        groups[r.emoji].names.push(r.userName || 'Someone');
+        if (String(r.user) === MY_ID) groups[r.emoji].mine = true;
+    });
+    const pills = Object.entries(groups).map(([emoji, g]) =>
+        `<span class="msg-react-pill${g.mine?' mine':''}" title="${escAttr(g.names.join(', '))}" onclick="sendReaction('${msgId}','${emoji}')">
+            ${emoji}<span class="rp-count">${g.count}</span>
+        </span>`
+    ).join('');
+    return `<div class="msg-reactions" id="rxn-${msgId}">${pills}</div>`;
+}
+
+function doReact(e, msgId) {
+    e.stopPropagation();
+    closeAllDropdowns();
+    document.querySelectorAll('.react-picker.open').forEach(el => el.classList.remove('open'));
+
+    const rp = document.getElementById(`rp-${msgId}`);
+    if (!rp) return;
+
+    // Position the picker using fixed coords relative to the message bubble
+    const bubble = rp.closest('.msg-bubble');
+    const r      = (bubble || rp).getBoundingClientRect();
+    const isMine = !!rp.closest('.msg-row.mine');
+    const pickerW = 220;  // 6 emojis × ~36px
+    const pickerH = 46;
+
+    // Show above bubble; flip below if near top of viewport
+    let top = r.top - pickerH - 8;
+    if (top < 8) top = r.bottom + 8;
+
+    rp.style.top   = top + 'px';
+    rp.style.left  = 'auto';
+    rp.style.right = 'auto';
+    if (isMine) {
+        let right = window.innerWidth - r.right;
+        if (r.right - pickerW < 8) right = window.innerWidth - r.left - pickerW;
+        rp.style.right = right + 'px';
+    } else {
+        let left = r.left;
+        if (left + pickerW > window.innerWidth - 8) left = window.innerWidth - pickerW - 8;
+        rp.style.left = left + 'px';
     }
+
+    rp.classList.add('open');
+}
+
+async function sendReaction(msgId, emoji) {
+    // Close picker
+    const rp = document.getElementById(`rp-${msgId}`);
+    if (rp) rp.classList.remove('open');
+
+    if (socket) {
+        socket.emit('chat:react', { messageId: msgId, emoji });
+    } else {
+        try {
+            await api(`/chat/api/messages/${msgId}/react`, 'POST', { emoji });
+        } catch { toast('Reaction failed.', '#f85149'); }
+    }
+}
+
+function onReactionUpdate(data) {
+    const { messageId, reactions } = data;
+    // Update existing reactions bar or inject one
+    const msgEl = document.getElementById(`msg-${messageId}`);
+    if (!msgEl) return;
+    const bw = msgEl.querySelector('.msg-bw');
+    if (!bw) return;
+    let rxnEl = document.getElementById(`rxn-${messageId}`);
+    const html = _buildReactionsHtml(messageId, reactions);
+    if (rxnEl) {
+        rxnEl.outerHTML = html || '';
+    } else if (html) {
+        bw.insertAdjacentHTML('beforeend', html);
+    }
+}
+
+// Close react pickers on outside click
+document.addEventListener('click', () => {
+    document.querySelectorAll('.react-picker.open').forEach(el => el.classList.remove('open'));
 });
+
+document.addEventListener('keydown', e => {
+    if (e.key === 'Escape') document.querySelectorAll('.mo').forEach(el => { el.style.display='none'; });
+});
+
+/* ════ Forward message ═══════════════════════════════════════════════════════ */
+let _fwdMsgId      = null;
+let _fwdChats      = [];
+let _fwdContacts   = [];
+let _fwdSelected   = new Set();   // ids currently ticked
+let _fwdSelMeta    = new Map();   // id → 'chat' | 'contact'
+
+async function doForward(msgId) {
+    closeAllDropdowns();
+    _fwdMsgId = msgId;
+    _fwdSelected.clear();
+    _fwdSelMeta.clear();
+    _fwdChats = allChats.filter(c => String(c._id) !== activeChatId);
+
+    if (!allContacts.length) {
+        const r = await api('/chat/api/contacts');
+        allContacts = r.contacts || [];
+    }
+    _fwdContacts = allContacts;
+
+    document.getElementById('fwdSearch').value = '';
+    _renderFwdModal(_fwdChats, _fwdContacts);
+    openModal('forwardModal');
+}
+
+function _renderFwdModal(chats, contacts) {
+    const el  = document.getElementById('fwdList');
+    const max = _fwdSelected.size >= 5;
+    let html  = '';
+
+    if (chats.length) {
+        html += `<div class="fwd-section-label">Chats</div>`;
+        html += chats.map(c => {
+            const id   = String(c._id);
+            const sel  = _fwdSelected.has(id);
+            const dis  = max && !sel;
+            const name = esc(c.displayName || c.name || 'Group');
+            const pfx  = c.type === 'broadcast' ? '📢 ' : c.type === 'group' ? '👥 ' : '';
+            return `<div class="cg-item${sel?' sel':''}${dis?' fwd-disabled':''}" onclick="toggleFwdItem('${id}','chat')">
+                <input type="checkbox" ${sel?'checked':''} style="width:auto;flex-shrink:0;" onclick="event.stopPropagation();" onchange="toggleFwdItem('${id}','chat')">
+                <div class="ca ${c.type==='group'?'grp':c.type==='broadcast'?'bcast':''}" style="width:32px;height:32px;font-size:12px;flex-shrink:0;">${c.displayAvatar?`<img src="${esc(c.displayAvatar)}" alt="">`:name.charAt(0).toUpperCase()}</div>
+                <div><div class="cg-name">${pfx}${name}</div></div>
+            </div>`;
+        }).join('');
+    }
+
+    if (contacts.length) {
+        html += `<div class="fwd-section-label">People (new chat)</div>`;
+        html += contacts.map(c => {
+            const id  = String(c._id);
+            const sel = _fwdSelected.has(id);
+            const dis = max && !sel;
+            return `<div class="cg-item${sel?' sel':''}${dis?' fwd-disabled':''}" onclick="toggleFwdItem('${id}','contact')">
+                <input type="checkbox" ${sel?'checked':''} style="width:auto;flex-shrink:0;" onclick="event.stopPropagation();" onchange="toggleFwdItem('${id}','contact')">
+                ${miniAv(c.name, c.profileImage)}
+                <div><div class="cg-name">${esc(c.name)}</div><div class="cg-role">${roleLabel(c.role)}</div></div>
+            </div>`;
+        }).join('');
+    }
+
+    if (!html) html = '<div style="padding:20px;text-align:center;color:#484f58;font-size:12px;">No chats or contacts available.</div>';
+    el.innerHTML = html;
+
+    // Update counter and send button
+    const count = _fwdSelected.size;
+    document.getElementById('fwdCounter').textContent = `${count} / 5 selected`;
+    const btn = document.getElementById('fwdSendBtn');
+    btn.disabled = count === 0;
+    btn.style.opacity  = count ? '1'  : '.4';
+    btn.style.cursor   = count ? 'pointer' : 'not-allowed';
+}
+
+function filterFwdChats(q) {
+    if (!q) { _renderFwdModal(_fwdChats, _fwdContacts); return; }
+    const s = q.toLowerCase();
+    _renderFwdModal(
+        _fwdChats.filter(c    => (c.displayName || c.name || '').toLowerCase().includes(s)),
+        _fwdContacts.filter(c => c.name.toLowerCase().includes(s) || (c.role || '').toLowerCase().includes(s))
+    );
+}
+
+function toggleFwdItem(id, type) {
+    if (_fwdSelected.has(id)) {
+        _fwdSelected.delete(id);
+        _fwdSelMeta.delete(id);
+    } else {
+        if (_fwdSelected.size >= 5) return;  // hard cap
+        _fwdSelected.add(id);
+        _fwdSelMeta.set(id, type);
+    }
+    // Re-render maintaining current search filter
+    const q = document.getElementById('fwdSearch').value;
+    filterFwdChats(q);
+}
+
+async function _doSendForward(targetChatId) {
+    if (!_fwdMsgId || !targetChatId) return;
+    const srcEl  = document.getElementById(`msg-${_fwdMsgId}`);
+    const content = srcEl ? srcEl.dataset.content : '';
+    if (!content) return;
+
+    if (socket) {
+        socket.emit('chat:send', { chatId: targetChatId, content, replyTo: null, isForwarded: true });
+    } else {
+        await api('/chat/api/chats/' + targetChatId + '/messages', 'POST', { content, isForwarded: true });
+    }
+    if (String(targetChatId) === activeChatId) await loadMessages();
+}
+
+async function sendAllForwards() {
+    if (!_fwdSelected.size) return;
+    closeModal('forwardModal');
+
+    let ok = 0, fail = 0;
+    for (const id of _fwdSelected) {
+        try {
+            if (_fwdSelMeta.get(id) === 'contact') {
+                const r = await api('/chat/direct', 'POST', { receiverId: id });
+                if (r.success) { await _doSendForward(r.chatId); ok++; }
+                else fail++;
+            } else {
+                await _doSendForward(id); ok++;
+            }
+        } catch { fail++; }
+    }
+
+    await loadChats();
+    _fwdSelected.clear();
+    _fwdSelMeta.clear();
+    _fwdMsgId = null;
+
+    if (ok)   toast(`↗ Forwarded to ${ok} chat${ok>1?'s':''}!`, '#3fb950');
+    if (fail) toast(`⚠️ Failed for ${fail} recipient${fail>1?'s':''}`, '#f85149');
+}
 </script>

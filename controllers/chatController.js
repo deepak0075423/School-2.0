@@ -14,6 +14,7 @@ const broker          = require('../services/chatBrokerService');
 exports.getIndex = async (req, res) => {
     try {
         const role = req.session.userRole;
+        if (role === 'super_admin') return res.redirect('/super-admin/dashboard');
         res.render('chat/index', {
             title:          'Chat',
             layout:         'layouts/main',
@@ -110,8 +111,17 @@ exports.getMessages = async (req, res) => {
         const userId   = req.session.userId;
         const schoolId = req.session.schoolId;
 
-        const member = await ChatMember.findOne({ chat: chatId, user: userId, isActive: true }).lean();
-        if (!member) return res.status(403).json({ success: false, message: 'Not a member' });
+        const userRole = req.session.userRole;
+        const member   = await ChatMember.findOne({ chat: chatId, user: userId, isActive: true }).lean();
+        const adminObserver = !member && userRole === 'school_admin';
+
+        if (!member && !adminObserver) {
+            return res.status(403).json({ success: false, message: 'Not a member' });
+        }
+        if (adminObserver) {
+            const chat = await Chat.findOne({ _id: chatId, school: schoolId }).lean();
+            if (!chat) return res.status(404).json({ success: false, message: 'Chat not found' });
+        }
 
         const filter = { chat: chatId, school: schoolId };
         if (before) filter.createdAt = { $lt: new Date(before) };
@@ -128,8 +138,8 @@ exports.getMessages = async (req, res) => {
             .limit(lim)
             .lean();
 
-        // Mark delivered messages as read (async — no await so response is fast)
-        _markRead(chatId, userId, msgs).catch(() => {});
+        // Skip read-tracking for admin observers (they are not members)
+        if (!adminObserver) _markRead(chatId, userId, msgs).catch(() => {});
 
         res.json({
             success:  true,
@@ -474,6 +484,54 @@ exports.updateGroupSettings = async (req, res) => {
     }
 };
 
+/** POST /chat/group/:chatId/member  body: { memberId } */
+exports.addMember = async (req, res) => {
+    try {
+        const { chatId }    = req.params;
+        const { memberId }  = req.body;
+        const userId   = req.session.userId;
+        const userRole = req.session.userRole;
+        const schoolId = req.session.schoolId;
+
+        if (!memberId) return res.status(400).json({ success: false, message: 'memberId required' });
+
+        const adminCheck = await ChatMember.findOne({
+            chat: chatId, user: userId, role: 'admin', isActive: true,
+        }).lean();
+        if (!adminCheck) {
+            return res.status(403).json({ success: false, message: 'Only group admins can add members' });
+        }
+
+        const existing = await ChatMember.findOne({ chat: chatId, user: memberId }).lean();
+        if (existing) {
+            if (existing.isActive) {
+                return res.status(400).json({ success: false, message: 'User is already a member' });
+            }
+            await ChatMember.findByIdAndUpdate(existing._id, { isActive: true });
+        } else {
+            const rx = await User.findOne({ _id: memberId, school: schoolId }).select('role').lean();
+            if (!rx) return res.status(404).json({ success: false, message: 'User not found' });
+            const c = await perm.canMessage(userId, userRole, memberId, rx.role, schoolId);
+            if (!c.allowed) return res.status(403).json({ success: false, message: c.reason });
+            await ChatMember.create({ chat: chatId, user: memberId, school: schoolId, role: 'member' });
+        }
+
+        const io = req.app.get('io');
+        if (io) {
+            socketSvc.joinRoom(io, memberId, chatId);
+            io.to(`chat:${chatId}`).emit('chat:member_added', { chatId, userId: memberId });
+        } else {
+            await broker.publishMembership('join', memberId, chatId);
+            await broker.publishToRoom(chatId, 'chat:member_added', { chatId, userId: memberId });
+        }
+
+        res.json({ success: true });
+    } catch (err) {
+        console.error('[chatCtrl] addMember:', err);
+        res.status(500).json({ success: false, message: 'Failed to add member' });
+    }
+};
+
 /** DELETE /chat/group/:chatId/member/:memberId */
 exports.removeMember = async (req, res) => {
     try {
@@ -618,5 +676,115 @@ exports.getChatMembers = async (req, res) => {
     } catch (err) {
         console.error('[chatCtrl] getChatMembers:', err);
         res.status(500).json({ success: false, message: 'Failed to load members' });
+    }
+};
+
+// ─── Admin: browse school users ───────────────────────────────────────────────
+
+/** GET /chat/api/admin/school-users?q=<search>  — school_admin only */
+exports.getSchoolUsers = async (req, res) => {
+    try {
+        if (req.session.userRole !== 'school_admin') {
+            return res.status(403).json({ success: false, message: 'Admin only' });
+        }
+        const schoolId = req.session.schoolId;
+        const q        = (req.query.q || '').trim();
+
+        const filter = { school: schoolId };
+        if (q) filter.name = { $regex: q, $options: 'i' };
+
+        const users = await User.find(filter)
+            .select('name role profileImage')
+            .limit(40)
+            .lean();
+
+        res.json({ success: true, users });
+    } catch (err) {
+        console.error('[chatCtrl] getSchoolUsers:', err);
+        res.status(500).json({ success: false, message: 'Failed' });
+    }
+};
+
+/** GET /chat/api/admin/user-chats?userId=<id>  — school_admin only */
+exports.getAdminUserChats = async (req, res) => {
+    try {
+        if (req.session.userRole !== 'school_admin') {
+            return res.status(403).json({ success: false, message: 'Admin only' });
+        }
+        const { userId }   = req.query;
+        const adminId      = req.session.userId;
+        const schoolId     = req.session.schoolId;
+
+        if (!userId) return res.status(400).json({ success: false, message: 'userId required' });
+
+        const targetUser = await User.findOne({ _id: userId, school: schoolId }).select('name role').lean();
+        if (!targetUser) return res.status(404).json({ success: false, message: 'User not found' });
+
+        const memberships = await ChatMember.find({
+            user: userId, school: schoolId, isActive: true,
+        })
+        .populate({
+            path: 'chat',
+            populate: {
+                path: 'lastMessage',
+                select: 'content type sender isDeleted createdAt',
+                populate: { path: 'sender', select: 'name' },
+            },
+        })
+        .lean();
+
+        const results = await Promise.all(
+            memberships
+                .filter(m => m.chat && m.chat._id)
+                .map(m => _enrichChat(m, userId, schoolId))
+        );
+
+        results.sort((a, b) => new Date(b.lastActivity) - new Date(a.lastActivity));
+
+        res.json({ success: true, chats: results, user: targetUser });
+    } catch (err) {
+        console.error('[chatCtrl] getAdminUserChats:', err);
+        res.status(500).json({ success: false, message: 'Failed' });
+    }
+};
+
+/** POST /chat/api/messages/:msgId/react  { emoji } */
+exports.toggleReaction = async (req, res) => {
+    try {
+        const { msgId }  = req.params;
+        const { emoji }  = req.body;
+        const userId     = req.session.userId;
+        const userName   = req.session.userName || '';
+
+        if (!emoji) return res.status(400).json({ success: false, message: 'emoji required' });
+
+        const msg = await Message.findOne({ _id: msgId, isDeleted: false }).lean();
+        if (!msg) return res.status(404).json({ success: false, message: 'Message not found' });
+
+        const existing = msg.reactions.find(r => String(r.user) === String(userId));
+        let update;
+        if (existing && existing.emoji === emoji) {
+            update = { $pull: { reactions: { user: userId } } };
+        } else if (existing) {
+            await Message.findByIdAndUpdate(msgId, { $pull: { reactions: { user: userId } } });
+            update = { $push: { reactions: { emoji, user: userId, userName } } };
+        } else {
+            update = { $push: { reactions: { emoji, user: userId, userName } } };
+        }
+
+        const updated = await Message.findByIdAndUpdate(msgId, update, { new: true }).lean();
+
+        const io = req.app.get('io');
+        const payload = { messageId: msgId, chatId: String(msg.chat), reactions: updated.reactions };
+        if (io) {
+            io.to(`chat:${msg.chat}`).emit('chat:reaction', payload);
+        } else {
+            await broker.publishToRoom(msg.chat, 'chat:reaction', payload);
+        }
+
+        res.json({ success: true, reactions: updated.reactions });
+    } catch (err) {
+        console.error('[chatCtrl] toggleReaction:', err);
+        res.status(500).json({ success: false, message: 'Failed' });
     }
 };
