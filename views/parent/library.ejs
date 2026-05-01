@@ -6,6 +6,18 @@
     <a href="/parent/dashboard" class="btn btn-secondary">← Back</a>
 </div>
 
+<% if (children && children.length > 1) { %>
+<div style="display:flex; gap:10px; margin-bottom:20px; flex-wrap:wrap;">
+    <% children.forEach(function(c) { %>
+    <a href="/library/parent?child=<%= c.user._id %>"
+        class="btn <%= selectedChild._id.toString() === c.user._id.toString() ? 'btn-primary' : 'btn-secondary' %>"
+        style="display:flex; align-items:center; gap:8px;">
+        <span>🎒</span> <%= c.user.name %>
+    </a>
+    <% }) %>
+</div>
+<% } %>
+
 <!-- Fine Alert -->
 <% if (totalPendingFine > 0) { %>
 <div style="background:#fff5f5; border:1.5px solid #fca5a5; border-radius:10px; padding:14px 18px; margin-bottom:20px; display:flex; align-items:center; gap:12px;">

@@ -1326,18 +1326,42 @@ exports.parentGetDocuments = async (req, res) => {
                 documents: [],
                 assignments: [],
                 mySubMap: {},
+                docTargetMap: {},
                 filters: { category: '', search: '' },
                 fmtSize,
             });
         }
 
-        // Gather all child sections (with fallback to enrolledStudents)
-        const sectionIds = [];
-        const classIds   = [];
+        // Gather all child sections (with fallback to enrolledStudents) + human-readable names
+        const sectionIds   = [];
+        const classIds     = [];
+        const childInfoMap = {}; // sectionId|classId str → { childName, classLabel }
+
         for (const childId of parentProfile.children) {
+            const childUser = await User.findById(childId).select('name').lean();
             const { sectionId: cSec, classId: cCls } = await resolveStudentClassInfo(childId, schoolId);
-            if (cSec) sectionIds.push(cSec);
-            if (cCls) classIds.push(cCls);
+
+            let className = '', sectionName = '';
+            if (cCls) {
+                const cls = await Class.findById(cCls).select('className classNumber').lean();
+                if (cls) className = cls.className || `Class ${cls.classNumber}`;
+            }
+            if (cSec) {
+                const sec = await ClassSection.findById(cSec).select('sectionName').lean();
+                if (sec) sectionName = sec.sectionName;
+            }
+
+            const classLabel = className + (sectionName ? ` – ${sectionName}` : '');
+            const childName  = childUser ? childUser.name : 'Child';
+
+            if (cSec) {
+                sectionIds.push(cSec);
+                childInfoMap['sec_' + cSec.toString()] = { childName, classLabel };
+            }
+            if (cCls) {
+                classIds.push(cCls);
+                childInfoMap['cls_' + cCls.toString()] = { childName, classLabel };
+            }
         }
 
         const baseFilter = {
@@ -1375,12 +1399,44 @@ exports.parentGetDocuments = async (req, res) => {
             }
         }
 
+        // Build per-document "shared for" label
+        const getDocForLabel = (doc) => {
+            try {
+                if (doc.targetType === 'whole_school') return 'All School';
+                if (doc.targetType === 'class_sections') {
+                    const matched = Array.from(new Set(
+                        (doc.targetSections || [])
+                            .map(s => childInfoMap['sec_' + s.toString()])
+                            .filter(Boolean)
+                            .map(c => c.classLabel ? `${c.childName} (${c.classLabel})` : c.childName)
+                    ));
+                    return matched.length ? matched.join(', ') : 'Your child';
+                }
+                if (doc.targetType === 'class') {
+                    const matched = Array.from(new Set(
+                        (doc.targetClasses || [])
+                            .map(c => childInfoMap['cls_' + c.toString()])
+                            .filter(Boolean)
+                            .map(c => c.classLabel ? `${c.childName} (${c.classLabel})` : c.childName)
+                    ));
+                    return matched.length ? matched.join(', ') : 'Your child';
+                }
+            } catch (e) { /* fall through */ }
+            return 'Your child';
+        };
+
+        const docTargetMap = {};
+        [...documents, ...assignments].forEach(doc => {
+            docTargetMap[doc._id.toString()] = getDocForLabel(doc);
+        });
+
         res.render('parent/documents/index', {
             title: 'Documents',
             layout: 'layouts/main',
             documents,
             assignments,
             mySubMap,
+            docTargetMap,
             filters: { category: category || '', search: search || '' },
             fmtSize,
         });

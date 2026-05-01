@@ -423,10 +423,13 @@ const deleteUser = async (req, res) => {
             }
             
             // Cascade delete specific profile based on role
-            if (user.role === 'student') await StudentProfile.findOneAndDelete({ user: user._id });
+            if (user.role === 'student') {
+                await StudentProfile.findOneAndDelete({ user: user._id });
+                await ParentProfile.updateMany({ children: user._id }, { $pull: { children: user._id } });
+            }
             if (user.role === 'teacher') await TeacherProfile.findOneAndDelete({ user: user._id });
             if (user.role === 'parent') await ParentProfile.findOneAndDelete({ user: user._id });
-            
+
             // Delete user document
             await User.findByIdAndDelete(req.params.id);
             req.flash('success', 'User deleted successfully.');
@@ -466,10 +469,13 @@ const postBulkDeleteUsers = async (req, res) => {
                     continue;
                 }
                 
-                if (user.role === 'student') await StudentProfile.findOneAndDelete({ user: user._id });
+                if (user.role === 'student') {
+                    await StudentProfile.findOneAndDelete({ user: user._id });
+                    await ParentProfile.updateMany({ children: user._id }, { $pull: { children: user._id } });
+                }
                 if (user.role === 'teacher') await TeacherProfile.findOneAndDelete({ user: user._id });
                 if (user.role === 'parent') await ParentProfile.findOneAndDelete({ user: user._id });
-                
+
                 await User.findByIdAndDelete(id);
                 deleteCount++;
             }

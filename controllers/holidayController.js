@@ -884,17 +884,18 @@ const parentGetHolidays = async (req, res) => {
         const schoolId = req.session.schoolId;
         const userId   = req.session.userId;
 
-        const childProfile = await StudentProfile.findOne({ parent: userId }).select('currentSection');
-        let myClassId = null;
-
-        if (childProfile?.currentSection) {
-            const section = await ClassSection.findById(childProfile.currentSection).select('class');
-            if (section) myClassId = section.class.toString();
+        const childProfiles = await StudentProfile.find({ parent: userId }).select('currentSection');
+        const classIds = [];
+        for (const cp of childProfiles) {
+            if (cp.currentSection) {
+                const section = await ClassSection.findById(cp.currentSection).select('class');
+                if (section) classIds.push(section.class.toString());
+            }
         }
 
         const orConditions = [{ 'applicability.scope': 'all' }];
-        if (myClassId) {
-            orConditions.push({ 'applicability.scope': 'specific_classes', 'applicability.classes': myClassId });
+        if (classIds.length > 0) {
+            orConditions.push({ 'applicability.scope': 'specific_classes', 'applicability.classes': { $in: classIds } });
         }
 
         const holidays = await Holiday.find({ school: schoolId, $or: orConditions })

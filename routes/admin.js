@@ -29,6 +29,7 @@ router.get('/teachers/template', guard, ctrl.downloadTeacherTemplate);
 router.post('/teachers/:id/delete', guard, ctrl.deleteUser);
 
 router.get('/students', guard, ctrl.getStudents);
+router.get('/students/parent-lookup', guard, ctrl.getParentLookup);
 router.get('/students/create', guard, ctrl.getCreateStudent);
 router.post('/students/create', guard, ctrl.postCreateStudent);
 router.post('/students/bulk', guard, upload.single('excelFile'), ctrl.postBulkStudents);
