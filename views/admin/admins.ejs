@@ -31,7 +31,7 @@
                 <a href="/admin/admins/create" class="btn btn-primary">➕ Add First Co-Admin</a>
             </div>
             <% } else { %>
-                <form action="/admin/users/bulk-delete" method="POST" id="bulkDeleteForm" onsubmit="return confirm('Delete selected admins? This action cannot be undone.')">
+                <form action="/admin/users/bulk-delete" method="POST" id="bulkDeleteForm" data-confirm-submit="Delete selected admins? This action cannot be undone." data-confirm-title="Delete Admins">
                 <input type="hidden" name="returnUrl" value="/admin/admins">
                 <div style="margin-bottom: 15px;">
                     <button type="submit" class="btn btn-danger btn-sm" id="bulkDeleteBtn" disabled>🗑️ Delete Selected (<span id="selectedCount">0</span>)</button>
@@ -89,7 +89,7 @@
                                     <% if (admin.role !== 'super_admin') { %>
                                         <a href="/admin/users/<%= admin._id %>/edit" class="btn btn-primary btn-sm">✎ Edit</a>
                                     <% } %>
-                                    <button type="submit" formaction="/admin/admins/<%= admin._id %>/delete" class="btn btn-danger btn-sm" onclick="return confirm('Delete this admin? This cannot be undone.')">🗑️ Delete</button>
+                                    <button type="submit" formaction="/admin/admins/<%= admin._id %>/delete" class="btn btn-danger btn-sm" data-confirm="Delete this admin? This cannot be undone." data-confirm-title="Delete Admin" data-confirm-type="danger">🗑️ Delete</button>
                                 </td>
                             </tr>
                             <% }) %>

@@ -124,7 +124,11 @@
         <div style="display:flex; gap:10px; margin-bottom:16px;">
             <form method="POST" action="/teacher/results/validation/<%= exam._id %>/approve" style="display:inline;">
                 <input type="text" name="notes" class="form-control" style="display:inline-block; width:260px; margin-right:8px;" placeholder="Approval notes (optional)" />
-                <button type="submit" class="btn btn-primary" onclick="return confirm('Approve all marks and send for Admin final approval?')">
+                <button type="submit" class="btn btn-primary"
+                    data-confirm="Approve all marks and send for Admin final approval?"
+                    data-confirm-title="Approve Marks"
+                    data-confirm-type="warning"
+                    data-confirm-ok="Approve">
                     Approve Marks
                 </button>
             </form>

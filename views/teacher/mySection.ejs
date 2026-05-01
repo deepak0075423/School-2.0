@@ -111,7 +111,8 @@
                                                     </small>
                                                 </div>
                                                 <form action="/teacher/announcements/<%= a._id %>/delete" method="POST"
-                                                    onsubmit="return confirm('Delete this announcement?')">
+                                                    data-confirm-submit="Delete this announcement?"
+                                                    data-confirm-title="Delete Announcement">
                                                     <button type="submit" class="btn btn-danger btn-sm">🗑️</button>
                                                 </form>
                                             </div>
@@ -167,7 +168,8 @@
                                                             </td>
                                                             <td>
                                                                 <form action="/teacher/monitors/remove" method="POST"
-                                                                    onsubmit="return confirm('Remove monitor?')">
+                                                                    data-confirm-submit="Remove this student as monitor?"
+                                                                    data-confirm-title="Remove Monitor">
                                                                     <input type="hidden" name="sectionId"
                                                                         value="<%= section._id %>">
                                                                     <input type="hidden" name="studentId"

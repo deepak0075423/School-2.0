@@ -81,7 +81,10 @@
                 <% if (!structure.demandGenerated && structure.isActive && studentCount > 0) { %>
                 <form method="POST" action="/fees/admin/fee-structures/<%= structure._id %>/generate-demand">
                     <button type="submit" class="btn btn-primary btn-block"
-                        onclick="return confirm('Generate fee demand for all <%= studentCount %> students in this scope? This will create ledger debit entries.')">
+                        data-confirm="Generate fee demand for all <%= studentCount %> students? This will create ledger debit entries."
+                        data-confirm-title="Generate Fee Demand"
+                        data-confirm-type="warning"
+                        data-confirm-ok="Generate">
                         📋 Generate Fee Demand (<%= studentCount %> students)
                     </button>
                 </form>
@@ -90,7 +93,8 @@
                 <% } %>
                 <form method="POST" action="/fees/admin/fee-structures/<%= structure._id %>/toggle">
                     <button type="submit" class="btn btn-block <%= structure.isActive ? 'btn-warning' : 'btn-success' %>"
-                        onclick="return confirm('<%= structure.isActive ? 'Deactivate' : 'Activate' %> this structure?')">
+                        data-confirm="<%= structure.isActive ? 'Deactivate' : 'Activate' %> this structure?"
+                        data-confirm-title="<%= structure.isActive ? 'Deactivate' : 'Activate' %> Structure">
                         <%= structure.isActive ? '🔒 Deactivate' : '✅ Activate' %>
                     </button>
                 </form>

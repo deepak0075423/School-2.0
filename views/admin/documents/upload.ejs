@@ -258,7 +258,7 @@ document.getElementById('uploadForm').addEventListener('submit', function (e) {
         const checked = document.querySelectorAll('input[name="targetClasses"]:checked').length;
         if (!checked) {
             e.preventDefault();
-            alert('Please select at least one class.');
+            showGlobalAlert('Please select at least one class.', 'Validation Error', 'warning');
             return;
         }
     }
@@ -266,7 +266,7 @@ document.getElementById('uploadForm').addEventListener('submit', function (e) {
         const checked = document.querySelectorAll('input[name="targetSections"]:checked').length;
         if (!checked) {
             e.preventDefault();
-            alert('Please select at least one section.');
+            showGlobalAlert('Please select at least one section.', 'Validation Error', 'warning');
             return;
         }
     }
@@ -274,7 +274,7 @@ document.getElementById('uploadForm').addEventListener('submit', function (e) {
         const checked = document.querySelectorAll('input[name="targetUsers"]:checked').length;
         if (!checked) {
             e.preventDefault();
-            alert('Please select at least one teacher.');
+            showGlobalAlert('Please select at least one teacher.', 'Validation Error', 'warning');
             return;
         }
     }

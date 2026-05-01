@@ -100,7 +100,8 @@
                             <button onclick="toggleReason('<%= app._id %>')" class="btn btn-sm btn-secondary">Details</button>
                             <% if (app.status === 'pending' || app.status === 'modification_requested') { %>
                             <form method="POST" action="/teacher/leave/<%= app._id %>/cancel"
-                                  onsubmit="return confirm('Cancel this leave application?')">
+                                  data-confirm-submit="Cancel this leave application?"
+                                  data-confirm-title="Cancel Leave">
                                 <button type="submit" class="btn btn-sm btn-danger">Cancel</button>
                             </form>
                             <% } %>

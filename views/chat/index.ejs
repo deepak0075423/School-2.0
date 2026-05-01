@@ -973,9 +973,10 @@ function startEdit(msgId, currentContent) {
     ta.addEventListener('keydown', onKey);
 }
 
-async function deleteMsg(id) {
-    if (!confirm('Delete this message?')) return;
-    socket && socket.emit('chat:delete', { messageId: id });
+function deleteMsg(id) {
+    showGlobalConfirm('Delete this message?', 'Delete Message', function() {
+        socket && socket.emit('chat:delete', { messageId: id });
+    });
 }
 
 /* ════ Infinite scroll ══════════════════════════════════════════════════════ */
@@ -1098,11 +1099,13 @@ async function openMembersModal() {
     } catch { toast('Failed to load members', '#f85149'); }
 }
 
-async function removeMember(userId) {
-    if (!confirm('Remove this member?')) return;
-    const r = await api(`/chat/group/${activeChatId}/member/${userId}`, 'DELETE');
-    if (r.success) { closeModal('membersModal'); openMembersModal(); }
-    else toast('⚠️ ' + r.message, '#f85149');
+function removeMember(userId) {
+    showGlobalConfirm('Remove this member from the group?', 'Remove Member', function() {
+        api(`/chat/group/${activeChatId}/member/${userId}`, 'DELETE').then(function(r) {
+            if (r.success) { closeModal('membersModal'); openMembersModal(); }
+            else toast('⚠️ ' + r.message, '#f85149');
+        });
+    });
 }
 
 async function updateReadonly(checked) {

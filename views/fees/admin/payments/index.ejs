@@ -48,7 +48,10 @@ const pendingPayments = payments.filter(p => p.paymentStatus === 'pending');
             </div>
             <div style="display:flex;gap:8px;align-items:center;">
                 <form method="POST" action="/fees/admin/payments/<%= p._id %>/approve"
-                    onsubmit="return confirm('Approve ₹<%= (p.amount||0).toLocaleString('en-IN') %> payment for <%= (p.student?.name||'this student').replace(/'/g,'') %>?')">
+                    data-confirm-submit="Approve ₹<%= (p.amount||0).toLocaleString('en-IN') %> payment for <%= (p.student?.name||'this student').replace(/'/g,'') %>?"
+                    data-confirm-title="Approve Payment"
+                    data-confirm-type="warning"
+                    data-confirm-ok="Approve">
                     <button type="submit" class="btn btn-primary btn-sm" style="background:#16a34a;border-color:#16a34a;">
                         ✅ Approve
                     </button>
@@ -143,7 +146,10 @@ const pendingPayments = payments.filter(p => p.paymentStatus === 'pending');
                         <div style="display:flex;gap:6px;flex-wrap:wrap;">
                             <% if (p.paymentStatus === 'pending') { %>
                             <form method="POST" action="/fees/admin/payments/<%= p._id %>/approve" style="display:inline;"
-                                onsubmit="return confirm('Approve this payment?')">
+                                data-confirm-submit="Approve this payment?"
+                                data-confirm-title="Approve Payment"
+                                data-confirm-type="warning"
+                                data-confirm-ok="Approve">
                                 <button type="submit" class="btn btn-sm" style="background:#16a34a;color:#fff;border:none;padding:4px 10px;border-radius:4px;cursor:pointer;font-size:0.75rem;">✅ Approve</button>
                             </form>
                             <% } else if (p.paymentStatus === 'completed') { %>

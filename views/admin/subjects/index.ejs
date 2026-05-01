@@ -95,7 +95,7 @@
                                             <a href="/admin/subjects/<%= s._id %>/edit" class="btn btn-secondary btn-sm">✏️ Edit</a>
                                             <form action="/admin/subjects/<%= s._id %>/delete" method="POST"
                                                 style="display:inline;"
-                                                onsubmit="return confirm('Delete subject: <%= s.subjectName %>?')">
+                                                data-confirm-submit="Delete subject: <%= s.subjectName %>?" data-confirm-title="Delete Subject">
                                                 <button type="submit" class="btn btn-danger btn-sm">🗑️ Delete</button>
                                             </form>
                                         </td>

@@ -54,7 +54,7 @@
                                 <td>
                                     <form action="/super-admin/schools/<%= school._id %>/delete" method="POST"
                                         style="display:inline;"
-                                        onsubmit="return confirm('Delete school: <%= school.name %>?')">
+                                        data-confirm-submit="Delete school: <%= school.name %>?" data-confirm-title="Delete School">
                                         <button type="submit" class="btn btn-danger btn-sm">🗑️ Delete</button>
                                     </form>
                                 </td>

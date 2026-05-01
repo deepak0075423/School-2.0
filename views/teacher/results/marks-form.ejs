@@ -123,7 +123,7 @@ function saveMarks(submit) {
         }
     });
     if (!valid) {
-        alert('Some marks exceed the maximum allowed. Please correct them before saving.');
+        showGlobalAlert('Some marks exceed the maximum allowed. Please correct them before saving.', 'Validation Error', 'warning');
         return;
     }
     document.getElementById('submitFlag').value = submit;

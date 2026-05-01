@@ -51,7 +51,8 @@
                             <a href="/fees/admin/concessions/<%= c._id %>/edit" class="btn btn-secondary btn-sm">Edit</a>
                             <form method="POST" action="/fees/admin/concessions/<%= c._id %>/toggle" style="display:inline;">
                                 <button type="submit" class="btn btn-sm <%= c.isActive ? 'btn-warning' : 'btn-success' %>"
-                                    onclick="return confirm('<%= c.isActive ? 'Deactivate' : 'Activate' %> this template?')">
+                                    data-confirm="<%= c.isActive ? 'Deactivate' : 'Activate' %> this template?"
+                                    data-confirm-title="<%= c.isActive ? 'Deactivate' : 'Activate' %> Concession">
                                     <%= c.isActive ? 'Deactivate' : 'Activate' %>
                                 </button>
                             </form>

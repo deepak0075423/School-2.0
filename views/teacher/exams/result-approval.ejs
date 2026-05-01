@@ -104,7 +104,10 @@
                 <form action="/teacher/exams/<%= exam._id %>/subject-approve" method="POST">
                     <input type="hidden" name="action" value="approve">
                     <button type="submit" class="btn btn-primary" style="width:100%;"
-                        onclick="return confirm('Approve results and forward to class teacher?');">
+                        data-confirm="Approve results and forward to class teacher?"
+                        data-confirm-title="Approve Results"
+                        data-confirm-type="warning"
+                        data-confirm-ok="Approve">
                         ✅ Approve Results
                     </button>
                 </form>
@@ -121,7 +124,9 @@
                         <textarea name="rejectionReason" class="form-control" rows="3" placeholder="Optional reason…"></textarea>
                     </div>
                     <button type="submit" class="btn btn-secondary" style="width:100%; color:#ef4444;"
-                        onclick="return confirm('Reject these results?');">
+                        data-confirm="Reject these results?"
+                        data-confirm-title="Reject Results"
+                        data-confirm-ok="Reject">
                         ❌ Reject
                     </button>
                 </form>
@@ -147,7 +152,9 @@
                         <textarea name="rejectionReason" class="form-control" rows="2" placeholder="Why are you rescinding…"></textarea>
                     </div>
                     <button type="submit" class="btn btn-secondary" style="width:100%; color:#ef4444;"
-                        onclick="return confirm('Rescind your approval?');">
+                        data-confirm="Rescind your approval?"
+                        data-confirm-title="Rescind Approval"
+                        data-confirm-ok="Rescind">
                         ↩ Rescind Approval
                     </button>
                 </form>
@@ -168,7 +175,10 @@
                 <form action="/teacher/exams/<%= exam._id %>/subject-approve" method="POST">
                     <input type="hidden" name="action" value="approve">
                     <button type="submit" class="btn btn-primary" style="width:100%;"
-                        onclick="return confirm('Re-approve results?');">
+                        data-confirm="Re-approve results?"
+                        data-confirm-title="Re-approve Results"
+                        data-confirm-type="warning"
+                        data-confirm-ok="Re-approve">
                         ✅ Re-approve Results
                     </button>
                 </form>
@@ -189,7 +199,10 @@
                         <small style="color:var(--text-muted); font-size:11px;">Students and parents can view results on or after this date.</small>
                     </div>
                     <button type="submit" class="btn btn-primary" style="width:100%;"
-                        onclick="return confirm('Approve and publish results on the selected date?');">
+                        data-confirm="Approve and publish results on the selected date?"
+                        data-confirm-title="Approve & Publish"
+                        data-confirm-type="warning"
+                        data-confirm-ok="Approve">
                         ✅ Approve & Set Publish Date
                     </button>
                 </form>
@@ -206,7 +219,9 @@
                         <textarea name="rejectionReason" class="form-control" rows="3" placeholder="Optional reason…"></textarea>
                     </div>
                     <button type="submit" class="btn btn-secondary" style="width:100%; color:#ef4444;"
-                        onclick="return confirm('Reject these results?');">
+                        data-confirm="Reject these results?"
+                        data-confirm-title="Reject Results"
+                        data-confirm-ok="Reject">
                         ❌ Reject Results
                     </button>
                 </form>

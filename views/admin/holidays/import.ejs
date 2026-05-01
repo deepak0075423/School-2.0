@@ -136,7 +136,7 @@ function handleFileSelect(input) {
 function applyFile(file) {
     const allowed = /\.(csv|xlsx|xls)$/i;
     if (!allowed.test(file.name)) {
-        alert('Only .csv, .xlsx, and .xls files are supported.');
+        showGlobalAlert('Only .csv, .xlsx, and .xls files are supported.', 'Invalid File', 'warning');
         return;
     }
     document.getElementById('fileName').textContent = file.name;

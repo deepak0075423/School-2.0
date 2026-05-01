@@ -34,7 +34,7 @@
                     <input type="hidden" name="module" value="<%= mod.key %>">
                     <button type="submit" name="action" value="enable-all"
                         class="btn btn-primary" style="width:100%; padding:6px; font-size:12px;"
-                        onclick="return confirm('Enable <%= mod.label %> for ALL schools?')">
+                        data-confirm="Enable <%= mod.label %> for ALL schools?" data-confirm-title="Enable Module">
                         ✅ Enable All
                     </button>
                 </form>
@@ -42,7 +42,7 @@
                     <input type="hidden" name="module" value="<%= mod.key %>">
                     <button type="submit" name="action" value="disable-all"
                         class="btn btn-secondary" style="width:100%; padding:6px; font-size:12px; border-color:#ef4444; color:#ef4444;"
-                        onclick="return confirm('Disable <%= mod.label %> for ALL schools?')">
+                        data-confirm="Disable <%= mod.label %> for ALL schools?" data-confirm-title="Disable Module" data-confirm-type="danger">
                         ❌ Disable All
                     </button>
                 </form>

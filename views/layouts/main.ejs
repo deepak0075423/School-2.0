@@ -671,7 +671,7 @@
                 <a href="/profile" class="nav-item" style="margin-top:16px;">
                     <span class="nav-icon">👤</span> My Profile
                 </a>
-                <a href="/auth/logout" class="nav-item" style="margin-top:8px; color: #ef4444;">
+                <a href="/auth/logout" class="nav-item" style="margin-top:4px; color: #f87171;">
                     <span class="nav-icon">🚪</span> Logout
                 </a>
             </div>
@@ -1085,6 +1085,174 @@
     }
     </style>
     <% } %>
+
+    <!-- ══════════════════════════════════════════════════════════
+         GLOBAL CONFIRM MODAL
+    ══════════════════════════════════════════════════════════ -->
+    <div id="gConfirmModal" class="gmodal-overlay" style="display:none">
+        <div class="gmodal">
+            <div class="gmodal-icon-wrap danger" id="gconfirm-icon-wrap">
+                <span id="gconfirm-icon">🗑️</span>
+            </div>
+            <h3 class="gmodal-title" id="gconfirm-title">Confirm Action</h3>
+            <p class="gmodal-body" id="gconfirm-body">Are you sure?</p>
+            <div class="gmodal-footer">
+                <button class="btn btn-secondary" id="gconfirm-cancel">Cancel</button>
+                <button class="btn btn-danger"    id="gconfirm-ok">Confirm</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ══════════════════════════════════════════════════════════
+         GLOBAL ALERT MODAL
+    ══════════════════════════════════════════════════════════ -->
+    <div id="gAlertModal" class="gmodal-overlay" style="display:none">
+        <div class="gmodal">
+            <div class="gmodal-icon-wrap info" id="galert-icon-wrap">
+                <span id="galert-icon">ℹ️</span>
+            </div>
+            <h3 class="gmodal-title" id="galert-title">Notice</h3>
+            <p class="gmodal-body" id="galert-body"></p>
+            <div class="gmodal-footer">
+                <button class="btn btn-primary" id="galert-ok">OK</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+    /* ════════════════════════════════════════════════════════════
+       GLOBAL MODAL SYSTEM
+    ════════════════════════════════════════════════════════════ */
+    (function () {
+        var _confirmCb = null;
+
+        function showModal(id) {
+            var el = document.getElementById(id);
+            el.style.display = 'flex';
+            el.classList.add('is-visible');
+        }
+        function hideModal(id) {
+            var el = document.getElementById(id);
+            el.style.display = 'none';
+            el.classList.remove('is-visible');
+        }
+
+        /* Public API */
+        window.showGlobalConfirm = function (message, title, onOk, opts) {
+            opts = opts || {};
+            var type   = opts.type   || 'danger';
+            var icon   = opts.icon   || (type === 'danger' ? '🗑️' : type === 'warning' ? '⚠️' : 'ℹ️');
+            var okText = opts.okText || 'Confirm';
+
+            document.getElementById('gconfirm-title').textContent = title || 'Confirm Action';
+            document.getElementById('gconfirm-body').textContent  = message || 'Are you sure?';
+            document.getElementById('gconfirm-icon').textContent  = icon;
+            document.getElementById('gconfirm-icon-wrap').className = 'gmodal-icon-wrap ' + type;
+
+            var okBtn = document.getElementById('gconfirm-ok');
+            okBtn.textContent  = okText;
+            okBtn.className    = 'btn btn-' + (type === 'danger' ? 'danger' : type === 'warning' ? 'warning' : 'primary');
+
+            _confirmCb = onOk;
+            showModal('gConfirmModal');
+            setTimeout(function () { okBtn.focus(); }, 80);
+        };
+
+        window.showGlobalAlert = function (message, title, type) {
+            type = type || 'info';
+            var icons = { danger: '❌', warning: '⚠️', success: '✅', info: 'ℹ️' };
+            document.getElementById('galert-title').textContent          = title || 'Notice';
+            document.getElementById('galert-body').textContent           = message;
+            document.getElementById('galert-icon').textContent           = icons[type] || 'ℹ️';
+            document.getElementById('galert-icon-wrap').className        = 'gmodal-icon-wrap ' + type;
+            showModal('gAlertModal');
+        };
+
+        /* Wire buttons after DOM ready */
+        document.addEventListener('DOMContentLoaded', function () {
+            document.getElementById('gconfirm-ok').addEventListener('click', function () {
+                hideModal('gConfirmModal');
+                if (_confirmCb) { var cb = _confirmCb; _confirmCb = null; cb(); }
+            });
+            document.getElementById('gconfirm-cancel').addEventListener('click', function () {
+                hideModal('gConfirmModal'); _confirmCb = null;
+            });
+            document.getElementById('galert-ok').addEventListener('click', function () {
+                hideModal('gAlertModal');
+            });
+            document.getElementById('gConfirmModal').addEventListener('click', function (e) {
+                if (e.target === this) { hideModal('gConfirmModal'); _confirmCb = null; }
+            });
+            document.getElementById('gAlertModal').addEventListener('click', function (e) {
+                if (e.target === this) hideModal('gAlertModal');
+            });
+        });
+
+        /* Escape key closes modals */
+        document.addEventListener('keydown', function (e) {
+            if (e.key !== 'Escape') return;
+            hideModal('gConfirmModal'); _confirmCb = null;
+            hideModal('gAlertModal');
+        });
+
+        /* ── data-confirm on buttons ─────────────────────────────
+           Usage: data-confirm="Are you sure?" data-confirm-title="Delete"
+                  data-confirm-type="danger"   data-confirm-ok="Delete"
+        ─────────────────────────────────────────────────────── */
+        document.addEventListener('click', function (e) {
+            var btn = e.target.closest('[data-confirm]');
+            if (!btn || btn.hasAttribute('data-confirm-skip')) return;
+
+            e.preventDefault();
+            e.stopImmediatePropagation();
+
+            var msg   = btn.dataset.confirm;
+            var title = btn.dataset.confirmTitle || 'Confirm Action';
+            var type  = btn.dataset.confirmType  || 'danger';
+            var icon  = btn.dataset.confirmIcon  || undefined;
+            var okTxt = btn.dataset.confirmOk    || 'Confirm';
+
+            showGlobalConfirm(msg, title, function () {
+                btn.setAttribute('data-confirm-skip', '');
+                btn.click();
+            }, { type: type, icon: icon, okText: okTxt });
+        }, true);
+
+        /* ── data-confirm-submit on forms ────────────────────────
+           Usage: data-confirm-submit="Message"
+                  data-confirm-submitter="btnId"  (optional – only fires for that button)
+        ─────────────────────────────────────────────────────── */
+        document.addEventListener('submit', function (e) {
+            var form = e.target;
+            var msg  = form.dataset.confirmSubmit;
+            if (!msg) return;
+
+            /* Skip if submitter already went through data-confirm */
+            if (e.submitter && e.submitter.hasAttribute('data-confirm-skip')) return;
+
+            /* Optional: only confirm for a specific submitter button */
+            var onlyFor = form.dataset.confirmSubmitter;
+            if (onlyFor && (!e.submitter || e.submitter.id !== onlyFor)) return;
+
+            e.preventDefault();
+
+            var submitter = e.submitter;
+            var title     = form.dataset.confirmTitle || 'Confirm Action';
+            var type      = form.dataset.confirmType  || 'danger';
+
+            showGlobalConfirm(msg, title, function () {
+                form.removeAttribute('data-confirm-submit');
+                try {
+                    if (submitter && submitter.type === 'submit') {
+                        form.requestSubmit(submitter);
+                    } else {
+                        form.submit();
+                    }
+                } catch (_) { form.submit(); }
+            }, { type: type });
+        }, true);
+    })();
+    </script>
 </body>
 
 </html>

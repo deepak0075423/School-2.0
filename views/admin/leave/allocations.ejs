@@ -4,7 +4,7 @@
         <p class="text-muted">Assign leave quotas to teachers — Academic Year: <strong><%= academicYear %></strong></p>
     </div>
     <form method="POST" action="/admin/leave/allocations/carry-forward"
-          onsubmit="return confirm('Run year-end carry-forward?\n\nThis will copy unused leave days from <%= previousYear %> into <%= academicYear %> for all leave types that have carry-forward enabled.\n\nExisting carry-forward values for <%= academicYear %> will be overwritten.')">
+          data-confirm-submit="Run year-end carry-forward? This will copy unused leave days from <%= previousYear %> into <%= academicYear %> for all leave types that have carry-forward enabled. Existing carry-forward values for <%= academicYear %> will be overwritten." data-confirm-title="Run Carry Forward">
         <button type="submit" class="btn btn-secondary">
             ↩ Run Carry Forward (<%= previousYear %> → <%= academicYear %>)
         </button>
@@ -120,7 +120,7 @@
                         <input type="file" name="excelFile" class="form-control" accept=".xlsx,.xls" required />
                     </div>
                     <button type="submit" class="btn btn-primary" style="width:100%;"
-                            onclick="return confirm('Import allocations from Excel? Existing entries will be overwritten.')">
+                            data-confirm="Import allocations from Excel? Existing entries will be overwritten." data-confirm-title="Import Allocations">
                         Import from Excel
                     </button>
                 </form>
@@ -151,7 +151,7 @@
                         <input type="number" name="totalDays" class="form-control" required min="0" step="0.5" placeholder="12" />
                     </div>
                     <button type="submit" class="btn btn-secondary" style="width:100%;"
-                            onclick="return confirm('Bulk-allocate to ALL active teachers? Existing allocations will be overwritten.')">
+                            data-confirm="Bulk-allocate to ALL active teachers? Existing allocations will be overwritten." data-confirm-title="Bulk Allocate">
                         Bulk Allocate All Teachers
                     </button>
                 </form>

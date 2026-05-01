@@ -100,7 +100,11 @@
                         <% } else if (available) { %>
                         <span class="text-muted" style="font-size:12px;">Visit library to issue</span>
                         <% } else { %>
-                        <form action="/library/student/books/<%= book._id %>/reserve" method="POST" style="display:inline" onsubmit="return confirm('Join the reservation queue for this book?')">
+                        <form action="/library/student/books/<%= book._id %>/reserve" method="POST" style="display:inline"
+                            data-confirm-submit="Join the reservation queue for this book?"
+                            data-confirm-title="Reserve Book"
+                            data-confirm-type="info"
+                            data-confirm-ok="Reserve">
                             <button type="submit" class="btn btn-sm btn-primary">Reserve</button>
                         </form>
                         <% } %>

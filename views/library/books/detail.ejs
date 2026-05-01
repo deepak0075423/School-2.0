@@ -6,7 +6,9 @@
     <div style="display:flex; gap:8px; flex-wrap:wrap;">
         <a href="/library/issue?bookId=<%= book._id %>" class="btn btn-primary">📖 Issue This Book</a>
         <a href="/library/books/<%= book._id %>/edit" class="btn btn-secondary">✎ Edit</a>
-        <form action="/library/books/<%= book._id %>/delete" method="POST" style="display:inline" onsubmit="return confirm('Delete this book and all its copies?')">
+        <form action="/library/books/<%= book._id %>/delete" method="POST" style="display:inline"
+            data-confirm-submit="Delete this book and all its copies? This cannot be undone."
+            data-confirm-title="Delete Book">
             <button type="submit" class="btn btn-danger">🗑️ Delete</button>
         </form>
     </div>
@@ -107,11 +109,16 @@
                     <td>
                         <button class="btn btn-sm btn-secondary" onclick="toggleEditCopy('<%= copy._id %>')">✎ Edit</button>
                         <% if (copy.status === 'available') { %>
-                        <form action="/library/books/<%= book._id %>/copies/<%= copy._id %>/mark-status" method="POST" style="display:inline" onsubmit="return confirm('Mark this copy as lost?')">
+                        <form action="/library/books/<%= book._id %>/copies/<%= copy._id %>/mark-status" method="POST" style="display:inline"
+                            data-confirm-submit="Mark this copy as lost?"
+                            data-confirm-title="Mark as Lost">
                             <input type="hidden" name="status" value="lost" />
                             <button type="submit" class="btn btn-sm btn-danger">Lost</button>
                         </form>
-                        <form action="/library/books/<%= book._id %>/copies/<%= copy._id %>/mark-status" method="POST" style="display:inline" onsubmit="return confirm('Mark this copy as damaged?')">
+                        <form action="/library/books/<%= book._id %>/copies/<%= copy._id %>/mark-status" method="POST" style="display:inline"
+                            data-confirm-submit="Mark this copy as damaged?"
+                            data-confirm-title="Mark as Damaged"
+                            data-confirm-type="warning">
                             <input type="hidden" name="status" value="damaged" />
                             <button type="submit" class="btn btn-sm btn-warning">Damaged</button>
                         </form>
@@ -199,7 +206,9 @@
                             <button type="submit" class="btn btn-sm btn-success">Mark Ready</button>
                         </form>
                         <% } %>
-                        <form action="/library/reservations/<%= r._id %>/cancel" method="POST" style="display:inline" onsubmit="return confirm('Cancel this reservation?')">
+                        <form action="/library/reservations/<%= r._id %>/cancel" method="POST" style="display:inline"
+                            data-confirm-submit="Cancel this reservation?"
+                            data-confirm-title="Cancel Reservation">
                             <button type="submit" class="btn btn-sm btn-danger">Cancel</button>
                         </form>
                     </td>

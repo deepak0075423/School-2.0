@@ -34,7 +34,7 @@
         <form method="POST" action="/admin/documents/<%= doc._id %>/archive" style="display:inline;">
             <button class="btn btn-secondary"><%= doc.isArchived ? 'Restore' : 'Archive' %></button>
         </form>
-        <form method="POST" action="/admin/documents/<%= doc._id %>/delete" style="display:inline;" onsubmit="return confirm('Permanently delete this document?')">
+        <form method="POST" action="/admin/documents/<%= doc._id %>/delete" style="display:inline;" data-confirm-submit="Permanently delete this document?" data-confirm-title="Delete Document" data-confirm-type="danger">
             <button class="btn btn-danger">Delete</button>
         </form>
         <a href="/admin/documents" class="btn btn-secondary">← Back</a>
@@ -177,7 +177,7 @@
                     <td style="font-size:12px;"><%= new Date(v.createdAt).toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'}) %></td>
                     <td>
                         <% if (v.versionNumber !== doc.currentVersion) { %>
-                        <form method="POST" action="/admin/documents/<%= doc._id %>/versions/<%= v._id %>/restore" onsubmit="return confirm('Restore version <%= v.versionNumber %>?')">
+                        <form method="POST" action="/admin/documents/<%= doc._id %>/versions/<%= v._id %>/restore" data-confirm-submit="Restore version <%= v.versionNumber %>?" data-confirm-title="Restore Version">
                             <button class="btn btn-sm btn-secondary">Restore</button>
                         </form>
                         <% } %>
@@ -365,15 +365,15 @@ if (editTargetType) {
         const type = editTargetType.value;
         if (type === 'class') {
             const checked = this.querySelectorAll('input[name="targetClasses"]:checked').length;
-            if (!checked) { e.preventDefault(); alert('Please select at least one class.'); return; }
+            if (!checked) { e.preventDefault(); showGlobalAlert('Please select at least one class.', 'Validation Error', 'warning'); return; }
         }
         if (type === 'class_sections') {
             const checked = this.querySelectorAll('input[name="targetSections"]:checked').length;
-            if (!checked) { e.preventDefault(); alert('Please select at least one section.'); return; }
+            if (!checked) { e.preventDefault(); showGlobalAlert('Please select at least one section.', 'Validation Error', 'warning'); return; }
         }
         if (type === 'specific_teachers') {
             const checked = this.querySelectorAll('input[name="targetUsers"]:checked').length;
-            if (!checked) { e.preventDefault(); alert('Please select at least one teacher.'); return; }
+            if (!checked) { e.preventDefault(); showGlobalAlert('Please select at least one teacher.', 'Validation Error', 'warning'); return; }
         }
     });
 }

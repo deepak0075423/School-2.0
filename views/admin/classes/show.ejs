@@ -137,7 +137,7 @@
                                                         class="btn btn-secondary btn-sm">👁 View</a>
                                                     <form action="/admin/sections/<%= sec._id %>/delete" method="POST"
                                                         style="display:inline;"
-                                                        onsubmit="return confirm('Delete section <%= sec.sectionName %>?')">
+                                                        data-confirm-submit="Delete section <%= sec.sectionName %>?" data-confirm-title="Delete Section">
                                                         <button class="btn btn-danger btn-sm">🗑️</button>
                                                     </form>
                                                 </td>

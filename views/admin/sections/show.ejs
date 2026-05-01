@@ -180,7 +180,7 @@
                                         <td>
                                             <form action="/admin/sections/<%= section._id %>/remove-student"
                                                 method="POST" style="display:inline;"
-                                                onsubmit="return confirm('Remove <%= p.user?.name %> from this section?')">
+                                                data-confirm-submit="Remove <%= p.user?.name %> from this section?" data-confirm-title="Remove Student">
                                                 <input type="hidden" name="studentId" value="<%= p.user?._id %>">
                                                 <button type="submit" class="btn btn-danger btn-sm">Remove</button>
                                             </form>

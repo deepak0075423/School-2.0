@@ -28,7 +28,7 @@
     <form method="POST" action="/admin/documents/bulk-archive" id="bulkArchiveForm">
         <button type="submit" class="btn btn-sm btn-secondary">Archive Selected</button>
     </form>
-    <form method="POST" action="/admin/documents/bulk-delete" id="bulkDeleteForm" onsubmit="return confirm('Delete selected documents?')">
+    <form method="POST" action="/admin/documents/bulk-delete" id="bulkDeleteForm" data-confirm-submit="Delete selected documents?" data-confirm-title="Delete Documents">
         <button type="submit" class="btn btn-sm btn-danger">Delete Selected</button>
     </form>
 </div>
@@ -120,7 +120,7 @@
                                     <%= doc.isArchived ? 'Restore' : 'Archive' %>
                                 </button>
                             </form>
-                            <form method="POST" action="/admin/documents/<%= doc._id %>/delete" style="display:inline;" onsubmit="return confirm('Delete this document?')">
+                            <form method="POST" action="/admin/documents/<%= doc._id %>/delete" style="display:inline;" data-confirm-submit="Delete this document?" data-confirm-title="Delete Document">
                                 <button type="submit" class="btn btn-sm btn-danger">Delete</button>
                             </form>
                         </div>

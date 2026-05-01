@@ -57,7 +57,8 @@
                             <a href="/payroll/admin/assignments/<%= a._id %>/edit" class="btn btn-secondary btn-sm">Edit</a>
                             <form method="POST" action="/payroll/admin/assignments/<%= a._id %>/deactivate" style="display:inline;">
                                 <button type="submit" class="btn btn-warning btn-sm"
-                                    onclick="return confirm('Deactivate this assignment?')">Deactivate</button>
+                                    data-confirm="Deactivate this assignment?"
+                                    data-confirm-title="Deactivate Assignment">Deactivate</button>
                             </form>
                         </div>
                         <% } else { %>
