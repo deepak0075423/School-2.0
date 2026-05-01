@@ -9,14 +9,18 @@ exports.getLibraryOverview = async (req, res) => {
         const schoolId = req.session.schoolId;
         const parentId = req.session.userId;
 
-        // Find linked child
-        const studentProfile = await StudentProfile.findOne({ school: schoolId, parent: parentId }).populate('user', 'name email');
-        if (!studentProfile || !studentProfile.user) {
+        const allProfiles = await StudentProfile.find({ school: schoolId, parent: parentId })
+            .populate('user', 'name email').lean();
+        const children = allProfiles.filter(p => p.user);
+
+        if (children.length === 0) {
             req.flash('error', 'No linked student found for your account.');
             return res.redirect('/parent/dashboard');
         }
 
-        const childId = studentProfile.user._id;
+        const selectedId = req.query.child || children[0].user._id.toString();
+        const selected = children.find(c => c.user._id.toString() === selectedId) || children[0];
+        const childId = selected.user._id;
 
         const [issuedBooks, reservations, fines] = await Promise.all([
             LibraryIssuance.find({ school: schoolId, issuedTo: childId })
@@ -37,7 +41,9 @@ exports.getLibraryOverview = async (req, res) => {
         res.render('parent/library', {
             title: "Child's Library Activity",
             layout: 'layouts/main',
-            child: studentProfile.user,
+            children,
+            selectedChild: selected.user,
+            child: selected.user,
             issuedBooks,
             reservations,
             fines,

@@ -14,6 +14,7 @@
 .tabs a.active { color:var(--primary); border-bottom-color:var(--primary); }
 .doc-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(280px,1fr)); gap:16px; }
 .doc-card { background:var(--card-bg); border:1px solid var(--border); border-radius:12px; padding:18px; display:flex; flex-direction:column; gap:10px; }
+.for-badge { display:inline-flex; align-items:center; gap:4px; padding:2px 8px; background:#f0f9ff; border:1px solid #bae6fd; border-radius:6px; font-size:11px; color:#0369a1; font-weight:600; }
 </style>
 
 <div class="page-header">
@@ -60,6 +61,7 @@
             <div class="fw-semibold" style="font-size:14px;"><%= doc.title %></div>
             <% if (doc.subject) { %><div class="text-muted" style="font-size:12px;"><%= doc.subject %></div><% } %>
         </div>
+        <span class="for-badge">👤 <%= docTargetMap[doc._id.toString()] || 'Your child' %></span>
         <div class="text-muted" style="font-size:12px;">
             By <%= doc.uploadedBy ? doc.uploadedBy.name : '—' %> ·
             <%= new Date(doc.createdAt).toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'}) %>
@@ -91,6 +93,7 @@
             <div class="fw-semibold" style="font-size:14px;"><%= doc.title %></div>
             <% if (doc.subject) { %><div class="text-muted" style="font-size:12px;"><%= doc.subject %></div><% } %>
         </div>
+        <span class="for-badge">👤 <%= docTargetMap[doc._id.toString()] || 'Your child' %></span>
         <% if (dueDate) { %>
         <div class="text-muted" style="font-size:12px;">
             Due: <%= dueDate.toLocaleString('en-IN',{day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'}) %>

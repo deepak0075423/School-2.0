@@ -3,7 +3,20 @@
         <h1>📊 Exam Results</h1>
         <% if (child) { %><p><%= child.name %>'s published exam results.</p><% } %>
     </div>
+    <a href="/parent/dashboard" class="btn btn-secondary">← Dashboard</a>
 </div>
+
+<% if (children && children.length > 1) { %>
+<div style="display:flex; gap:10px; margin-bottom:20px; flex-wrap:wrap;">
+    <% children.forEach(function(c) { %>
+    <a href="/parent/exams?child=<%= c.user._id %>"
+        class="btn <%= selectedChild && selectedChild._id.toString() === c.user._id.toString() ? 'btn-primary' : 'btn-secondary' %>"
+        style="display:flex; align-items:center; gap:8px;">
+        <span>🎒</span> <%= c.user.name %>
+    </a>
+    <% }) %>
+</div>
+<% } %>
 
 <% if (!child) { %>
 <div class="card">

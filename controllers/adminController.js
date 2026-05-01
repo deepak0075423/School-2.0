@@ -260,6 +260,31 @@ const getCreateStudent = (req, res) => {
     res.render('admin/createStudent', { title: 'Add Student', layout: 'layouts/main' });
 };
 
+const getParentLookup = async (req, res) => {
+    try {
+        const email = (req.query.email || '').toLowerCase().trim();
+        if (!email) return res.json({ found: false });
+
+        const user = await User.findOne({ email, role: 'parent', school: req.session.schoolId });
+        if (!user) return res.json({ found: false });
+
+        const profile = await ParentProfile.findOne({ user: user._id });
+        return res.json({
+            found: true,
+            name: user.name,
+            phone: user.phone || '',
+            relationship: profile ? profile.relationship : 'Guardian',
+            fatherOccupation: profile ? profile.fatherOccupation : '',
+            motherOccupation: profile ? profile.motherOccupation : '',
+            guardianOccupation: profile ? profile.guardianOccupation : '',
+            emergencyContact: profile ? profile.emergencyContact : '',
+            annualIncome: profile ? profile.annualIncome : '',
+        });
+    } catch (err) {
+        res.json({ found: false });
+    }
+};
+
 const postCreateStudent = async (req, res) => {
     try {
         const {
@@ -273,15 +298,10 @@ const postCreateStudent = async (req, res) => {
             return res.redirect('/admin/students/create');
         }
 
-        // Check for existing emails
+        // Check for existing student email
         const existingStudent = await User.findOne({ email: studentEmail.toLowerCase() });
         if (existingStudent) {
             req.flash('error', 'Student email already exists.');
-            return res.redirect('/admin/students/create');
-        }
-        const existingParent = await User.findOne({ email: parentEmail.toLowerCase() });
-        if (existingParent) {
-            req.flash('error', 'Parent email already exists.');
             return res.redirect('/admin/students/create');
         }
 
@@ -295,15 +315,26 @@ const postCreateStudent = async (req, res) => {
             isFirstLogin: true, createdBy: req.session.userId,
         });
 
-        // Create parent
-        const parentTempPass = generatePassword();
-        const parentSalt = await bcrypt.genSalt(12);
-        const parentUser = await User.create({
-            name: parentName, email: parentEmail, phone: parentPhone,
-            role: 'parent', password: await bcrypt.hash(parentTempPass, parentSalt),
-            school: req.session.schoolId,
-            isFirstLogin: true, createdBy: req.session.userId,
-        });
+        // Reuse existing parent account or create a new one
+        let parentUser = await User.findOne({ email: parentEmail.toLowerCase(), role: 'parent' });
+        let parentIsNew = false;
+        let parentTempPass = null;
+        if (!parentUser) {
+            if (await User.findOne({ email: parentEmail.toLowerCase() })) {
+                req.flash('error', 'That email is already registered under a different role (not parent).');
+                await User.deleteOne({ _id: studentUser._id });
+                return res.redirect('/admin/students/create');
+            }
+            parentTempPass = generatePassword();
+            const parentSalt = await bcrypt.genSalt(12);
+            parentUser = await User.create({
+                name: parentName, email: parentEmail, phone: parentPhone,
+                role: 'parent', password: await bcrypt.hash(parentTempPass, parentSalt),
+                school: req.session.schoolId,
+                isFirstLogin: true, createdBy: req.session.userId,
+            });
+            parentIsNew = true;
+        }
 
         // Try to automatically assign section
         let matchedSectionId = null;
@@ -311,13 +342,13 @@ const postCreateStudent = async (req, res) => {
             const AcademicYear = require('../models/AcademicYear');
             const Class = require('../models/Class');
             const ClassSection = require('../models/ClassSection');
-            
+
             const activeYear = await AcademicYear.findOne({ school: req.session.schoolId, status: 'active' });
             if (activeYear) {
                 const parsedNum = parseInt(studentClass);
                 const classQuery = { school: req.session.schoolId, academicYear: activeYear._id, $or: [{ className: new RegExp('^' + studentClass + '$', 'i') }] };
                 if (!isNaN(parsedNum)) classQuery.$or.push({ classNumber: parsedNum });
-                
+
                 const foundClass = await Class.findOne(classQuery);
                 if (foundClass) {
                     const foundSec = await ClassSection.findOne({
@@ -352,7 +383,7 @@ const postCreateStudent = async (req, res) => {
         if (matchedSectionId) {
             const ClassSection = require('../models/ClassSection');
             const StudentSectionHistory = require('../models/StudentSectionHistory');
-            await ClassSection.findByIdAndUpdate(matchedSectionId, { 
+            await ClassSection.findByIdAndUpdate(matchedSectionId, {
                 $inc: { currentCount: 1 },
                 $addToSet: { enrolledStudents: studentUser._id }
             });
@@ -365,17 +396,24 @@ const postCreateStudent = async (req, res) => {
             });
         }
 
-        await ParentProfile.create({
-            user: parentUser._id,
-            school: req.session.schoolId,
-            relationship: parentRelationship || 'Guardian',
-            fatherOccupation: fatherOccupation || '',
-            motherOccupation: motherOccupation || '',
-            guardianOccupation: guardianOccupation || '',
-            emergencyContact: emergencyContact || '',
-            annualIncome: annualIncome || '',
-            children: [studentUser._id],
-        });
+        if (parentIsNew) {
+            await ParentProfile.create({
+                user: parentUser._id,
+                school: req.session.schoolId,
+                relationship: parentRelationship || 'Guardian',
+                fatherOccupation: fatherOccupation || '',
+                motherOccupation: motherOccupation || '',
+                guardianOccupation: guardianOccupation || '',
+                emergencyContact: emergencyContact || '',
+                annualIncome: annualIncome || '',
+                children: [studentUser._id],
+            });
+        } else {
+            await ParentProfile.updateOne(
+                { user: parentUser._id },
+                { $addToSet: { children: studentUser._id } }
+            );
+        }
 
         // Send emails
         await sendWelcomeEmail({
@@ -383,13 +421,18 @@ const postCreateStudent = async (req, res) => {
             tempPassword: studentTempPass, role: 'student',
             schoolName: req.session.schoolName,
         });
-        await sendWelcomeEmail({
-            to: parentEmail, name: parentName, email: parentEmail,
-            tempPassword: parentTempPass, role: 'parent',
-            schoolName: req.session.schoolName,
-        });
+        if (parentIsNew) {
+            await sendWelcomeEmail({
+                to: parentEmail, name: parentName, email: parentEmail,
+                tempPassword: parentTempPass, role: 'parent',
+                schoolName: req.session.schoolName,
+            });
+        }
 
-        req.flash('success', `Student "${studentName}" and Parent "${parentName}" accounts created. Credentials sent!`);
+        const msg = parentIsNew
+            ? `Student "${studentName}" and Parent "${parentName}" accounts created. Credentials sent!`
+            : `Student "${studentName}" created and linked to existing parent account "${parentUser.name}".`;
+        req.flash('success', msg);
         res.redirect('/admin/students');
     } catch (err) {
         console.error(err);
@@ -626,10 +669,13 @@ const deleteUser = async (req, res) => {
             }
             
             // Cascade delete based on role
-            if (user.role === 'student') await StudentProfile.findOneAndDelete({ user: user._id });
+            if (user.role === 'student') {
+                await StudentProfile.findOneAndDelete({ user: user._id });
+                await ParentProfile.updateMany({ children: user._id }, { $pull: { children: user._id } });
+            }
             if (user.role === 'teacher') await TeacherProfile.findOneAndDelete({ user: user._id });
             if (user.role === 'parent') await ParentProfile.findOneAndDelete({ user: user._id });
-            
+
             await User.findByIdAndDelete(req.params.id);
             req.flash('success', 'User deleted successfully.');
         } else {
@@ -666,10 +712,13 @@ const postBulkDeleteUsers = async (req, res) => {
                     continue;
                 }
                 
-                if (user.role === 'student') await StudentProfile.findOneAndDelete({ user: user._id });
+                if (user.role === 'student') {
+                    await StudentProfile.findOneAndDelete({ user: user._id });
+                    await ParentProfile.updateMany({ children: user._id }, { $pull: { children: user._id } });
+                }
                 if (user.role === 'teacher') await TeacherProfile.findOneAndDelete({ user: user._id });
                 if (user.role === 'parent') await ParentProfile.findOneAndDelete({ user: user._id });
-                
+
                 await User.findByIdAndDelete(id);
                 deleteCount++;
             } else {
@@ -852,6 +901,7 @@ module.exports = {
 
     getStudents,
     getCreateStudent,
+    getParentLookup,
     postCreateStudent,
 
     getAdmins,

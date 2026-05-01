@@ -480,13 +480,23 @@ exports.postPayNow = async (req, res) => {
 exports.getParentFeesRedirect = async (req, res) => {
     try {
         const StudentProfile = require('../models/StudentProfile');
-        const profile = await StudentProfile.findOne({ parent: req.session.userId })
-            .populate('user', '_id');
-        if (profile && profile.user) {
-            return res.redirect(`/fees/parent/child/${profile.user._id}/fees`);
+        const children = await StudentProfile.find({ parent: req.session.userId, school: req.session.schoolId })
+            .populate('user', '_id name').lean();
+        const valid = children.filter(c => c.user);
+
+        if (valid.length === 0) {
+            req.flash('error', 'No child linked to your account. Contact the school admin.');
+            return res.redirect('/parent/dashboard');
         }
-        req.flash('error', 'No child linked to your account. Contact the school admin.');
-        res.redirect('/parent/dashboard');
+        if (valid.length === 1) {
+            return res.redirect(`/fees/parent/child/${valid[0].user._id}/fees`);
+        }
+        // Multiple children — show picker
+        res.render('parent/fees-child-select', {
+            title: 'Select Child — Fees',
+            layout: 'layouts/main',
+            children: valid,
+        });
     } catch (err) {
         res.redirect('/parent/dashboard');
     }

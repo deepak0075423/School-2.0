@@ -1,7 +1,7 @@
 <div class="page-header">
     <div>
         <h1>🎒 Add Student</h1>
-        <p>Create student and parent accounts — both will be linked automatically</p>
+        <p>Create a student account and link to a parent — if the parent already has an account, their email will be reused</p>
     </div>
     <a href="/admin/students" class="btn btn-secondary">← Back</a>
 </div>
@@ -112,24 +112,29 @@
             <span class="section-badge">Auto-linked</span>
         </div>
         <div class="form-section-body">
+            <div id="parentLookupBanner" style="display:none; padding:10px 14px; border-radius:6px; margin-bottom:16px; font-size:0.9rem;"></div>
             <div class="form-grid">
-                <div class="form-group">
-                    <label class="form-label">Parent Name *</label>
-                    <input type="text" name="parentName" class="form-control" placeholder="Parent's full name"
-                        required />
+                <div class="form-group" style="grid-column: span 2;">
+                    <label class="form-label">Parent Email *</label>
+                    <div style="display:flex; gap:8px; align-items:center;">
+                        <input type="email" name="parentEmail" id="parentEmail" class="form-control" placeholder="parent@example.com" required autocomplete="off" style="flex:1;" />
+                        <button type="button" id="parentLookupBtn" onclick="lookupParent()" style="white-space:nowrap; padding:8px 16px; background:#3b82f6; color:#fff; border:none; border-radius:6px; cursor:pointer; font-size:0.875rem;">
+                            Check
+                        </button>
+                    </div>
+                    <small class="text-muted">Enter the parent's email and click <strong>Check</strong> — if they already have an account, details will auto-fill.</small>
                 </div>
                 <div class="form-group">
-                    <label class="form-label">Parent Email *</label>
-                    <input type="email" name="parentEmail" class="form-control" placeholder="parent@example.com"
-                        required />
+                    <label class="form-label">Parent Name *</label>
+                    <input type="text" name="parentName" id="parentName" class="form-control" placeholder="Parent's full name" required />
                 </div>
                 <div class="form-group">
                     <label class="form-label">Parent Phone</label>
-                    <input type="text" name="parentPhone" class="form-control" placeholder="+91 XXXXX XXXXX" />
+                    <input type="text" name="parentPhone" id="parentPhone" class="form-control" placeholder="+91 XXXXX XXXXX" />
                 </div>
                 <div class="form-group">
                     <label class="form-label">Relationship *</label>
-                    <select name="parentRelationship" class="form-control" required>
+                    <select name="parentRelationship" id="parentRelationship" class="form-control" required>
                         <option value="Father">Father</option>
                         <option value="Mother">Mother</option>
                         <option value="Guardian">Guardian</option>
@@ -140,31 +145,150 @@
                 </div>
                 <div class="form-group">
                     <label class="form-label">Father Occupation</label>
-                    <input type="text" name="fatherOccupation" class="form-control" />
+                    <input type="text" name="fatherOccupation" id="fatherOccupation" class="form-control" />
                 </div>
                 <div class="form-group">
                     <label class="form-label">Mother Occupation</label>
-                    <input type="text" name="motherOccupation" class="form-control" />
+                    <input type="text" name="motherOccupation" id="motherOccupation" class="form-control" />
                 </div>
                 <div class="form-group">
                     <label class="form-label">Guardian Occupation</label>
-                    <input type="text" name="guardianOccupation" class="form-control" />
+                    <input type="text" name="guardianOccupation" id="guardianOccupation" class="form-control" />
                 </div>
                 <div class="form-group">
                     <label class="form-label">Annual Income</label>
-                    <input type="text" name="annualIncome" class="form-control" placeholder="e.g. 500000" />
+                    <input type="text" name="annualIncome" id="annualIncome" class="form-control" placeholder="e.g. 500000" />
                 </div>
                 <div class="form-group">
                     <label class="form-label">Emergency Contact</label>
-                    <input type="text" name="emergencyContact" class="form-control" placeholder="+91 XXXXX XXXXX" />
+                    <input type="text" name="emergencyContact" id="emergencyContact" class="form-control" placeholder="+91 XXXXX XXXXX" />
                 </div>
             </div>
         </div>
     </div>
 
     <div class="alert alert-warning">
-        📧 Both <strong>Student</strong> and <strong>Parent</strong> will receive separate welcome emails with login
-        credentials. Accounts will be linked automatically.
+        📧 The student will receive a welcome email with login credentials. A welcome email is sent to the parent only if a new account is created for them. If the parent already exists, this student will simply be added to their children list.
     </div>
-    <button type="submit" class="btn btn-primary btn-lg">🎒 Create Student & Parent Accounts</button>
+    <button type="submit" class="btn btn-primary btn-lg">🎒 Create Student Account</button>
 </form>
+
+<script>
+const PARENT_FIELDS = ['parentName', 'parentPhone', 'parentRelationship',
+    'fatherOccupation', 'motherOccupation', 'guardianOccupation',
+    'emergencyContact', 'annualIncome'];
+
+function setParentReadOnly(on) {
+    PARENT_FIELDS.forEach(function (id) {
+        var el = document.getElementById(id);
+        if (!el) return;
+        if (on) {
+            el.setAttribute('readonly', 'readonly');
+            el.style.background = '#f1f5f9';
+            el.style.color = '#475569';
+            if (el.tagName === 'SELECT') {
+                el.style.pointerEvents = 'none';
+                el.style.opacity = '0.75';
+            }
+        } else {
+            el.removeAttribute('readonly');
+            el.style.background = '';
+            el.style.color = '';
+            if (el.tagName === 'SELECT') {
+                el.style.pointerEvents = '';
+                el.style.opacity = '';
+            }
+        }
+    });
+}
+
+function clearParentFields() {
+    PARENT_FIELDS.forEach(function (id) {
+        var el = document.getElementById(id);
+        if (!el) return;
+        if (el.tagName === 'SELECT') el.value = 'Guardian';
+        else el.value = '';
+    });
+    setParentReadOnly(false);
+    var banner = document.getElementById('parentLookupBanner');
+    banner.style.display = 'none';
+    banner.textContent = '';
+}
+
+function showParentBanner(type, msg) {
+    var banner = document.getElementById('parentLookupBanner');
+    banner.style.display = 'block';
+    if (type === 'found') {
+        banner.style.background = '#dcfce7';
+        banner.style.border = '1px solid #86efac';
+        banner.style.color = '#166534';
+    } else if (type === 'notfound') {
+        banner.style.background = '#fef9c3';
+        banner.style.border = '1px solid #fde047';
+        banner.style.color = '#854d0e';
+    } else {
+        banner.style.background = '#fee2e2';
+        banner.style.border = '1px solid #fca5a5';
+        banner.style.color = '#991b1b';
+    }
+    banner.textContent = msg;
+}
+
+function lookupParent() {
+    var email = (document.getElementById('parentEmail').value || '').trim();
+    if (!email) {
+        showParentBanner('error', 'Please enter a parent email first.');
+        return;
+    }
+
+    var btn = document.getElementById('parentLookupBtn');
+    btn.textContent = 'Checking...';
+    btn.disabled = true;
+
+    fetch('/admin/students/parent-lookup?email=' + encodeURIComponent(email))
+        .then(function (res) {
+            if (!res.ok) throw new Error('HTTP ' + res.status);
+            return res.json();
+        })
+        .then(function (data) {
+            btn.textContent = 'Check';
+            btn.disabled = false;
+
+            if (data.found) {
+                document.getElementById('parentName').value = data.name || '';
+                document.getElementById('parentPhone').value = data.phone || '';
+                var rel = document.getElementById('parentRelationship');
+                if (rel) rel.value = data.relationship || 'Guardian';
+                document.getElementById('fatherOccupation').value = data.fatherOccupation || '';
+                document.getElementById('motherOccupation').value = data.motherOccupation || '';
+                document.getElementById('guardianOccupation').value = data.guardianOccupation || '';
+                document.getElementById('emergencyContact').value = data.emergencyContact || '';
+                document.getElementById('annualIncome').value = data.annualIncome || '';
+                setParentReadOnly(true);
+                showParentBanner('found', '✓ Existing parent account found — details auto-filled. This student will be linked to their account.');
+            } else {
+                clearParentFields();
+                showParentBanner('notfound', 'No existing parent found with this email. Fill in the details below to create a new parent account.');
+            }
+        })
+        .catch(function (err) {
+            btn.textContent = 'Check';
+            btn.disabled = false;
+            showParentBanner('error', 'Lookup failed — please try again or fill in details manually.');
+            console.error('Parent lookup error:', err);
+        });
+}
+
+// Also trigger on Enter key inside the email field
+document.getElementById('parentEmail').addEventListener('keydown', function (e) {
+    if (e.key === 'Enter') {
+        e.preventDefault();
+        lookupParent();
+    }
+});
+
+// Reset when email is cleared
+document.getElementById('parentEmail').addEventListener('input', function () {
+    if (!this.value.trim()) clearParentFields();
+});
+</script>

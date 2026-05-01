@@ -1431,22 +1431,26 @@ const getStudentResult = async (req, res) => {
 
 const getParentExamResults = async (req, res) => {
     try {
-        const childProfile = await StudentProfile.findOne({
+        const allProfiles = await StudentProfile.find({
             parent: req.session.userId,
             school: req.session.schoolId,
-        }).lean();
+        }).populate('user', 'name email').lean();
 
-        if (!childProfile) {
+        const children = allProfiles.filter(p => p.user);
+
+        if (children.length === 0) {
             return res.render('parent/exams/results', {
-                title: 'Exam Results', layout: 'layouts/main', results: [], child: null,
+                title: 'Exam Results', layout: 'layouts/main', results: [], child: null, children: [],
             });
         }
 
-        const child = await User.findById(childProfile.user).select('name email').lean();
+        const selectedId = req.query.child || children[0].user._id.toString();
+        const selected = children.find(c => c.user._id.toString() === selectedId) || children[0];
+        const child = selected.user;
 
         const now = new Date();
         const results = await ExamResult.find({
-            student: childProfile.user,
+            student: selected.user._id,
             school:  req.session.schoolId,
         })
             .populate({
@@ -1463,13 +1467,15 @@ const getParentExamResults = async (req, res) => {
             .sort({ createdAt: -1 })
             .lean();
 
-        const visibleResults = results.filter(r => r.exam); // exam populated only if approved & published
+        const visibleResults = results.filter(r => r.exam);
 
         res.render('parent/exams/results', {
-            title:   `${child?.name || 'Child'}'s Exam Results`,
+            title:   `${child.name}'s Exam Results`,
             layout:  'layouts/main',
             results: visibleResults,
             child,
+            children,
+            selectedChild: child,
         });
     } catch (err) {
         console.error(err);

@@ -1,0 +1,19 @@
+<div class="page-header">
+    <div>
+        <h1>💳 Fee Status</h1>
+        <p>Select a child to view their fees</p>
+    </div>
+    <a href="/parent/dashboard" class="btn btn-secondary">← Dashboard</a>
+</div>
+
+<div style="display:flex; flex-wrap:wrap; gap:20px; margin-top:10px;">
+    <% children.forEach(function(c) { %>
+    <a href="/fees/parent/child/<%= c.user._id %>/fees" style="text-decoration:none;">
+        <div class="card" style="width:220px; text-align:center; padding:28px 20px; cursor:pointer; transition:box-shadow 0.2s;" onmouseover="this.style.boxShadow='0 4px 16px rgba(59,130,246,0.18)'" onmouseout="this.style.boxShadow=''">
+            <div style="font-size:40px; margin-bottom:12px;">🎒</div>
+            <div style="font-weight:600; font-size:1.05rem; color:#1e293b;"><%= c.user.name %></div>
+            <div style="margin-top:10px;" class="btn btn-primary btn-sm">View Fees</div>
+        </div>
+    </a>
+    <% }) %>
+</div>

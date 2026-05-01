@@ -101,8 +101,8 @@
                 <div style="font-size:36px; margin-bottom:12px;">💳</div>
                 <div class="card-title" style="margin-bottom:4px;">Fee Status</div>
                 <p class="text-muted" style="font-size:12px; margin-bottom:10px;">View & pay fees</p>
-                <% if (childProfiles.length > 0 && childProfiles[0].user) { %>
-                <a href="/fees/parent/child/<%= childProfiles[0].user._id %>/fees" class="btn btn-primary btn-sm">View Now</a>
+                <% if (childProfiles.length > 0) { %>
+                <a href="/fees/parent/fees" class="btn btn-primary btn-sm">View Now</a>
                 <% } else { %>
                 <span class="badge badge-gray">No Child Linked</span>
                 <% } %>
