@@ -40,7 +40,8 @@
                             <a href="/fees/admin/fee-heads/<%= h._id %>/edit" class="btn btn-secondary btn-sm">Edit</a>
                             <form method="POST" action="/fees/admin/fee-heads/<%= h._id %>/toggle" style="display:inline;">
                                 <button type="submit" class="btn btn-sm <%= h.isActive ? 'btn-warning' : 'btn-success' %>"
-                                    onclick="return confirm('<%= h.isActive ? 'Deactivate' : 'Activate' %> this fee head?')">
+                                    data-confirm="<%= h.isActive ? 'Deactivate' : 'Activate' %> this fee head?"
+                                    data-confirm-title="<%= h.isActive ? 'Deactivate' : 'Activate' %> Fee Head">
                                     <%= h.isActive ? 'Deactivate' : 'Activate' %>
                                 </button>
                             </form>

@@ -28,7 +28,7 @@
                 <a href="/admin/teachers/create" class="btn btn-primary">Add Teacher</a>
             </div>
             <% } else { %>
-                <form action="/admin/users/bulk-delete" method="POST" id="bulkDeleteForm" onsubmit="return confirm('Delete selected teachers? This action cannot be undone.')">
+                <form action="/admin/users/bulk-delete" method="POST" id="bulkDeleteForm" data-confirm-submit="Delete selected teachers? This action cannot be undone." data-confirm-title="Delete Teachers">
                 <input type="hidden" name="returnUrl" value="/admin/teachers">
                 <div style="margin-bottom: 15px;">
                     <button type="submit" class="btn btn-danger btn-sm" id="bulkDeleteBtn" disabled>🗑️ Delete Selected (<span id="selectedCount">0</span>)</button>
@@ -69,7 +69,7 @@
                                 </td>
                                 <td>
                                     <a href="/admin/users/<%= t._id %>/edit" class="btn btn-primary btn-sm">✎ Edit</a>
-                                    <button type="submit" formaction="/admin/teachers/<%= t._id %>/delete" class="btn btn-danger btn-sm" onclick="return confirm('Delete teacher: <%= t.name %>?')">🗑️ Remove</button>
+                                    <button type="submit" formaction="/admin/teachers/<%= t._id %>/delete" class="btn btn-danger btn-sm" data-confirm="Delete teacher: <%= t.name %>?" data-confirm-title="Delete Teacher" data-confirm-type="danger">🗑️ Remove</button>
                                 </td>
                             </tr>
                             <% }) %>

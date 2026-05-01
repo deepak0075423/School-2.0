@@ -64,7 +64,11 @@
     <div class="card-body">
         <div style="display:flex; gap:10px; margin-bottom:16px;">
             <form method="POST" action="/teacher/results/class-test-validation/<%= test._id %>/approve" style="display:inline;">
-                <button type="submit" class="btn btn-primary" onclick="return confirm('Approve this class test? Results will be generated.')">
+                <button type="submit" class="btn btn-primary"
+                    data-confirm="Approve this class test? Results will be generated."
+                    data-confirm-title="Approve Class Test"
+                    data-confirm-type="warning"
+                    data-confirm-ok="Approve">
                     Approve Test
                 </button>
             </form>

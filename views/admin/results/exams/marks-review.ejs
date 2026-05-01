@@ -7,7 +7,7 @@
         <a href="/admin/results/exams/<%= exam._id %>" class="btn btn-secondary">← Back</a>
         <% if (exam.status === 'CLASS_APPROVED') { %>
         <form method="POST" action="/admin/results/exams/<%= exam._id %>/approve" style="display:inline;">
-            <button type="submit" class="btn btn-primary" onclick="return confirm('Approve exam and generate results?')">
+            <button type="submit" class="btn btn-primary" data-confirm="Approve exam and generate results?" data-confirm-title="Approve Exam" data-confirm-type="info">
                 Approve & Generate Results
             </button>
         </form>

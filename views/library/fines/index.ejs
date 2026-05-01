@@ -85,7 +85,11 @@
                     <td class="text-muted"><%= new Date(fine.createdAt).toDateString() %></td>
                     <td>
                         <% if (fine.status === 'pending') { %>
-                        <form action="/library/fines/<%= fine._id %>/collect" method="POST" style="display:inline" onsubmit="return confirm('Mark fine as paid?')">
+                        <form action="/library/fines/<%= fine._id %>/collect" method="POST" style="display:inline"
+                            data-confirm-submit="Mark this fine as paid?"
+                            data-confirm-title="Collect Fine"
+                            data-confirm-type="warning"
+                            data-confirm-ok="Collect">
                             <button type="submit" class="btn btn-sm btn-success">Collect</button>
                         </form>
                         <button class="btn btn-sm btn-secondary" onclick="toggleWaiveForm('<%= fine._id %>')">Waive</button>
@@ -100,7 +104,11 @@
                                 <label class="form-label">Reason for Waiver</label>
                                 <input type="text" name="reason" class="form-control" placeholder="e.g. Financial hardship, calculation error" required />
                             </div>
-                            <button type="submit" class="btn btn-warning" onclick="return confirm('Waive this fine?')">Waive Fine</button>
+                            <button type="submit" class="btn btn-warning"
+                                data-confirm="Waive this fine?"
+                                data-confirm-title="Waive Fine"
+                                data-confirm-type="warning"
+                                data-confirm-ok="Waive">Waive Fine</button>
                             <button type="button" class="btn btn-secondary" onclick="toggleWaiveForm('<%= fine._id %>')">Cancel</button>
                         </form>
                     </td>

@@ -53,18 +53,30 @@
         <% if (run.status === 'draft') { %>
         <form method="POST" action="/payroll/admin/runs/<%= run._id %>/status">
             <input type="hidden" name="action" value="review">
-            <button type="submit" class="btn btn-warning" onclick="return confirm('Mark this payroll as Reviewed?')">🔍 Mark as Reviewed</button>
+            <button type="submit" class="btn btn-warning"
+                data-confirm="Mark this payroll as Reviewed?"
+                data-confirm-title="Mark as Reviewed"
+                data-confirm-type="warning"
+                data-confirm-ok="Mark Reviewed">🔍 Mark as Reviewed</button>
         </form>
         <% } %>
         <% if (run.status === 'reviewed') { %>
         <form method="POST" action="/payroll/admin/runs/<%= run._id %>/status">
             <input type="hidden" name="action" value="approve">
-            <button type="submit" class="btn btn-info" onclick="return confirm('Approve this payroll?')">✅ Approve Payroll</button>
+            <button type="submit" class="btn btn-info"
+                data-confirm="Approve this payroll run?"
+                data-confirm-title="Approve Payroll"
+                data-confirm-type="warning"
+                data-confirm-ok="Approve">✅ Approve Payroll</button>
         </form>
         <% } %>
         <% if (run.status === 'approved') { %>
         <form method="POST" action="/payroll/admin/runs/<%= run._id %>/publish">
-            <button type="submit" class="btn btn-success" onclick="return confirm('Publish payroll? This will generate payslips and notify all employees. This action is irreversible.')">
+            <button type="submit" class="btn btn-success"
+                data-confirm="Publish payroll? This will generate payslips and notify all employees. This action is irreversible."
+                data-confirm-title="Publish Payroll"
+                data-confirm-type="warning"
+                data-confirm-ok="Publish">
                 📤 Publish & Generate Payslips
             </button>
         </form>

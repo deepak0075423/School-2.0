@@ -29,7 +29,7 @@ const typeLabel = { MID_TERM:'Mid Term', FINAL:'Final Exam', UNIT_TEST:'Unit Tes
         <% } %>
         <form method="POST" action="/admin/results/exams/<%= exam._id %>/delete" style="display:inline;">
             <button type="submit" class="btn btn-danger"
-                onclick="return confirm('Delete \'<%= exam.title %>\'? This will permanently remove all marks sheets and results. This cannot be undone.')">
+                data-confirm="Delete '<%= exam.title %>'? This will permanently remove all marks sheets and results. This cannot be undone." data-confirm-title="Delete Exam" data-confirm-type="danger">
                 🗑 Delete
             </button>
         </form>
@@ -143,7 +143,7 @@ const typeLabel = { MID_TERM:'Mid Term', FINAL:'Final Exam', UNIT_TEST:'Unit Tes
         <div style="display:flex; gap:10px; margin-bottom:16px;">
             <a href="/admin/results/exams/<%= exam._id %>/marks-review" class="btn btn-primary">Review All Marks</a>
             <form method="POST" action="/admin/results/exams/<%= exam._id %>/approve" style="display:inline;">
-                <button type="submit" class="btn btn-success" onclick="return confirm('Approve this exam and generate results for all students?')">
+                <button type="submit" class="btn btn-success" data-confirm="Approve this exam and generate results for all students?" data-confirm-title="Approve Exam" data-confirm-type="info">
                     ✓ Final Approve & Generate Results
                 </button>
             </form>
@@ -183,7 +183,7 @@ const typeLabel = { MID_TERM:'Mid Term', FINAL:'Final Exam', UNIT_TEST:'Unit Tes
                     <textarea name="reason" class="form-control" rows="2" placeholder="Enter reason (optional)…"></textarea>
                 </div>
                 <div style="display:flex; gap:8px;">
-                    <button type="submit" class="btn btn-warning" onclick="return confirm('This will reset all approvals and clear generated results. Continue?')">Confirm Reopen</button>
+                    <button type="submit" class="btn btn-warning" data-confirm="This will reset all approvals and clear generated results. Continue?" data-confirm-title="Reopen Exam" data-confirm-type="warning">Confirm Reopen</button>
                     <button type="button" class="btn btn-secondary" onclick="document.getElementById('reopenPanel').style.display='none'">Cancel</button>
                 </div>
             </form>

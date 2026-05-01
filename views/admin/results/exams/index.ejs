@@ -109,7 +109,7 @@ const typeLabel = { MID_TERM:'Mid Term', FINAL:'Final Exam', UNIT_TEST:'Unit Tes
                             <% } %>
                             <form method="POST" action="/admin/results/exams/<%= exam._id %>/delete" style="display:inline;">
                                 <button type="submit" class="btn btn-danger btn-sm"
-                                    onclick="return confirm('Delete \'<%= exam.title %>\'? All marks and results will be permanently removed.')">
+                                    data-confirm="Delete '<%= exam.title %>'? All marks and results will be permanently removed." data-confirm-title="Delete Exam" data-confirm-type="danger">
                                     Delete
                                 </button>
                             </form>

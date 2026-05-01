@@ -53,7 +53,8 @@
                             <a href="/payroll/admin/structures/<%= s._id %>/edit" class="btn btn-secondary btn-sm">Edit</a>
                             <form method="POST" action="/payroll/admin/structures/<%= s._id %>/toggle" style="display:inline;">
                                 <button type="submit" class="btn btn-sm <%= s.isActive ? 'btn-warning' : 'btn-success' %>"
-                                    onclick="return confirm('<%= s.isActive ? 'Deactivate' : 'Activate' %> this structure?')">
+                                    data-confirm="<%= s.isActive ? 'Deactivate' : 'Activate' %> this structure?"
+                                    data-confirm-title="<%= s.isActive ? 'Deactivate' : 'Activate' %> Structure">
                                     <%= s.isActive ? 'Deactivate' : 'Activate' %>
                                 </button>
                             </form>

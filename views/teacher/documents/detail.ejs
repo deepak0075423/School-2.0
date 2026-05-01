@@ -29,7 +29,9 @@
     <div style="display:flex; gap:8px; flex-wrap:wrap;">
         <% if (isOwner) { %>
         <a href="/teacher/documents/<%= doc._id %>/edit" class="btn btn-secondary">Edit</a>
-        <form method="POST" action="/teacher/documents/<%= doc._id %>/delete" style="display:inline;" onsubmit="return confirm('Delete this document?')">
+        <form method="POST" action="/teacher/documents/<%= doc._id %>/delete" style="display:inline;"
+            data-confirm-submit="Delete this document?"
+            data-confirm-title="Delete Document">
             <button class="btn btn-danger">Delete</button>
         </form>
         <% } %>

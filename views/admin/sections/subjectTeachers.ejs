@@ -213,9 +213,9 @@ function closeEditModal() {
 }
 
 function confirmRemoveSubject() {
-    if (confirm('Remove this subject from the section? All teacher assignments will be deleted.')) {
+    showGlobalConfirm('Remove this subject from the section? All teacher assignments will be deleted.', 'Remove Subject', function() {
         document.getElementById('removeSubjectForm').submit();
-    }
+    });
 }
 
 /* ── Shared helper ── */

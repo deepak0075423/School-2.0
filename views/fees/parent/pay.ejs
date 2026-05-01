@@ -119,8 +119,8 @@ const base = `/fees/parent/child/${childId}`;
                     ⏳ Payment will be verified by admin. Receipt is issued after confirmation.
                 </div>
 
-                <button type="submit" class="btn btn-primary" style="width:100%;padding:13px;font-size:1rem;font-weight:700;"
-                    onclick="document.getElementById('offlineAmountField').value=document.getElementById('payAmount').value;return confirm('Submit payment of <%= sym %>'+document.getElementById('payAmount').value+' for <%= studentName.replace(/'/g, '') %>?')">
+                <button type="button" class="btn btn-primary" style="width:100%;padding:13px;font-size:1rem;font-weight:700;"
+                    onclick="(function(btn){var amt=document.getElementById('payAmount').value;showGlobalConfirm('Submit payment of <%= sym %>'+amt+' for <%= studentName.replace(/\'/g, \'\') %>?','Confirm Payment',function(){document.getElementById('offlineAmountField').value=amt;btn.closest('form').submit();},{type:'warning',okText:'Submit'})})(this)">
                     ✅ Submit Payment
                 </button>
             </form>

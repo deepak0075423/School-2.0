@@ -12,7 +12,10 @@
         <% if (editable) { %>
         <a href="/teacher/exams/<%= exam._id %>/edit" class="btn btn-secondary">✏️ Edit Config</a>
         <form action="/teacher/exams/<%= exam._id %>/publish" method="POST" style="display:inline;"
-            onsubmit="return confirm('Publish this exam? Students will be able to attempt it during the scheduled window.');">
+            data-confirm-submit="Publish this exam? Students will be able to attempt it during the scheduled window."
+            data-confirm-title="Publish Exam"
+            data-confirm-type="warning"
+            data-confirm-ok="Publish">
             <%
                 const canPublish = questions.length === exam.totalQuestions &&
                                    sumMarks === exam.totalMarks;
@@ -24,7 +27,8 @@
         </form>
         <% if (exam.status === 'draft') { %>
         <form action="/teacher/exams/<%= exam._id %>/delete" method="POST" style="display:inline;"
-            onsubmit="return confirm('Delete this exam permanently?');">
+            data-confirm-submit="Delete this exam permanently?"
+            data-confirm-title="Delete Exam">
             <button type="submit" class="btn btn-secondary" style="color:#ef4444;">🗑 Delete</button>
         </form>
         <% } %>
@@ -111,7 +115,8 @@
                             <a href="/teacher/exams/<%= exam._id %>/questions/<%= q._id %>/edit"
                                 class="btn btn-secondary" style="padding:4px 10px; font-size:12px;">✏️ Edit</a>
                             <form action="/teacher/exams/<%= exam._id %>/questions/<%= q._id %>/delete" method="POST"
-                                onsubmit="return confirm('Delete this question?');">
+                                data-confirm-submit="Delete this question?"
+                                data-confirm-title="Delete Question">
                                 <button type="submit" class="btn btn-secondary" style="padding:4px 10px; font-size:12px; color:#ef4444; width:100%;">🗑</button>
                             </form>
                         </div>

@@ -64,7 +64,7 @@
                                             <td>
                                                 <form action="/admin/classes/<%= cls._id %>/subjects/remove"
                                                     method="POST" style="display:inline;"
-                                                    onsubmit="return confirm('Remove this subject from class?')">
+                                                    data-confirm-submit="Remove this subject from class?" data-confirm-title="Remove Subject">
                                                     <input type="hidden" name="subjectId" value="<%= cs.subject._id %>">
                                                     <button type="submit" class="btn btn-danger btn-sm">Remove</button>
                                                 </form>

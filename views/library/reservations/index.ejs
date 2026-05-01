@@ -75,7 +75,9 @@
                         </form>
                         <% } %>
                         <% if (['pending','ready'].includes(r.status)) { %>
-                        <form action="/library/reservations/<%= r._id %>/cancel" method="POST" style="display:inline" onsubmit="return confirm('Cancel reservation?')">
+                        <form action="/library/reservations/<%= r._id %>/cancel" method="POST" style="display:inline"
+                            data-confirm-submit="Cancel this reservation?"
+                            data-confirm-title="Cancel Reservation">
                             <button type="submit" class="btn btn-sm btn-danger">Cancel</button>
                         </form>
                         <% } %>

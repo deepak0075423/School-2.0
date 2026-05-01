@@ -46,7 +46,8 @@
                             <a href="/fees/admin/fine-rules/<%= r._id %>/edit" class="btn btn-secondary btn-sm">Edit</a>
                             <form method="POST" action="/fees/admin/fine-rules/<%= r._id %>/toggle" style="display:inline;">
                                 <button type="submit" class="btn btn-sm <%= r.isActive ? 'btn-warning' : 'btn-success' %>"
-                                    onclick="return confirm('<%= r.isActive ? 'Deactivate' : 'Activate' %> this rule?')">
+                                    data-confirm="<%= r.isActive ? 'Deactivate' : 'Activate' %> this rule?"
+                                    data-confirm-title="<%= r.isActive ? 'Deactivate' : 'Activate' %> Rule">
                                     <%= r.isActive ? 'Deactivate' : 'Activate' %>
                                 </button>
                             </form>

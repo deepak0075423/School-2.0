@@ -301,7 +301,7 @@
                         <div style="display:flex; gap:8px;">
                             <a href="/admin/holidays/<%= h._id %>/edit" class="btn btn-secondary btn-sm">Edit</a>
                             <form method="POST" action="/admin/holidays/<%= h._id %>/delete"
-                                  onsubmit="return confirm('Delete holiday \'<%= h.name %>\'?')">
+                                  data-confirm-submit="Delete holiday '<%= h.name %>'?" data-confirm-title="Delete Holiday">
                                 <button class="btn btn-sm" style="background:#fef2f2; color:#ef4444; border:1px solid #fecaca;">Delete</button>
                             </form>
                         </div>

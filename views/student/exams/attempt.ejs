@@ -276,12 +276,12 @@ async function submitExam() {
         if (data.success && data.redirect) {
             window.location.href = data.redirect;
         } else {
-            alert(data.message || 'Submission failed. Please try again.');
+            showGlobalAlert(data.message || 'Submission failed. Please try again.', 'Submission Failed', 'danger');
             btn.disabled = false;
             btn.textContent = 'Submit Now';
         }
     } catch {
-        alert('Network error. Please try again.');
+        showGlobalAlert('Network error. Please try again.', 'Connection Error', 'danger');
         btn.disabled = false;
         btn.textContent = 'Submit Now';
     }

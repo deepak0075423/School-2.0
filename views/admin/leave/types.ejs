@@ -110,7 +110,7 @@
                         <div style="display:flex; gap:6px;">
                             <a href="/admin/leave/types/<%= lt._id %>/edit" class="btn btn-sm btn-secondary">Edit</a>
                             <form method="POST" action="/admin/leave/types/<%= lt._id %>/delete"
-                                  onsubmit="return confirm('Delete leave type \'<%= lt.name %>\'? This cannot be undone.')">
+                                  data-confirm-submit="Delete leave type '<%= lt.name %>'? This cannot be undone." data-confirm-title="Delete Leave Type">
                                 <button type="submit" class="btn btn-sm btn-danger">Delete</button>
                             </form>
                         </div>

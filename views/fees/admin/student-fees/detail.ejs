@@ -154,7 +154,8 @@
                     </span>
                     <form method="POST" action="/fees/admin/student-fees/<%= student._id %>/concessions/<%= sc._id %>/remove" style="display:inline;float:right;">
                         <button type="submit" class="btn btn-danger btn-sm"
-                            onclick="return confirm('Remove this concession?')">✕</button>
+                            data-confirm="Remove this concession?"
+                            data-confirm-title="Remove Concession">✕</button>
                     </form>
                 </div>
                 <% }) %>

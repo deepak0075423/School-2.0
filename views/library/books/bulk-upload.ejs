@@ -24,7 +24,11 @@
                     <small class="text-muted" style="display:block; margin-top:5px;">Max file size: 5 MB. First row must be the header row.</small>
                 </div>
                 <div style="margin-top:4px;">
-                    <button type="submit" class="btn btn-primary" onclick="return confirm('Upload and create books from this file?')">📤 Upload & Import</button>
+                    <button type="submit" class="btn btn-primary"
+                        data-confirm="Upload and create books from this file?"
+                        data-confirm-title="Import Books"
+                        data-confirm-type="warning"
+                        data-confirm-ok="Import">📤 Upload & Import</button>
                 </div>
             </div>
         </div>
