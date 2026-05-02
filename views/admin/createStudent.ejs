@@ -116,13 +116,13 @@
             <div class="form-grid">
                 <div class="form-group" style="grid-column: span 2;">
                     <label class="form-label">Parent Email *</label>
-                    <div style="display:flex; gap:8px; align-items:center;">
-                        <input type="email" name="parentEmail" id="parentEmail" class="form-control" placeholder="parent@example.com" required autocomplete="off" style="flex:1;" />
-                        <button type="button" id="parentLookupBtn" onclick="lookupParent()" style="white-space:nowrap; padding:8px 16px; background:#3b82f6; color:#fff; border:none; border-radius:6px; cursor:pointer; font-size:0.875rem;">
-                            Check
-                        </button>
+                    <div style="position:relative;">
+                        <input type="email" name="parentEmail" id="parentEmail" class="form-control" placeholder="parent@example.com" required autocomplete="off" style="padding-right:38px;" />
+                        <span id="parentEmailSpinner" style="display:none; position:absolute; right:10px; top:50%; transform:translateY(-50%);">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#3b82f6" stroke-width="2.5" stroke-linecap="round"><circle cx="12" cy="12" r="10" opacity="0.25" stroke="#3b82f6" stroke-width="2.5"/><path d="M12 2a10 10 0 0 1 10 10" stroke="#3b82f6" stroke-width="2.5"><animateTransform attributeName="transform" type="rotate" from="0 12 12" to="360 12 12" dur="0.7s" repeatCount="indefinite"/></path></svg>
+                        </span>
                     </div>
-                    <small class="text-muted">Enter the parent's email and click <strong>Check</strong> — if they already have an account, details will auto-fill.</small>
+                    <small class="text-muted">Tab out after entering the email — existing parent details will auto-fill.</small>
                 </div>
                 <div class="form-group">
                     <label class="form-label">Parent Name *</label>
@@ -174,121 +174,109 @@
 </form>
 
 <script>
-const PARENT_FIELDS = ['parentName', 'parentPhone', 'parentRelationship',
-    'fatherOccupation', 'motherOccupation', 'guardianOccupation',
-    'emergencyContact', 'annualIncome'];
+(function () {
+    var PARENT_FIELDS = ['parentName', 'parentPhone', 'parentRelationship',
+        'fatherOccupation', 'motherOccupation', 'guardianOccupation',
+        'emergencyContact', 'annualIncome'];
+    var lastChecked = '';
 
-function setParentReadOnly(on) {
-    PARENT_FIELDS.forEach(function (id) {
-        var el = document.getElementById(id);
-        if (!el) return;
-        if (on) {
-            el.setAttribute('readonly', 'readonly');
-            el.style.background = '#f1f5f9';
-            el.style.color = '#475569';
-            if (el.tagName === 'SELECT') {
-                el.style.pointerEvents = 'none';
-                el.style.opacity = '0.75';
+    function setParentReadOnly(on) {
+        PARENT_FIELDS.forEach(function (id) {
+            var el = document.getElementById(id);
+            if (!el) return;
+            if (on) {
+                el.setAttribute('readonly', 'readonly');
+                el.style.background = '#f1f5f9';
+                el.style.color = '#475569';
+                if (el.tagName === 'SELECT') { el.style.pointerEvents = 'none'; el.style.opacity = '0.75'; }
+            } else {
+                el.removeAttribute('readonly');
+                el.style.background = '';
+                el.style.color = '';
+                if (el.tagName === 'SELECT') { el.style.pointerEvents = ''; el.style.opacity = ''; }
             }
-        } else {
-            el.removeAttribute('readonly');
-            el.style.background = '';
-            el.style.color = '';
-            if (el.tagName === 'SELECT') {
-                el.style.pointerEvents = '';
-                el.style.opacity = '';
-            }
+        });
+    }
+
+    function clearParentFields() {
+        PARENT_FIELDS.forEach(function (id) {
+            var el = document.getElementById(id);
+            if (!el) return;
+            if (el.tagName === 'SELECT') el.value = 'Guardian';
+            else el.value = '';
+        });
+        setParentReadOnly(false);
+        var banner = document.getElementById('parentLookupBanner');
+        banner.style.display = 'none';
+        banner.textContent = '';
+    }
+
+    function showBanner(type, msg) {
+        var banner = document.getElementById('parentLookupBanner');
+        banner.style.display = 'block';
+        var styles = {
+            found:    { bg: '#dcfce7', border: '1px solid #86efac', color: '#166534' },
+            notfound: { bg: '#fef9c3', border: '1px solid #fde047', color: '#854d0e' },
+            error:    { bg: '#fee2e2', border: '1px solid #fca5a5', color: '#991b1b' },
+        };
+        var s = styles[type] || styles.error;
+        banner.style.background = s.bg;
+        banner.style.border = s.border;
+        banner.style.color = s.color;
+        banner.textContent = msg;
+    }
+
+    function setSpinner(on) {
+        document.getElementById('parentEmailSpinner').style.display = on ? 'block' : 'none';
+    }
+
+    function doLookup(email) {
+        setSpinner(true);
+        fetch('/admin/students/parent-lookup?email=' + encodeURIComponent(email))
+            .then(function (res) {
+                if (!res.ok) throw new Error('HTTP ' + res.status);
+                return res.json();
+            })
+            .then(function (data) {
+                setSpinner(false);
+                if (data.found) {
+                    document.getElementById('parentName').value          = data.name || '';
+                    document.getElementById('parentPhone').value         = data.phone || '';
+                    document.getElementById('fatherOccupation').value    = data.fatherOccupation || '';
+                    document.getElementById('motherOccupation').value    = data.motherOccupation || '';
+                    document.getElementById('guardianOccupation').value  = data.guardianOccupation || '';
+                    document.getElementById('emergencyContact').value    = data.emergencyContact || '';
+                    document.getElementById('annualIncome').value        = data.annualIncome || '';
+                    var rel = document.getElementById('parentRelationship');
+                    if (rel) rel.value = data.relationship || 'Guardian';
+                    setParentReadOnly(true);
+                    showBanner('found', '✓ Existing parent found — details auto-filled. Student will be linked to this account.');
+                } else {
+                    clearParentFields();
+                    lastChecked = '';
+                }
+            })
+            .catch(function (err) {
+                setSpinner(false);
+                showBanner('error', 'Lookup failed — please try again or fill in details manually.');
+                console.error('Parent lookup error:', err);
+            });
+    }
+
+    var emailInput = document.getElementById('parentEmail');
+
+    emailInput.addEventListener('blur', function () {
+        var email = this.value.trim();
+        if (!email || email === lastChecked) return;
+        lastChecked = email;
+        doLookup(email);
+    });
+
+    emailInput.addEventListener('input', function () {
+        if (!this.value.trim()) {
+            clearParentFields();
+            lastChecked = '';
         }
     });
-}
-
-function clearParentFields() {
-    PARENT_FIELDS.forEach(function (id) {
-        var el = document.getElementById(id);
-        if (!el) return;
-        if (el.tagName === 'SELECT') el.value = 'Guardian';
-        else el.value = '';
-    });
-    setParentReadOnly(false);
-    var banner = document.getElementById('parentLookupBanner');
-    banner.style.display = 'none';
-    banner.textContent = '';
-}
-
-function showParentBanner(type, msg) {
-    var banner = document.getElementById('parentLookupBanner');
-    banner.style.display = 'block';
-    if (type === 'found') {
-        banner.style.background = '#dcfce7';
-        banner.style.border = '1px solid #86efac';
-        banner.style.color = '#166534';
-    } else if (type === 'notfound') {
-        banner.style.background = '#fef9c3';
-        banner.style.border = '1px solid #fde047';
-        banner.style.color = '#854d0e';
-    } else {
-        banner.style.background = '#fee2e2';
-        banner.style.border = '1px solid #fca5a5';
-        banner.style.color = '#991b1b';
-    }
-    banner.textContent = msg;
-}
-
-function lookupParent() {
-    var email = (document.getElementById('parentEmail').value || '').trim();
-    if (!email) {
-        showParentBanner('error', 'Please enter a parent email first.');
-        return;
-    }
-
-    var btn = document.getElementById('parentLookupBtn');
-    btn.textContent = 'Checking...';
-    btn.disabled = true;
-
-    fetch('/admin/students/parent-lookup?email=' + encodeURIComponent(email))
-        .then(function (res) {
-            if (!res.ok) throw new Error('HTTP ' + res.status);
-            return res.json();
-        })
-        .then(function (data) {
-            btn.textContent = 'Check';
-            btn.disabled = false;
-
-            if (data.found) {
-                document.getElementById('parentName').value = data.name || '';
-                document.getElementById('parentPhone').value = data.phone || '';
-                var rel = document.getElementById('parentRelationship');
-                if (rel) rel.value = data.relationship || 'Guardian';
-                document.getElementById('fatherOccupation').value = data.fatherOccupation || '';
-                document.getElementById('motherOccupation').value = data.motherOccupation || '';
-                document.getElementById('guardianOccupation').value = data.guardianOccupation || '';
-                document.getElementById('emergencyContact').value = data.emergencyContact || '';
-                document.getElementById('annualIncome').value = data.annualIncome || '';
-                setParentReadOnly(true);
-                showParentBanner('found', '✓ Existing parent account found — details auto-filled. This student will be linked to their account.');
-            } else {
-                clearParentFields();
-                showParentBanner('notfound', 'No existing parent found with this email. Fill in the details below to create a new parent account.');
-            }
-        })
-        .catch(function (err) {
-            btn.textContent = 'Check';
-            btn.disabled = false;
-            showParentBanner('error', 'Lookup failed — please try again or fill in details manually.');
-            console.error('Parent lookup error:', err);
-        });
-}
-
-// Also trigger on Enter key inside the email field
-document.getElementById('parentEmail').addEventListener('keydown', function (e) {
-    if (e.key === 'Enter') {
-        e.preventDefault();
-        lookupParent();
-    }
-});
-
-// Reset when email is cleared
-document.getElementById('parentEmail').addEventListener('input', function () {
-    if (!this.value.trim()) clearParentFields();
-});
+})();
 </script>
