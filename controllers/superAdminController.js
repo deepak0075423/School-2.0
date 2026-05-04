@@ -45,14 +45,91 @@ const getSchools = async (req, res) => {
 };
 
 const getCreateSchool = (req, res) => {
-    res.render('superAdmin/createSchool', { title: 'Create School', layout: 'layouts/main' });
+    res.render('superAdmin/createSchool', { title: 'Create School', layout: 'layouts/main', errors: {}, old: {} });
 };
+
+const PHONE_RULES = {
+    '+91': { min: 10, max: 10 }, '+1':   { min: 10, max: 10 },
+    '+44': { min: 10, max: 10 }, '+61':  { min: 9,  max: 9  },
+    '+971':{ min: 9,  max: 9  }, '+966': { min: 9,  max: 9  },
+    '+65': { min: 8,  max: 8  }, '+60':  { min: 9,  max: 10 },
+    '+92': { min: 10, max: 10 }, '+880': { min: 10, max: 10 },
+    '+977':{ min: 10, max: 10 }, '+94':  { min: 9,  max: 9  },
+    '+86': { min: 11, max: 11 }, '+81':  { min: 10, max: 11 },
+    '+82': { min: 9,  max: 10 }, '+7':   { min: 10, max: 10 },
+    '+49': { min: 10, max: 11 }, '+33':  { min: 9,  max: 9  },
+    '+39': { min: 9,  max: 10 }, '+34':  { min: 9,  max: 9  },
+    '+31': { min: 9,  max: 9  }, '+27':  { min: 9,  max: 9  },
+    '+55': { min: 10, max: 11 }, '+52':  { min: 10, max: 10 },
+    '+234':{ min: 10, max: 10 }, '+254': { min: 9,  max: 9  },
+    '+20': { min: 10, max: 10 }, '+46':  { min: 9,  max: 10 },
+    '+41': { min: 9,  max: 9  }, '+64':  { min: 8,  max: 10 },
+};
+
+function validatePhone(countryCode, phoneLocal) {
+    const digits = (phoneLocal || '').replace(/\D/g, '');
+    if (!digits) return 'Phone number is required.';
+    const rule = PHONE_RULES[countryCode];
+    if (!rule) return 'Please select a valid country code.';
+    if (digits.length < rule.min || digits.length > rule.max) {
+        const range = rule.min === rule.max ? `${rule.min}-digit` : `${rule.min}–${rule.max}-digit`;
+        return `Enter a valid ${range} number for the selected country.`;
+    }
+    return null;
+}
 
 const postCreateSchool = async (req, res) => {
     try {
-        const { name, address, email, phone, website } = req.body;
-        await School.create({ name, address, email, phone, website });
-        req.flash('success', `School "${name}" created successfully.`);
+        const { name, address, email, phone: rawPhone, website } = req.body;
+        const errors = {};
+
+        const trimName    = (name    || '').trim();
+        const trimEmail   = (email   || '').trim();
+        const trimAddress = (address || '').trim();
+        const trimWebsite = (website || '').trim();
+        const phoneMatch  = (rawPhone || '').match(/^(\+\d+)\s+(.*)/);
+        const trimCode    = phoneMatch ? phoneMatch[1] : '';
+        const trimLocal   = phoneMatch ? phoneMatch[2].replace(/\D/g, '') : '';
+
+        if (!trimName || trimName.length < 2) {
+            errors.name = 'School name is required and must be at least 2 characters.';
+        } else {
+            const duplicate = await School.findOne({ name: new RegExp(`^${trimName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'i') });
+            if (duplicate) errors.name = 'A school with this name already exists.';
+        }
+
+        if (!trimEmail) {
+            errors.email = 'Email is required.';
+        } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimEmail)) {
+            errors.email = 'Please enter a valid email address.';
+        } else {
+            const dupEmail = await School.findOne({ email: trimEmail.toLowerCase() });
+            if (dupEmail) errors.email = 'A school with this email already exists.';
+        }
+
+        const phoneErr = validatePhone(trimCode, trimLocal);
+        if (phoneErr) errors.phone = phoneErr;
+
+        if (!trimAddress) errors.address = 'Address is required.';
+
+        if (trimWebsite) {
+            try { new URL(trimWebsite); } catch {
+                errors.website = 'Please enter a valid URL (e.g. https://yourschool.edu).';
+            }
+        }
+
+        if (Object.keys(errors).length > 0) {
+            return res.render('superAdmin/createSchool', {
+                title: 'Create School',
+                layout: 'layouts/main',
+                errors,
+                old: req.body,
+            });
+        }
+
+        const phone = trimCode + ' ' + trimLocal;
+        await School.create({ name: trimName, address: trimAddress, email: trimEmail, phone, website: trimWebsite });
+        req.flash('success', `School "${trimName}" created successfully.`);
         res.redirect('/super-admin/schools');
     } catch (err) {
         req.flash('error', 'Failed to create school: ' + err.message);
@@ -64,6 +141,84 @@ const deleteSchool = async (req, res) => {
     await School.findByIdAndDelete(req.params.id);
     req.flash('success', 'School deleted.');
     res.redirect('/super-admin/schools');
+};
+
+const getEditSchool = async (req, res) => {
+    try {
+        const school = await School.findById(req.params.id);
+        if (!school) {
+            req.flash('error', 'School not found.');
+            return res.redirect('/super-admin/schools');
+        }
+        res.render('superAdmin/editSchool', { title: 'Edit School', layout: 'layouts/main', school, errors: {}, old: null });
+    } catch (err) {
+        req.flash('error', 'Failed to load school.');
+        res.redirect('/super-admin/schools');
+    }
+};
+
+const postEditSchool = async (req, res) => {
+    try {
+        const { name, address, email, phone: rawPhone, website } = req.body;
+        const errors = {};
+
+        const trimName    = (name    || '').trim();
+        const trimEmail   = (email   || '').trim();
+        const trimAddress = (address || '').trim();
+        const trimWebsite = (website || '').trim();
+        const phoneMatch  = (rawPhone || '').match(/^(\+\d+)\s+(.*)/);
+        const trimCode    = phoneMatch ? phoneMatch[1] : '';
+        const trimLocal   = phoneMatch ? phoneMatch[2].replace(/\D/g, '') : '';
+
+        if (!trimName || trimName.length < 2) {
+            errors.name = 'School name is required and must be at least 2 characters.';
+        } else {
+            const duplicate = await School.findOne({
+                name: new RegExp(`^${trimName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'i'),
+                _id: { $ne: req.params.id },
+            });
+            if (duplicate) errors.name = 'A school with this name already exists.';
+        }
+
+        if (!trimEmail) {
+            errors.email = 'Email is required.';
+        } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimEmail)) {
+            errors.email = 'Please enter a valid email address.';
+        } else {
+            const dupEmail = await School.findOne({ email: trimEmail.toLowerCase(), _id: { $ne: req.params.id } });
+            if (dupEmail) errors.email = 'A school with this email already exists.';
+        }
+
+        const phoneErr = validatePhone(trimCode, trimLocal);
+        if (phoneErr) errors.phone = phoneErr;
+
+        if (!trimAddress) errors.address = 'Address is required.';
+
+        if (trimWebsite) {
+            try { new URL(trimWebsite); } catch {
+                errors.website = 'Please enter a valid URL (e.g. https://yourschool.edu).';
+            }
+        }
+
+        if (Object.keys(errors).length > 0) {
+            const school = await School.findById(req.params.id);
+            return res.render('superAdmin/editSchool', {
+                title: 'Edit School',
+                layout: 'layouts/main',
+                school,
+                errors,
+                old: req.body,
+            });
+        }
+
+        const phone = trimCode + ' ' + trimLocal;
+        await School.findByIdAndUpdate(req.params.id, { name: trimName, address: trimAddress, email: trimEmail, phone, website: trimWebsite });
+        req.flash('success', `School "${trimName}" updated successfully.`);
+        res.redirect('/super-admin/schools');
+    } catch (err) {
+        req.flash('error', 'Failed to update school: ' + err.message);
+        res.redirect('/super-admin/schools');
+    }
 };
 
 // --- USERS ---
@@ -715,7 +870,7 @@ const postBulkUpdatePermissions = async (req, res) => {
 };
 
 module.exports = {
-    getDashboard, getSchools, getCreateSchool, postCreateSchool, deleteSchool,
+    getDashboard, getSchools, getCreateSchool, postCreateSchool, deleteSchool, getEditSchool, postEditSchool,
     getUsers, getCreateUser, postCreateUser, toggleUserStatus, deleteUser, postBulkDeleteUsers,
     postGenerateLoginLink, postBulkTeachers, postBulkStudents, downloadTeacherTemplate, downloadStudentTemplate,
     getPermissions, postUpdatePermissions, postBulkUpdatePermissions,

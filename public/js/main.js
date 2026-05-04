@@ -27,7 +27,8 @@ document.querySelectorAll('.alert-close').forEach(btn => {
 
 // Submit button loading state
 document.querySelectorAll('form').forEach(form => {
-    form.addEventListener('submit', function () {
+    form.addEventListener('submit', function (e) {
+        if (e.defaultPrevented) return;
         const submitBtn = this.querySelector('button[type="submit"]');
         if (submitBtn) {
             submitBtn.disabled = true;

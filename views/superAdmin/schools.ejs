@@ -43,15 +43,19 @@
                                     <%= school.phone || '—' %>
                                 </td>
                                 <td>
-                                    <%= school.website ? `<a href="${school.website}" target="_blank">
-                                        ${school.website}</a>` : '—' %>
+                                    <% if (school.website) { %>
+                                        <a href="<%= school.website %>" target="_blank" rel="noopener noreferrer"><%= school.website %></a>
+                                    <% } else { %>
+                                        —
+                                    <% } %>
                                 </td>
                                 <td>
                                     <span class="badge <%= school.isActive ? 'badge-green' : 'badge-red' %>">
                                         <%= school.isActive ? '● Active' : '● Inactive' %>
                                     </span>
                                 </td>
-                                <td>
+                                <td style="white-space:nowrap;">
+                                    <a href="/super-admin/schools/<%= school._id %>/edit" class="btn btn-secondary btn-sm">✏️ Edit</a>
                                     <form action="/super-admin/schools/<%= school._id %>/delete" method="POST"
                                         style="display:inline;"
                                         data-confirm-submit="Delete school: <%= school.name %>?" data-confirm-title="Delete School">

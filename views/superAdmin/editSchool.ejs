@@ -1,9 +1,14 @@
 <%
-  const _oldPhone = (typeof old !== 'undefined' && old && old.phone) ? old.phone : '';
-  const _oldPhoneMatch = _oldPhone.match(/^(\+\d+)\s+(.*)/);
-  const _selCode = _oldPhoneMatch ? _oldPhoneMatch[1] : '+91';
-  const _oldPhoneLocal = _oldPhoneMatch ? _oldPhoneMatch[2] : '';
-  const _countries = [
+  var _phoneCode = '+91', _phoneLocal = '';
+  if (typeof old !== 'undefined' && old && old.countryCode) {
+      _phoneCode  = old.countryCode;
+      _phoneLocal = old.phoneLocal || '';
+  } else if (school.phone) {
+      var _m = school.phone.match(/^(\+\d+)\s*(.*)/);
+      if (_m) { _phoneCode = _m[1]; _phoneLocal = _m[2]; }
+      else     { _phoneLocal = school.phone; }
+  }
+  var _countries = [
     ['+91','🇮🇳','India'],      ['+1','🇺🇸','US/Canada'],
     ['+44','🇬🇧','UK'],          ['+61','🇦🇺','Australia'],
     ['+971','🇦🇪','UAE'],        ['+966','🇸🇦','Saudi Arabia'],
@@ -20,18 +25,16 @@
     ['+20','🇪🇬','Egypt'],       ['+46','🇸🇪','Sweden'],
     ['+41','🇨🇭','Switzerland'], ['+64','🇳🇿','New Zealand'],
   ];
-  const _e = (typeof errors !== 'undefined' && errors) ? errors : {};
-  const _o = (typeof old !== 'undefined' && old) ? old : {};
 %>
 <div class="page-header">
     <div>
-        <h1>🏗️ Create School</h1>
-        <p>Add a new school to the system</p>
+        <h1>✏️ Edit School</h1>
+        <p>Update details for <%= school.name %></p>
     </div>
     <a href="/super-admin/schools" class="btn btn-secondary">← Back</a>
 </div>
 
-<form action="/super-admin/schools/create" method="POST" id="createSchoolForm" novalidate>
+<form action="/super-admin/schools/<%= school._id %>/edit" method="POST" id="editSchoolForm" novalidate>
     <div class="form-section">
         <div class="form-section-header">
             <span>🏫</span>
@@ -43,19 +46,19 @@
                 <div class="form-group col-span-2">
                     <label class="form-label">School Name <span style="color:var(--danger)">*</span></label>
                     <input type="text" name="name" id="field-name"
-                        class="form-control <%= _e.name ? 'is-invalid' : '' %>"
+                        class="form-control <%= (errors && errors.name) ? 'is-invalid' : '' %>"
                         placeholder="e.g. Green Valley School"
-                        value="<%= _o.name || '' %>" />
-                    <span id="err-name" class="field-error" <%= _e.name ? '' : 'hidden' %>><%= _e.name || '' %></span>
+                        value="<%= (old && old.name != null) ? old.name : school.name %>" />
+                    <span id="err-name" class="field-error" <%= (errors && errors.name) ? '' : 'hidden' %>><%= (errors && errors.name) || '' %></span>
                 </div>
 
-                <div class="form-group">
+                <div class="form-group col-span-2">
                     <label class="form-label">Email <span style="color:var(--danger)">*</span></label>
                     <input type="email" name="email" id="field-email"
-                        class="form-control <%= _e.email ? 'is-invalid' : '' %>"
+                        class="form-control <%= (errors && errors.email) ? 'is-invalid' : '' %>"
                         placeholder="school@example.com"
-                        value="<%= _o.email || '' %>" />
-                    <span id="err-email" class="field-error" <%= _e.email ? '' : 'hidden' %>><%= _e.email || '' %></span>
+                        value="<%= (old && old.email != null) ? old.email : school.email %>" />
+                    <span id="err-email" class="field-error" <%= (errors && errors.email) ? '' : 'hidden' %>><%= (errors && errors.email) || '' %></span>
                 </div>
 
                 <div class="form-group col-span-2">
@@ -63,42 +66,42 @@
                     <div style="display:flex;gap:8px;">
                         <select id="field-country-code" class="form-control" style="width:120px;flex-shrink:0;">
                             <% _countries.forEach(function(c){ %>
-                                <option value="<%= c[0] %>" <%= _selCode === c[0] ? 'selected' : '' %>><%= c[1] %> <%= c[0] %></option>
+                                <option value="<%= c[0] %>" <%= _phoneCode === c[0] ? 'selected' : '' %>><%= c[1] %> <%= c[0] %></option>
                             <% }); %>
                         </select>
                         <input type="text" id="field-phone"
-                            class="form-control <%= _e.phone ? 'is-invalid' : '' %>"
+                            class="form-control <%= (errors && errors.phone) ? 'is-invalid' : '' %>"
                             placeholder="Phone number"
                             inputmode="numeric"
-                            value="<%= _oldPhoneLocal %>"
+                            value="<%= _phoneLocal %>"
                             style="flex:1;" />
                     </div>
-                    <input type="hidden" name="phone" id="combined-phone" value="<%= _o.phone || '' %>" />
-                    <span id="err-phone" class="field-error" <%= _e.phone ? '' : 'hidden' %>><%= _e.phone || '' %></span>
+                    <input type="hidden" name="phone" id="combined-phone" value="<%= _phoneCode %> <%= _phoneLocal %>" />
+                    <span id="err-phone" class="field-error" <%= (errors && errors.phone) ? '' : 'hidden' %>><%= (errors && errors.phone) || '' %></span>
                 </div>
 
                 <div class="form-group col-span-2">
                     <label class="form-label">Address <span style="color:var(--danger)">*</span></label>
                     <input type="text" name="address" id="field-address"
-                        class="form-control <%= _e.address ? 'is-invalid' : '' %>"
+                        class="form-control <%= (errors && errors.address) ? 'is-invalid' : '' %>"
                         placeholder="Full school address"
-                        value="<%= _o.address || '' %>" />
-                    <span id="err-address" class="field-error" <%= _e.address ? '' : 'hidden' %>><%= _e.address || '' %></span>
+                        value="<%= (old && old.address != null) ? old.address : school.address %>" />
+                    <span id="err-address" class="field-error" <%= (errors && errors.address) ? '' : 'hidden' %>><%= (errors && errors.address) || '' %></span>
                 </div>
 
                 <div class="form-group col-span-2">
                     <label class="form-label">Website</label>
                     <input type="text" name="website" id="field-website"
-                        class="form-control <%= _e.website ? 'is-invalid' : '' %>"
+                        class="form-control <%= (errors && errors.website) ? 'is-invalid' : '' %>"
                         placeholder="https://yourschool.edu"
-                        value="<%= _o.website || '' %>" />
-                    <span id="err-website" class="field-error" <%= _e.website ? '' : 'hidden' %>><%= _e.website || '' %></span>
+                        value="<%= (old && old.website != null) ? old.website : school.website %>" />
+                    <span id="err-website" class="field-error" <%= (errors && errors.website) ? '' : 'hidden' %>><%= (errors && errors.website) || '' %></span>
                 </div>
 
             </div>
         </div>
     </div>
-    <button type="submit" class="btn btn-primary btn-lg">🏫 Create School</button>
+    <button type="submit" class="btn btn-primary btn-lg">💾 Save Changes</button>
 </form>
 
 <script>
@@ -159,11 +162,10 @@
         if (el) el.addEventListener('input', function() { clearError(id, 'err-' + id.replace('field-','')); });
     });
 
-    var form = document.getElementById('createSchoolForm');
+    var form = document.getElementById('editSchoolForm');
     if (form) form.addEventListener('submit', function (e) {
         var valid = true;
 
-        // fresh DOM lookups so we always read current values
         var nameEl    = document.getElementById('field-name');
         var emailEl   = document.getElementById('field-email');
         var codeEl    = document.getElementById('field-country-code');
@@ -181,7 +183,7 @@
         if (!email) {
             setError('field-email','err-email','Email is required.');
             valid = false;
-        } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+        } else if (!isValidEmail(email)) {
             setError('field-email','err-email','Please enter a valid email address.');
             valid = false;
         } else { clearError('field-email','err-email'); }
@@ -216,7 +218,7 @@
 
         if (!valid) {
             e.preventDefault();
-            var first = document.querySelector('#createSchoolForm .is-invalid');
+            var first = document.querySelector('#editSchoolForm .is-invalid');
             if (first) first.focus();
         }
     });

@@ -199,6 +199,9 @@ a:hover { color: var(--primary-dark); }
 .form-control::placeholder { color: var(--text-muted); }
 select.form-control { cursor: pointer; }
 select.form-control option { background: #fff; color: var(--text-primary); }
+.form-control.is-invalid { border-color: var(--danger); background: #fff8f8; }
+.form-control.is-invalid:focus { border-color: var(--danger); box-shadow: 0 0 0 3px rgba(220,38,38,.12); }
+.field-error { color: var(--danger); font-size: 12px; margin-top: 5px; display: block; font-weight: 500; }
 .input-icon-wrapper { position: relative; }
 .input-icon-wrapper .form-control { padding-left: 44px; }
 .input-icon-wrapper .icon {

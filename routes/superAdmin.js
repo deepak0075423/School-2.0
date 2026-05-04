@@ -10,6 +10,8 @@ router.get('/dashboard', guard, ctrl.getDashboard);
 router.get('/schools', guard, ctrl.getSchools);
 router.get('/schools/create', guard, ctrl.getCreateSchool);
 router.post('/schools/create', guard, ctrl.postCreateSchool);
+router.get('/schools/:id/edit', guard, ctrl.getEditSchool);
+router.post('/schools/:id/edit', guard, ctrl.postEditSchool);
 router.post('/schools/:id/delete', guard, ctrl.deleteSchool);
 
 const upload = require('../middleware/upload');
