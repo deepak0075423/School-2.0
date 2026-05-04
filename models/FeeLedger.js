@@ -19,6 +19,9 @@ const FeeLedgerSchema = new mongoose.Schema({
         default: 'Manual',
     },
     referenceId: { type: mongoose.Schema.Types.ObjectId, default: null },
+    feeItemId:   { type: mongoose.Schema.Types.ObjectId, default: null }, // FeeStructure item subdoc _id
+    feePeriod:   { type: Number, default: null },   // 0-based period index for idempotency
+    periodLabel: { type: String, default: '' },     // human label: "January 2026", "Quarter 2 — July 2026"
     runningBalance: { type: Number, default: 0 }, // positive = owes money, negative = credit/overpaid
     feeHeadName: { type: String, default: '' },
     createdBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
@@ -29,6 +32,7 @@ const FeeLedgerSchema = new mongoose.Schema({
 FeeLedgerSchema.index({ school: 1, student: 1, academicYear: 1, createdAt: -1 });
 FeeLedgerSchema.index({ school: 1, createdAt: -1 });
 FeeLedgerSchema.index({ referenceType: 1, referenceId: 1 });
+FeeLedgerSchema.index({ school: 1, student: 1, feeItemId: 1, category: 1, createdAt: -1 });
 FeeLedgerSchema.index({ school: 1, category: 1, createdAt: -1 });
 
 module.exports = mongoose.model('FeeLedger', FeeLedgerSchema);

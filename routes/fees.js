@@ -12,6 +12,14 @@ const parentGuard  = [isAuthenticated, requirePasswordReset, requireRole('parent
 // ── Admin: Dashboard ─────────────────────────────────────────────────────────
 router.get('/admin/dashboard',       adminGuard, adminCtrl.getDashboard);
 
+// ── Admin: Fee Categories ────────────────────────────────────────────────────
+router.get('/admin/fee-categories',               adminGuard, adminCtrl.getFeeCategories);
+router.get('/admin/fee-categories/create',        adminGuard, adminCtrl.getCreateFeeCategory);
+router.post('/admin/fee-categories/create',       adminGuard, adminCtrl.postCreateFeeCategory);
+router.get('/admin/fee-categories/:id/edit',      adminGuard, adminCtrl.getEditFeeCategory);
+router.post('/admin/fee-categories/:id/edit',     adminGuard, adminCtrl.postEditFeeCategory);
+router.post('/admin/fee-categories/:id/toggle',   adminGuard, adminCtrl.postToggleFeeCategory);
+
 // ── Admin: Fee Heads ─────────────────────────────────────────────────────────
 router.get('/admin/fee-heads',                    adminGuard, adminCtrl.getFeeHeads);
 router.get('/admin/fee-heads/create',             adminGuard, adminCtrl.getCreateFeeHead);
@@ -29,6 +37,7 @@ router.get('/admin/fee-structures/:id/edit',      adminGuard, adminCtrl.getEditF
 router.post('/admin/fee-structures/:id/edit',     adminGuard, adminCtrl.postEditFeeStructure);
 router.post('/admin/fee-structures/:id/toggle',   adminGuard, adminCtrl.postToggleFeeStructure);
 router.post('/admin/fee-structures/:id/generate-demand', adminGuard, adminCtrl.postGenerateFeeDemand);
+router.post('/admin/fee-structures/:id/add-fee-head',   adminGuard, adminCtrl.postAddFeeHeadToStructure);
 
 // ── Admin: Fine Rules ────────────────────────────────────────────────────────
 router.get('/admin/fine-rules',                   adminGuard, adminCtrl.getFineRules);

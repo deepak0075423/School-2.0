@@ -20,29 +20,36 @@
                 <a href="/fees/admin/fee-structures/<%= structure._id %>/edit" class="btn btn-secondary btn-sm">Edit</a>
             </div>
             <div class="table-wrapper">
-                <% if (!structure.items.length) { %>
+                <% if (!structure.items.filter(i => i.isActive).length) { %>
                 <div class="empty-state" style="padding:30px;"><p>No fee components in this structure.</p></div>
                 <% } else { %>
                 <table>
-                    <thead><tr><th>Fee Head</th><th>Category</th><th>Amount</th><th>Due Date</th><th>Label</th></tr></thead>
+                    <thead>
+                        <tr><th>Fee Head</th><th>Category</th><th>Frequency</th><th>Amount</th></tr>
+                    </thead>
                     <tbody>
-                        <% let total = 0; structure.items.forEach(item => { if (!item.isActive) return; total += item.amount || 0; %>
+                        <% let total = 0; structure.items.forEach(item => {
+                           if (!item.isActive) return;
+                           total += item.amount || 0;
+                           const typeLabel = { one_time: 'One-Time', recurring: 'Monthly', quarterly: 'Quarterly', half_yearly: 'Half-Yearly' }[item.feeHead?.type] || item.feeHead?.type || '—';
+                           const typeBadge = { one_time: 'badge-warning', recurring: 'badge-success', quarterly: 'badge-purple', half_yearly: 'badge-cyan' }[item.feeHead?.type] || 'badge-secondary';
+                        %>
                         <tr>
                             <td><strong><%= item.feeHead?.name || '—' %></strong></td>
-                            <td><span class="badge badge-secondary" style="text-transform:capitalize;"><%= item.feeHead?.category || '—' %></span></td>
-                            <td style="font-weight:600;color:#1d4ed8;">₹<%= (item.amount || 0).toLocaleString('en-IN') %></td>
-                            <td style="font-size:0.82rem;color:var(--text-muted);">
-                                <%= item.dueDate ? new Date(item.dueDate).toLocaleDateString('en-IN') : '—' %>
+                            <td>
+                                <% if (item.feeHead?.category?.name) { %>
+                                <span class="badge badge-info"><%= item.feeHead.category.name %></span>
+                                <% } else { %><span style="color:var(--text-muted);">—</span><% } %>
                             </td>
-                            <td style="font-size:0.82rem;color:var(--text-muted);"><%= item.installmentLabel || '—' %></td>
+                            <td><span class="badge <%= typeBadge %>" style="font-size:0.72rem;"><%= typeLabel %></span></td>
+                            <td style="font-weight:600;color:#1d4ed8;">₹<%= (item.amount || 0).toLocaleString('en-IN') %></td>
                         </tr>
                         <% }) %>
                     </tbody>
                     <tfoot>
                         <tr style="background:var(--bg-secondary);">
-                            <td colspan="2" style="font-weight:700;padding:10px 12px;">Total</td>
+                            <td colspan="3" style="font-weight:700;padding:10px 12px;">Monthly Total</td>
                             <td style="font-weight:700;color:#1d4ed8;padding:10px 12px;">₹<%= total.toLocaleString('en-IN') %></td>
-                            <td colspan="2"></td>
                         </tr>
                     </tfoot>
                 </table>
@@ -55,8 +62,12 @@
         <div class="card">
             <div class="card-header"><div class="card-title">Details</div></div>
             <div class="card-body" style="font-size:0.88rem;">
-                <div style="margin-bottom:10px;"><span style="color:var(--text-muted);">Academic Year</span><br><strong><%= structure.academicYear?.yearName || '—' %></strong></div>
-                <div style="margin-bottom:10px;"><span style="color:var(--text-muted);">Scope</span><br>
+                <div style="margin-bottom:10px;">
+                    <span style="color:var(--text-muted);">Academic Year</span><br>
+                    <strong><%= structure.academicYear?.yearName || '—' %></strong>
+                </div>
+                <div style="margin-bottom:10px;">
+                    <span style="color:var(--text-muted);">Scope</span><br>
                     <strong>
                     <% if (structure.level === 'class' && structure.class) { %>
                         Class <%= structure.class.classNumber %> — <%= structure.class.className %>
@@ -65,11 +76,21 @@
                     <% } else { %>—<% } %>
                     </strong>
                 </div>
-                <div style="margin-bottom:10px;"><span style="color:var(--text-muted);">Students in scope</span><br><strong><%= studentCount %></strong></div>
-                <div style="margin-bottom:10px;"><span style="color:var(--text-muted);">Demand generated</span><br>
-                    <span class="badge badge-<%= structure.demandGenerated ? 'success' : 'secondary' %>">
-                        <%= structure.demandGenerated ? '✓ Yes' : 'Not yet' %>
-                    </span>
+                <div style="margin-bottom:10px;">
+                    <span style="color:var(--text-muted);">Due Day of Month</span><br>
+                    <strong><%= structure.dueDay ? structure.dueDay + (structure.dueDay === 1 ? 'st' : structure.dueDay === 2 ? 'nd' : structure.dueDay === 3 ? 'rd' : 'th') + ' of each month' : '—' %></strong>
+                </div>
+                <div style="margin-bottom:10px;">
+                    <span style="color:var(--text-muted);">Students in scope</span><br>
+                    <strong><%= studentCount %></strong>
+                </div>
+                <div style="margin-bottom:10px;">
+                    <span style="color:var(--text-muted);">Demand status</span><br>
+                    <% if (structure.demandGeneratedAt) { %>
+                    <span class="badge badge-success">✓ Generated on <%= new Date(structure.demandGeneratedAt).toLocaleDateString('en-IN') %></span>
+                    <% } else { %>
+                    <span class="badge badge-secondary">Not yet generated</span>
+                    <% } %>
                 </div>
                 <div><span style="color:var(--text-muted);">Created by</span><br><strong><%= structure.createdBy?.name || '—' %></strong></div>
             </div>
@@ -78,19 +99,29 @@
         <div class="card">
             <div class="card-header"><div class="card-title">Actions</div></div>
             <div class="card-body" style="display:flex;flex-direction:column;gap:10px;">
-                <% if (!structure.demandGenerated && structure.isActive && studentCount > 0) { %>
-                <form method="POST" action="/fees/admin/fee-structures/<%= structure._id %>/generate-demand">
-                    <button type="submit" class="btn btn-primary btn-block"
-                        data-confirm="Generate fee demand for all <%= studentCount %> students? This will create ledger debit entries."
-                        data-confirm-title="Generate Fee Demand"
-                        data-confirm-type="warning"
-                        data-confirm-ok="Generate">
-                        📋 Generate Fee Demand (<%= studentCount %> students)
-                    </button>
-                </form>
-                <% } else if (structure.demandGenerated) { %>
-                <div class="alert alert-success" style="margin:0;font-size:0.82rem;">✓ Demand already generated for this structure.</div>
+                <% if (structure.isActive && studentCount > 0) { %>
+                    <% if (!structure.demandGeneratedAt) { %>
+                    <form method="POST" action="/fees/admin/fee-structures/<%= structure._id %>/generate-demand">
+                        <button type="submit" class="btn btn-primary btn-block"
+                            data-confirm="Generate fee demand for <%= studentCount %> student(s)? This will create ledger entries for each applicable fee head."
+                            data-confirm-title="Generate Fee Demand"
+                            data-confirm-type="warning"
+                            data-confirm-ok="Generate">
+                            📋 Generate Fee Demand (<%= studentCount %> students)
+                        </button>
+                    </form>
+                    <% } else { %>
+                    <div style="padding:10px;background:#f0fdf4;border:1px solid #86efac;border-radius:6px;font-size:0.82rem;color:#166534;text-align:center;">
+                        ✓ Demand already generated on <%= new Date(structure.demandGeneratedAt).toLocaleDateString('en-IN') %><br>
+                        <span style="color:var(--text-muted);">Edit the structure to change fees — demand will reset and require re-generation.</span>
+                    </div>
+                    <% } %>
+                <% } else if (!structure.isActive) { %>
+                <div class="alert" style="margin:0;font-size:0.82rem;background:var(--bg-secondary);border-radius:6px;padding:10px;">Structure is inactive.</div>
+                <% } else { %>
+                <div class="alert" style="margin:0;font-size:0.82rem;background:var(--bg-secondary);border-radius:6px;padding:10px;">No students enrolled in this class/section yet.</div>
                 <% } %>
+
                 <form method="POST" action="/fees/admin/fee-structures/<%= structure._id %>/toggle">
                     <button type="submit" class="btn btn-block <%= structure.isActive ? 'btn-warning' : 'btn-success' %>"
                         data-confirm="<%= structure.isActive ? 'Deactivate' : 'Activate' %> this structure?"
@@ -100,5 +131,39 @@
                 </form>
             </div>
         </div>
+
+        <!-- Add Fee Head (mid-year) -->
+        <% if (availableFeeHeads && availableFeeHeads.length > 0) { %>
+        <div class="card">
+            <div class="card-header"><div class="card-title">➕ Add Fee Head</div></div>
+            <div class="card-body">
+                <p style="font-size:0.82rem;color:var(--text-muted);margin-bottom:12px;">
+                    Add a new fee component mid-year. This will reset the demand — click "Generate Fee Demand" again to charge students.
+                </p>
+                <form method="POST" action="/fees/admin/fee-structures/<%= structure._id %>/add-fee-head">
+                    <div class="form-group">
+                        <label class="form-label" style="font-size:0.82rem;">Fee Head <span style="color:#dc2626;">*</span></label>
+                        <select name="feeHeadId" class="form-control form-control-sm" required>
+                            <option value="">Select fee head…</option>
+                            <% availableFeeHeads.forEach(fh => { %>
+                            <option value="<%= fh._id %>">
+                                <%= fh.name %>
+                                <% if (fh.category?.name) { %>(<%=fh.category.name%>)<% } %>
+                                — <%= { one_time: 'One-Time', recurring: 'Monthly', quarterly: 'Quarterly', half_yearly: 'Half-Yearly' }[fh.type] || fh.type %>
+                            </option>
+                            <% }) %>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label" style="font-size:0.82rem;">Amount (₹) <span style="color:#dc2626;">*</span></label>
+                        <input type="number" name="amount" class="form-control form-control-sm" min="1" step="0.01" required placeholder="0.00">
+                    </div>
+                    <button type="submit" class="btn btn-secondary btn-block" style="font-size:0.82rem;">
+                        ➕ Add to Structure
+                    </button>
+                </form>
+            </div>
+        </div>
+        <% } %>
     </div>
 </div>

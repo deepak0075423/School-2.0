@@ -4,316 +4,383 @@ const flash_error   = typeof error   !== 'undefined' ? error   : (locals.error  
 const sym = currencySymbol || '₹';
 %>
 
-<% if (flash_success && flash_success.length) { %><div class="alert alert-success"><%= flash_success %></div><% } %>
-<% if (flash_error   && flash_error.length)   { %><div class="alert alert-error"><%=   flash_error   %></div><% } %>
-
-<div style="display:flex;align-items:center;gap:12px;margin-bottom:24px;">
+<div style="display:flex;align-items:center;gap:10px;margin-bottom:20px;">
     <a href="/fees/student/my-fees" class="btn btn-secondary btn-sm">← Back</a>
-    <div>
-        <h2 style="margin:0;font-size:1.4rem;">💳 Pay Fees</h2>
-        <% if (activeYear) { %><span style="font-size:0.82rem;color:var(--text-muted);">Academic Year: <strong><%= activeYear.yearName %></strong></span><% } %>
-    </div>
+    <h2 style="margin:0;">Pay Fees</h2>
+    <% if (activeYear) { %><span class="badge badge-info"><%= activeYear.yearName %></span><% } %>
 </div>
 
-<div style="display:grid;grid-template-columns:1fr 360px;gap:24px;align-items:start;">
+<% if (flash_success && flash_success.length) { %><div class="alert alert-success"><%= flash_success %></div><% } %>
+<% if (flash_error   && flash_error.length)   { %><div class="alert alert-error"><%= flash_error   %></div><% } %>
 
-    <!-- ── Left: Payment Panel ── -->
-    <div class="card">
-        <div class="card-header">
-            <div class="card-title">
-                <% if (gateway === 'razorpay') { %>🔵 Pay via Razorpay
-                <% } else if (gateway === 'stripe') { %>🔷 Pay via Stripe
-                <% } else { %>📋 Submit Payment Details<% } %>
-            </div>
-            <% if (gateway !== 'none') { %>
-            <span class="badge badge-success" style="font-size:0.72rem;">🔒 Secure Payment</span>
-            <% } %>
-        </div>
-        <div class="card-body">
+<%
+const dueMonths      = (monthlySchedule || []).filter(m => m.payStatus === 'due' || m.payStatus === 'partial');
+const upcomingMonths = (monthlySchedule || []).filter(m => m.payStatus === 'upcoming');
+const paidMonths     = (monthlySchedule || []).filter(m => m.payStatus === 'paid');
+const hasDues        = dueMonths.length > 0;
+const hasSchedule    = monthlySchedule && monthlySchedule.length > 0;
+const dueTotal       = dueMonths.reduce((s, m) => s + m.amountDue, 0);
+%>
 
-            <!-- Amount input (shared) -->
-            <div class="form-group">
-                <label class="form-label">Amount to Pay (<%= currency %>)</label>
-                <div style="position:relative;">
-                    <span style="position:absolute;left:12px;top:50%;transform:translateY(-50%);font-size:1.1rem;font-weight:700;color:var(--text-muted);"><%= sym %></span>
-                    <input type="number" id="payAmount" class="form-control"
-                        value="<%= balance %>" min="1" max="<%= balance %>" step="0.01"
-                        style="padding-left:32px;font-size:1.3rem;font-weight:700;color:#1d4ed8;"
-                        oninput="syncAmount(this.value)">
+<div style="display:grid;grid-template-columns:1fr 360px;gap:20px;align-items:start;">
+
+    <!-- Left: Fee Book Month Selection -->
+    <div>
+        <% if (hasSchedule) { %>
+        <div class="card" style="margin-bottom:16px;">
+            <div class="card-header" style="border-bottom:2px solid var(--border);">
+                <div>
+                    <div class="card-title">📒 Select Months to Pay</div>
+                    <div style="font-size:0.78rem;color:var(--text-muted);margin-top:2px;">
+                        <% if (hasDues) { %>Overdue months are pre-selected. Pay them first before selecting future months.
+                        <% } else { %>All dues cleared. Select upcoming months to pay in advance.
+                        <% } %>
+                    </div>
                 </div>
-                <div style="font-size:0.78rem;color:var(--text-muted);margin-top:4px;">
-                    Outstanding balance: <strong style="color:#dc2626;"><%= sym %><%= balance.toLocaleString('en-IN') %></strong>
+                <div style="font-size:0.88rem;font-weight:600;color:#1d4ed8;">
+                    <span id="selectedCount"><%= dueMonths.length %></span> month(s) selected
                 </div>
             </div>
+            <div id="feeBookList" style="padding:0 16px 16px;">
 
-            <% if (gateway === 'razorpay') { %>
-            <!-- ── RAZORPAY ── -->
-            <div id="rzpError" class="alert alert-error" style="display:none;"></div>
-            <div style="margin-bottom:20px;padding:14px;background:#F0F9FF;border:1px solid #BAE6FD;border-radius:8px;font-size:0.85rem;color:#0369a1;">
-                🔒 You will be redirected to Razorpay's secure checkout. Supports UPI, Cards, Net Banking, and Wallets.
-            </div>
-            <button onclick="initiateRazorpay()" class="btn btn-primary" id="rzpBtn"
-                style="width:100%;padding:14px;font-size:1rem;font-weight:700;background:#3b82f6;letter-spacing:0.02em;">
-                🔵 Pay <%= sym %><span id="rzpAmtDisplay"><%= balance.toLocaleString('en-IN') %></span> via Razorpay
-            </button>
-
-            <% } else if (gateway === 'stripe') { %>
-            <!-- ── STRIPE ── -->
-            <div id="stripeError" class="alert alert-error" style="display:none;"></div>
-            <div class="form-group">
-                <label class="form-label">Card Details</label>
-                <div id="stripeCardElement" style="padding:12px;border:1px solid var(--border);border-radius:8px;background:#fff;min-height:44px;"></div>
-            </div>
-            <button onclick="initiateStripe()" class="btn btn-primary" id="stripeBtn"
-                style="width:100%;padding:14px;font-size:1rem;font-weight:700;letter-spacing:0.02em;">
-                🔷 Pay <%= sym %><span id="stripeAmtDisplay"><%= balance.toLocaleString('en-IN') %></span> Securely
-            </button>
-
-            <% } else { %>
-            <!-- ── OFFLINE / MANUAL ── -->
-            <form method="POST" action="/fees/student/pay" id="offlineForm">
-
-                <div class="form-group">
-                    <label class="form-label">Payment Mode <span style="color:#dc2626;">*</span></label>
-                    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:6px;">
-                        <% [
-                            { val:'cash',          label:'💵 Cash',     desc:'Pay at counter' },
-                            { val:'upi',           label:'📱 UPI',      desc:'GPay / PhonePe' },
-                            { val:'cheque',        label:'📝 Cheque',   desc:'Submit at office' },
-                            { val:'bank_transfer', label:'🏦 NEFT/RTGS',desc:'Bank transfer' },
-                            { val:'online',        label:'💻 Online',   desc:'Net banking' },
-                            { val:'dd',            label:'📄 DD',       desc:'Demand Draft' },
-                        ].forEach(m => { %>
-                        <label style="cursor:pointer;">
-                            <input type="radio" name="paymentMode" value="<%= m.val %>" required
-                                class="mode-radio" style="display:none;"
-                                onchange="document.querySelectorAll('.mode-card').forEach(c=>c.classList.remove('mode-selected'));this.closest('.mode-card').classList.add('mode-selected')">
-                            <div class="mode-card" style="border:2px solid var(--border);border-radius:8px;padding:10px 6px;text-align:center;transition:all 0.15s;font-size:0.8rem;cursor:pointer;">
-                                <div style="font-size:1rem;margin-bottom:3px;"><%= m.label %></div>
-                                <div style="font-size:0.7rem;color:var(--text-muted);"><%= m.desc %></div>
-                            </div>
-                        </label>
+                <!-- Due / Partial months — required -->
+                <% if (dueMonths.length) { %>
+                <div style="padding:12px 0 6px;font-size:0.72rem;text-transform:uppercase;font-weight:700;color:#dc2626;letter-spacing:0.05em;">⚠ Overdue Months — Required</div>
+                <% dueMonths.forEach((month, idx) => { %>
+                <div style="border:1.5px solid #fca5a5;border-radius:8px;margin-bottom:8px;background:#fef2f2;padding:12px 14px;">
+                    <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;">
+                        <div style="display:flex;align-items:center;gap:10px;">
+                            <input type="checkbox" checked disabled style="width:16px;height:16px;accent-color:#dc2626;">
+                            <span style="font-weight:700;font-size:0.95rem;"><%= month.monthLabel %></span>
+                            <% if (month.isCurrentMonth) { %><span style="font-size:0.7rem;color:#3b82f6;">(Current)</span><% } %>
+                            <span class="badge" style="background:#fee2e2;color:#dc2626;font-size:0.68rem;"><%= month.payStatus === 'partial' ? 'PARTIAL' : 'OVERDUE' %></span>
+                        </div>
+                        <div style="text-align:right;">
+                            <% if (month.payStatus === 'partial') { %><div style="font-size:0.72rem;color:#16a34a;">Paid: <%= sym %><%= month.amountPaid.toLocaleString('en-IN') %></div><% } %>
+                            <div style="font-weight:700;color:#dc2626;"><%= sym %><%= month.amountDue.toLocaleString('en-IN') %></div>
+                        </div>
+                    </div>
+                    <div style="margin-top:8px;border-top:1px dashed #fca5a5;padding-top:8px;">
+                        <% month.items.forEach(item => { %>
+                        <div style="display:flex;justify-content:space-between;font-size:0.79rem;color:#7f1d1d;padding:2px 0;">
+                            <span><%= item.name %></span><span><%= sym %><%= item.amount.toLocaleString('en-IN') %></span>
+                        </div>
                         <% }) %>
                     </div>
                 </div>
+                <% }) %>
+                <% } %>
 
-                <input type="hidden" name="amount" id="offlineAmountField" value="<%= balance %>">
-
-                <div class="form-group">
-                    <label class="form-label">Transaction / Reference No.</label>
-                    <input type="text" name="transactionRef" class="form-control"
-                        placeholder="UPI ref, cheque no., bank ref...">
-                    <div style="font-size:0.75rem;color:var(--text-muted);margin-top:3px;">Optional — helps admin verify faster.</div>
+                <!-- Upcoming months — optional -->
+                <% if (upcomingMonths.length) { %>
+                <div style="padding:12px 0 6px;font-size:0.72rem;text-transform:uppercase;font-weight:700;color:#6b7280;letter-spacing:0.05em;">
+                    Upcoming Months — <% if (hasDues) { %>Available after clearing overdue<% } else { %>Advance Payment (Optional)<% } %>
                 </div>
-
-                <div class="form-group">
-                    <label class="form-label">Payment Date <span style="color:#dc2626;">*</span></label>
-                    <input type="date" name="paymentDate" class="form-control"
-                        value="<%= new Date().toISOString().split('T')[0] %>" required>
-                </div>
-
-                <div class="form-group">
-                    <label class="form-label">Remarks</label>
-                    <textarea name="remarks" class="form-control" rows="2" placeholder="Any additional info..."></textarea>
-                </div>
-
-                <div style="padding:12px 14px;background:#FFFBEB;border:1px solid #FCD34D;border-radius:8px;font-size:0.82rem;color:#92400E;margin-bottom:18px;">
-                    ⏳ Your payment will be verified by admin. Receipt is issued after confirmation.
-                </div>
-
-                <button type="button" class="btn btn-primary" style="width:100%;padding:13px;font-size:1rem;font-weight:700;"
-                    onclick="(function(btn){var amt=document.getElementById('payAmount').value;showGlobalConfirm('Submit payment of <%= sym %>'+amt+'?','Confirm Payment',function(){document.getElementById('offlineAmountField').value=amt;btn.closest('form').submit();},{type:'warning',okText:'Submit'})})(this)">
-                    ✅ Submit Payment
-                </button>
-            </form>
-            <% } %>
-
-        </div>
-    </div>
-
-    <!-- ── Right: Summary ── -->
-    <div style="display:flex;flex-direction:column;gap:16px;">
-
-        <!-- Balance -->
-        <div class="card" style="border-top:4px solid #dc2626;">
-            <div class="card-body" style="text-align:center;padding:22px 16px;">
-                <div style="font-size:0.8rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.05em;margin-bottom:6px;">Outstanding Balance</div>
-                <div style="font-size:2.2rem;font-weight:800;color:#dc2626;"><%= sym %><%= balance.toLocaleString('en-IN') %></div>
-                <div style="font-size:0.78rem;color:var(--text-muted);margin-top:4px;">Academic Year: <%= activeYear?.yearName || '—' %></div>
-            </div>
-        </div>
-
-        <!-- Fee Breakdown -->
-        <% if (resolved && resolved.items.length) { %>
-        <div class="card">
-            <div class="card-header"><div class="card-title">📋 Fee Breakdown</div></div>
-            <div class="card-body" style="padding:0;">
-                <% resolved.items.forEach((item, idx) => {
-                    const isOverdue = item.dueDate && new Date(item.dueDate) < new Date();
-                %>
-                <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 14px;border-bottom:<%= idx < resolved.items.length-1 ? '1px solid var(--border)' : 'none' %>;">
-                    <div>
-                        <div style="font-size:0.85rem;font-weight:500;"><%= item.feeName %></div>
-                        <% if (item.dueDate) { %>
-                        <div style="font-size:0.72rem;color:<%= isOverdue?'#dc2626':'var(--text-muted)' %>;">
-                            Due: <%= new Date(item.dueDate).toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'}) %><%= isOverdue?' ⚠️':'' %>
+                <% upcomingMonths.forEach((month, idx) => { %>
+                <div class="upcoming-card" id="uc-<%= idx %>"
+                    data-amount="<%= month.totalAmount %>" data-idx="<%= idx %>"
+                    style="border:1.5px solid #d1d5db;border-radius:8px;margin-bottom:8px;background:var(--bg-secondary);padding:12px 14px;cursor:pointer;transition:border-color 0.15s,background 0.15s;"
+                    onclick="toggleUpcoming(<%= idx %>)">
+                    <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;">
+                        <div style="display:flex;align-items:center;gap:10px;">
+                            <input type="checkbox" id="uc-cb-<%= idx %>" data-idx="<%= idx %>"
+                                style="width:16px;height:16px;accent-color:#3b82f6;"
+                                onclick="event.stopPropagation();toggleUpcoming(<%= idx %>)">
+                            <span style="font-weight:600;font-size:0.92rem;"><%= month.monthLabel %></span>
+                            <% if (month.isCurrentMonth) { %><span style="font-size:0.7rem;color:#3b82f6;">(Current)</span><% } %>
+                            <span class="badge badge-secondary" style="font-size:0.68rem;">UPCOMING</span>
                         </div>
-                        <% } %>
+                        <div style="font-weight:700;color:#6b7280;"><%= sym %><%= month.totalAmount.toLocaleString('en-IN') %></div>
                     </div>
-                    <div style="font-weight:700;color:#1d4ed8;font-size:0.9rem;"><%= sym %><%= (item.amount||0).toLocaleString('en-IN') %></div>
+                    <div style="margin-top:8px;border-top:1px dashed #d1d5db;padding-top:8px;">
+                        <% month.items.forEach(item => { %>
+                        <div style="display:flex;justify-content:space-between;font-size:0.79rem;color:var(--text-muted);padding:2px 0;">
+                            <span><%= item.name %></span><span><%= sym %><%= item.amount.toLocaleString('en-IN') %></span>
+                        </div>
+                        <% }) %>
+                    </div>
                 </div>
                 <% }) %>
-                <div style="display:flex;justify-content:space-between;padding:12px 14px;background:#EBF5FB;font-weight:700;border-top:2px solid #BFDBFE;">
-                    <span>Total</span>
-                    <span style="color:#1d4ed8;"><%= sym %><%= resolved.items.reduce((s,i)=>s+i.amount,0).toLocaleString('en-IN') %></span>
+                <% } %>
+
+                <!-- Paid months reference -->
+                <% if (paidMonths.length) { %>
+                <div style="padding:12px 0 6px;font-size:0.72rem;text-transform:uppercase;font-weight:700;color:#16a34a;letter-spacing:0.05em;">✓ Already Paid</div>
+                <% paidMonths.slice(0,2).forEach(month => { %>
+                <div style="border:1px solid #bbf7d0;border-radius:8px;margin-bottom:6px;background:#f0fdf4;padding:10px 14px;opacity:0.8;">
+                    <div style="display:flex;justify-content:space-between;align-items:center;">
+                        <div style="display:flex;align-items:center;gap:8px;">
+                            <span>✅</span>
+                            <span style="font-weight:600;font-size:0.88rem;color:#166534;"><%= month.monthLabel %></span>
+                            <span class="badge badge-success" style="font-size:0.65rem;">PAID</span>
+                        </div>
+                        <span style="font-size:0.88rem;font-weight:600;color:#16a34a;"><%= sym %><%= month.amountPaid.toLocaleString('en-IN') %></span>
+                    </div>
                 </div>
+                <% }) %>
+                <% if (paidMonths.length > 2) { %><div style="text-align:center;font-size:0.78rem;color:var(--text-muted);padding-top:4px;">+ <%= paidMonths.length-2 %> more · <a href="/fees/student/my-fees" style="color:#3b82f6;">View all</a></div><% } %>
+                <% } %>
+
+                <% if (!dueMonths.length && !upcomingMonths.length) { %>
+                <div style="padding:32px;text-align:center;">
+                    <div style="font-size:2rem;">✅</div>
+                    <p style="color:var(--text-muted);font-size:0.88rem;margin:8px 0 0;">All fees paid and up to date. Enter an amount to pay in advance.</p>
+                </div>
+                <% } %>
+            </div>
+        </div>
+        <% } %>
+    </div>
+
+    <!-- Right: Payment Form -->
+    <div style="position:sticky;top:20px;">
+
+        <!-- Balance Card -->
+        <div style="background:linear-gradient(135deg,#1d4ed8,#3b82f6);border-radius:12px;padding:16px 20px;margin-bottom:16px;color:#fff;">
+            <% if (balance > 0) { %>
+            <div style="font-size:0.72rem;opacity:0.8;text-transform:uppercase;letter-spacing:0.05em;">Outstanding Balance</div>
+            <div style="font-size:1.8rem;font-weight:800;color:#fde68a;"><%= sym %><%= balance.toLocaleString('en-IN') %></div>
+            <div style="font-size:0.78rem;opacity:0.8;margin-top:2px;">Due for payment</div>
+            <% } else if (balance < 0) { %>
+            <div style="font-size:0.72rem;opacity:0.8;text-transform:uppercase;letter-spacing:0.05em;">Credit Balance</div>
+            <div style="font-size:1.8rem;font-weight:800;color:#a7f3d0;"><%= sym %><%= Math.abs(balance).toLocaleString('en-IN') %></div>
+            <div style="font-size:0.78rem;opacity:0.8;margin-top:2px;">Advance paid</div>
+            <% } else { %>
+            <div style="font-size:1rem;font-weight:700;color:#a7f3d0;">✅ All Dues Cleared</div>
+            <div style="font-size:0.78rem;opacity:0.8;margin-top:2px;">No outstanding balance</div>
+            <% } %>
+        </div>
+
+        <% if (balance <= 0 && !hasDues) { %>
+        <div style="background:#EFF6FF;border:1px solid #BFDBFE;border-radius:8px;padding:12px 14px;margin-bottom:14px;display:flex;gap:10px;">
+            <span style="font-size:1.2rem;">➕</span>
+            <div>
+                <div style="font-weight:700;color:#1e40af;font-size:0.88rem;">Advance Payment</div>
+                <div style="font-size:0.78rem;color:#3b82f6;margin-top:2px;">Select upcoming months above, or enter a custom amount below.</div>
             </div>
         </div>
         <% } %>
 
-        <!-- Security badge -->
-        <% if (gateway !== 'none') { %>
-        <div class="card" style="background:#F0FDF4;border:1px solid #BBF7D0;">
-            <div class="card-body" style="font-size:0.8rem;color:#166534;text-align:center;padding:16px;">
-                <div style="font-size:1.4rem;margin-bottom:6px;">🔒</div>
-                <div style="font-weight:700;margin-bottom:4px;">100% Secure Payment</div>
-                <div style="opacity:0.85;">Powered by <%= gateway === 'razorpay' ? 'Razorpay' : 'Stripe' %>. Your card details are never stored on our servers.</div>
-            </div>
-        </div>
-        <% } else { %>
-        <div class="card" style="background:#F0FDF4;border:1px solid #BBF7D0;">
-            <div class="card-body" style="font-size:0.8rem;color:#166534;">
-                <div style="font-weight:700;margin-bottom:8px;">💡 Tips</div>
-                <ul style="margin:0;padding-left:16px;line-height:1.9;">
-                    <li>Keep your payment receipt safe</li>
-                    <li>Include the transaction reference</li>
-                    <li>Admin verifies within 1 working day</li>
-                    <li><a href="/fees/student/payments" style="color:#166534;">Check status</a> in Payment History</li>
-                </ul>
-            </div>
+        <% if (hasDues) { %>
+        <div style="background:#FFF7ED;border:1px solid #FED7AA;border-radius:8px;padding:10px 14px;margin-bottom:14px;font-size:0.8rem;color:#92400E;">
+            ⚠️ <strong>Pay overdue months first</strong> before selecting upcoming months.
         </div>
         <% } %>
+
+        <div class="card">
+            <div class="card-header"><div class="card-title">Payment Details</div></div>
+            <div class="card-body">
+
+                <div class="form-group">
+                    <label class="form-label">Amount (<%= sym %>)</label>
+                    <input type="number" id="payAmount" class="form-control"
+                        value="<%= suggestedAmount > 0 ? suggestedAmount : '' %>"
+                        placeholder="<%= suggestedAmount > 0 ? '' : 'Enter amount' %>"
+                        min="1" step="0.01"
+                        style="font-size:1.2rem;font-weight:700;color:#1d4ed8;"
+                        oninput="onAmountInput()">
+                    <div id="amtBreakdown" style="font-size:0.76rem;color:var(--text-muted);margin-top:4px;"></div>
+                </div>
+
+                <% if (!gateway || gateway === 'none') { %>
+                <form method="POST" action="/fees/student/pay" onsubmit="return validateOffline()">
+                    <div class="form-group">
+                        <label class="form-label">Payment Mode</label>
+                        <select name="paymentMode" class="form-control" required>
+                            <option value="cash">Cash</option>
+                            <option value="upi">UPI</option>
+                            <option value="bank_transfer">Bank Transfer</option>
+                            <option value="cheque">Cheque</option>
+                            <option value="other">Other</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Transaction Ref <span style="color:var(--text-muted);font-size:0.75rem;">(optional)</span></label>
+                        <input type="text" name="transactionRef" class="form-control" placeholder="UTR / Ref No">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Payment Date</label>
+                        <input type="date" name="paymentDate" class="form-control" value="<%= new Date().toISOString().split('T')[0] %>">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Remarks <span style="color:var(--text-muted);font-size:0.75rem;">(optional)</span></label>
+                        <input type="text" name="remarks" class="form-control" placeholder="Optional">
+                    </div>
+                    <input type="hidden" name="amount" id="hiddenAmt" value="<%= suggestedAmount || '' %>">
+                    <button type="submit" class="btn btn-primary btn-block" style="font-size:1rem;padding:13px;">
+                        Submit Payment Request
+                    </button>
+                    <p style="text-align:center;font-size:0.73rem;color:var(--text-muted);margin:8px 0 0;">Admin will verify and confirm your payment.</p>
+                </form>
+
+                <% } else if (gateway === 'razorpay') { %>
+                <div class="form-group">
+                    <label class="form-label">Remarks <span style="color:var(--text-muted);font-size:0.75rem;">(optional)</span></label>
+                    <input type="text" id="rzpRemarks" class="form-control" placeholder="Optional">
+                </div>
+                <button onclick="doRazorpay()" class="btn btn-primary btn-block" style="font-size:1rem;padding:13px;">
+                    💳 Pay via Razorpay
+                </button>
+
+                <% } else if (gateway === 'stripe') { %>
+                <div class="form-group">
+                    <label class="form-label">Card Details</label>
+                    <div id="card-element" style="padding:12px;border:1px solid var(--border);border-radius:6px;"></div>
+                    <div id="card-errors" style="color:#dc2626;font-size:0.8rem;margin-top:6px;"></div>
+                </div>
+                <button onclick="doStripe()" class="btn btn-primary btn-block" style="font-size:1rem;padding:13px;">
+                    💳 Pay via Stripe
+                </button>
+                <% } %>
+            </div>
+        </div>
     </div>
 </div>
 
-<style>
-.mode-card:hover { border-color:#3b82f6!important;background:#EFF6FF; }
-.mode-selected   { border-color:#1d4ed8!important;background:#EFF6FF;color:#1d4ed8;font-weight:600; }
-</style>
+<script>
+const DUE_TOTAL = <%= dueTotal %>;
+const UP_AMOUNTS = [<% upcomingMonths.forEach((m,i) => { %><%= m.totalAmount %><%= i < upcomingMonths.length-1 ? ',' : '' %><% }) %>];
+const N_DUE = <%= dueMonths.length %>;
+let selUp = new Array(<%= upcomingMonths.length %>).fill(false);
+
+function getTotal() {
+    return Math.round((DUE_TOTAL + selUp.reduce((s,v,i) => s + (v ? UP_AMOUNTS[i] : 0), 0)) * 100) / 100;
+}
+
+function toggleUpcoming(idx) {
+    if (!selUp[idx]) {
+        // Selecting: enforce sequential — all prior must be selected
+        for (let i = 0; i < idx; i++) {
+            if (!selUp[i]) {
+                const card = document.getElementById('uc-' + i);
+                const name = card?.querySelector('span[style*="font-weight:600"]')?.textContent?.trim() || ('Month ' + (i+1));
+                alert('Please select months in order. Select "' + name + '" first.');
+                return;
+            }
+        }
+        selUp[idx] = true;
+    } else {
+        // Deselecting: also deselect all subsequent
+        for (let i = idx; i < selUp.length; i++) selUp[i] = false;
+    }
+    renderUpcoming();
+    updateAmount();
+}
+
+function renderUpcoming() {
+    selUp.forEach((v, i) => {
+        const cb   = document.getElementById('uc-cb-' + i);
+        const card = document.getElementById('uc-' + i);
+        if (cb)   cb.checked = v;
+        if (card) {
+            card.style.borderColor = v ? '#3b82f6' : '#d1d5db';
+            card.style.background  = v ? '#eff6ff' : 'var(--bg-secondary)';
+        }
+    });
+    const el = document.getElementById('selectedCount');
+    if (el) el.textContent = N_DUE + selUp.filter(Boolean).length;
+}
+
+function updateAmount() {
+    const total = getTotal();
+    const inp   = document.getElementById('payAmount');
+    if (inp) inp.value = total > 0 ? total : '';
+    syncHidden(total);
+    showBreakdown(total);
+}
+
+function onAmountInput() {
+    const v = parseFloat(document.getElementById('payAmount').value) || 0;
+    syncHidden(v);
+}
+
+function syncHidden(val) {
+    const h = document.getElementById('hiddenAmt');
+    if (h) h.value = val || '';
+}
+
+function showBreakdown(total) {
+    const el = document.getElementById('amtBreakdown');
+    if (!el) return;
+    const parts = [];
+    if (DUE_TOTAL > 0) parts.push('Overdue: ₹' + DUE_TOTAL.toLocaleString('en-IN'));
+    const adv = selUp.reduce((s,v,i) => s + (v ? UP_AMOUNTS[i] : 0), 0);
+    if (adv > 0) parts.push('Advance: ₹' + adv.toLocaleString('en-IN'));
+    el.textContent = parts.join(' + ');
+}
+
+function validateOffline() {
+    const amount = parseFloat(document.getElementById('payAmount').value) || 0;
+    if (amount <= 0) { alert('Please enter a valid amount greater than 0.'); return false; }
+    if (DUE_TOTAL > 0 && amount < DUE_TOTAL) {
+        return confirm('Amount (₹' + amount.toLocaleString('en-IN') + ') is less than total overdue (₹' + DUE_TOTAL.toLocaleString('en-IN') + '). Submit anyway?');
+    }
+    document.getElementById('hiddenAmt').value = amount;
+    return true;
+}
 
 <% if (gateway === 'razorpay') { %>
-<script src="https://checkout.razorpay.com/v1/checkout.js"></script>
-<script>
-const RZP_KEY   = '<%= razorpayKeyId %>';
-const STUDENT_NAME = '<%= (studentName||'').replace(/'/g,"\'") %>';
-const SCHOOL_NAME  = '<%= (schoolName||'').replace(/'/g,"\'") %>';
-let rzpAmtRaw   = <%= balance %>;
-
-function syncAmount(val) {
-    rzpAmtRaw = parseFloat(val) || 0;
-    document.getElementById('rzpAmtDisplay').textContent = rzpAmtRaw.toLocaleString('en-IN');
+function doRazorpay() {
+    const amount = parseFloat(document.getElementById('payAmount').value) || 0;
+    if (!amount || amount <= 0) { alert('Enter a valid amount.'); return; }
+    if (DUE_TOTAL > 0 && amount < DUE_TOTAL && !confirm('Amount less than total overdue. Proceed?')) return;
+    fetch('/fees/student/pay/razorpay/create-order', {
+        method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({amount}),
+    }).then(r=>r.json()).then(data => {
+        if (data.error) { alert(data.error); return; }
+        new Razorpay({
+            key: '<%= razorpayKeyId %>',
+            order_id: data.orderId, amount: data.amount, currency: data.currency,
+            name: '<%= schoolName %>', description: 'Fee Payment',
+            prefill: { name: '<%= studentName %>' },
+            handler(resp) {
+                fetch('/fees/student/pay/razorpay/verify', {
+                    method:'POST', headers:{'Content-Type':'application/json'},
+                    body: JSON.stringify({ razorpay_order_id: resp.razorpay_order_id, razorpay_payment_id: resp.razorpay_payment_id, razorpay_signature: resp.razorpay_signature, amount }),
+                }).then(r=>r.json()).then(v => { if(v.success) location.href = v.receiptUrl; else alert('Verification failed: ' + (v.error||'')); });
+            },
+        }).open();
+    }).catch(() => alert('Failed to initiate payment.'));
 }
-
-async function initiateRazorpay() {
-    const btn = document.getElementById('rzpBtn');
-    const errEl = document.getElementById('rzpError');
-    errEl.style.display = 'none';
-    btn.disabled = true; btn.textContent = 'Creating order…';
-
-    const res  = await fetch('/fees/student/pay/razorpay/create-order', {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ amount: rzpAmtRaw }),
-    });
-    const data = await res.json();
-    if (data.error) {
-        errEl.textContent = data.error; errEl.style.display = 'block';
-        btn.disabled = false; btn.textContent = 'Pay via Razorpay'; return;
-    }
-
-    const options = {
-        key: RZP_KEY,
-        amount: data.amount,
-        currency: data.currency,
-        order_id: data.orderId,
-        name: SCHOOL_NAME || 'School Fees',
-        description: 'Fee Payment',
-        prefill: { name: STUDENT_NAME },
-        theme: { color: '#1d4ed8' },
-        handler: async function(response) {
-            btn.textContent = 'Verifying…';
-            const vres = await fetch('/fees/student/pay/razorpay/verify', {
-                method: 'POST', headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    razorpay_order_id:   response.razorpay_order_id,
-                    razorpay_payment_id: response.razorpay_payment_id,
-                    razorpay_signature:  response.razorpay_signature,
-                    amount: rzpAmtRaw,
-                }),
-            });
-            const vdata = await vres.json();
-            if (vdata.success) { window.location.href = vdata.receiptUrl; }
-            else { errEl.textContent = vdata.error || 'Verification failed.'; errEl.style.display = 'block'; btn.disabled = false; btn.textContent = 'Pay via Razorpay'; }
-        },
-        modal: { ondismiss: () => { btn.disabled = false; btn.textContent = 'Pay via Razorpay'; } },
-    };
-    const rzp = new Razorpay(options);
-    rzp.open();
-}
-</script>
-
-<% } else if (gateway === 'stripe') { %>
-<script src="https://js.stripe.com/v3/"></script>
-<script>
-const stripe  = Stripe('<%= stripePublishableKey %>');
-const elements = stripe.elements();
-const card    = elements.create('card', { style: { base: { fontSize:'16px', color:'#374151' } } });
-card.mount('#stripeCardElement');
-
-let stripeAmtRaw = <%= balance %>;
-function syncAmount(val) {
-    stripeAmtRaw = parseFloat(val) || 0;
-    document.getElementById('stripeAmtDisplay').textContent = stripeAmtRaw.toLocaleString('en-IN');
-}
-
-async function initiateStripe() {
-    const btn   = document.getElementById('stripeBtn');
-    const errEl = document.getElementById('stripeError');
-    errEl.style.display = 'none';
-    btn.disabled = true; btn.textContent = 'Processing…';
-
-    const res  = await fetch('/fees/student/pay/stripe/create-intent', {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ amount: stripeAmtRaw }),
-    });
-    const data = await res.json();
-    if (data.error) {
-        errEl.textContent = data.error; errEl.style.display = 'block';
-        btn.disabled = false; btn.textContent = 'Pay Securely'; return;
-    }
-
-    const { error, paymentIntent } = await stripe.confirmCardPayment(data.clientSecret, {
-        payment_method: { card }
-    });
-    if (error) {
-        errEl.textContent = error.message; errEl.style.display = 'block';
-        btn.disabled = false; btn.textContent = 'Pay Securely'; return;
-    }
-
-    btn.textContent = 'Confirming…';
-    const vres  = await fetch('/fees/student/pay/stripe/verify', {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ paymentIntentId: paymentIntent.id, amount: stripeAmtRaw }),
-    });
-    const vdata = await vres.json();
-    if (vdata.success) { window.location.href = vdata.receiptUrl; }
-    else { errEl.textContent = vdata.error || 'Confirmation failed.'; errEl.style.display = 'block'; btn.disabled = false; btn.textContent = 'Pay Securely'; }
-}
-</script>
-
-<% } else { %>
-<script>
-function syncAmount(val) {
-    document.getElementById('offlineAmountField').value = val;
-}
-</script>
 <% } %>
+
+<% if (gateway === 'stripe') { %>
+const _stripe = Stripe('<%= stripePublishableKey %>');
+const _elems  = _stripe.elements();
+const _card   = _elems.create('card');
+_card.mount('#card-element');
+_card.on('change', e => { document.getElementById('card-errors').textContent = e.error ? e.error.message : ''; });
+async function doStripe() {
+    const amount = parseFloat(document.getElementById('payAmount').value)||0;
+    if (!amount || amount <= 0) { alert('Enter a valid amount.'); return; }
+    const { clientSecret, error:ie } = await fetch('/fees/student/pay/stripe/create-intent', {
+        method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({amount}),
+    }).then(r=>r.json());
+    if (ie) { alert(ie); return; }
+    const { paymentIntent, error } = await _stripe.confirmCardPayment(clientSecret, {
+        payment_method: { card: _card, billing_details: { name: '<%= studentName %>' } },
+    });
+    if (error) { document.getElementById('card-errors').textContent = error.message; return; }
+    if (paymentIntent.status === 'succeeded') {
+        const v = await fetch('/fees/student/pay/stripe/verify', {
+            method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({paymentIntentId: paymentIntent.id, amount}),
+        }).then(r=>r.json());
+        if (v.success) location.href = v.receiptUrl; else alert('Verification failed: '+(v.error||''));
+    }
+}
+<% } %>
+
+// Init
+document.addEventListener('DOMContentLoaded', () => {
+    renderUpcoming();
+    const initAmt = getTotal() || <%= suggestedAmount || 0 %>;
+    if (initAmt > 0) document.getElementById('payAmount').value = initAmt;
+    syncHidden(initAmt);
+    showBreakdown(initAmt);
+    const el = document.getElementById('selectedCount');
+    if (el) el.textContent = N_DUE;
+});
+</script>
+
+<% if (gateway === 'razorpay') { %><script src="https://checkout.razorpay.com/v1/checkout.js"></script><% } %>
+<% if (gateway === 'stripe') { %><script src="https://js.stripe.com/v3/"></script><% } %>

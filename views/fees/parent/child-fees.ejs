@@ -7,268 +7,295 @@ const base = `/fees/parent/child/${childId}`;
 <% if (flash_success && flash_success.length) { %><div class="alert alert-success"><%= flash_success %></div><% } %>
 <% if (flash_error   && flash_error.length)   { %><div class="alert alert-error"><%=   flash_error   %></div><% } %>
 
-<!-- Header -->
-<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:22px;flex-wrap:wrap;gap:12px;">
-    <div style="display:flex;align-items:center;gap:14px;">
-        <a href="/parent/dashboard" class="btn btn-secondary btn-sm">← Dashboard</a>
+<!-- Hero Balance Card -->
+<div style="background:linear-gradient(135deg,#1d4ed8 0%,#3b82f6 100%);border-radius:16px;padding:24px 28px;margin-bottom:20px;color:#fff;">
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:16px;">
         <div>
-            <h2 style="margin:0;font-size:1.3rem;">💰 Fees — <%= child.name %></h2>
-            <% if (activeYear) { %>
-            <span style="font-size:0.8rem;color:var(--text-muted);">Academic Year: <strong><%= activeYear.yearName %></strong></span>
-            <% } %>
-        </div>
-    </div>
-    <% if (balance > 0) { %>
-    <a href="<%= base %>/pay" class="btn btn-primary" style="padding:10px 22px;font-weight:700;">
-        💳 Pay Now — ₹<%= balance.toLocaleString('en-IN') %>
-    </a>
-    <% } %>
-</div>
-
-<!-- Stats Row -->
-<div class="stats-grid" style="margin-bottom:22px;">
-    <div class="stat-card" style="border-left:4px solid <%= balance > 0 ? '#dc2626' : '#16a34a' %>;">
-        <div class="stat-icon <%= balance > 0 ? 'orange' : 'green' %>"><%= balance > 0 ? '⏳' : '✅' %></div>
-        <div class="stat-info">
-            <div class="stat-value" style="color:<%= balance > 0 ? '#dc2626' : '#16a34a' %>;">
-                ₹<%= Math.abs(balance).toLocaleString('en-IN') %>
+            <div style="font-size:0.82rem;opacity:0.8;margin-bottom:2px;">
+                📒 Fee Book · <strong><%= child.name %></strong>
+                <% if (activeYear) { %> · <strong><%= activeYear.yearName %></strong><% } %>
             </div>
-            <div class="stat-label"><%= balance > 0 ? 'Outstanding Due' : balance < 0 ? 'Credit Balance' : 'Fully Cleared' %></div>
+            <% if (resolved && resolved.structureName) { %>
+            <div style="font-size:0.75rem;opacity:0.65;margin-bottom:12px;"><%= resolved.structureName %></div>
+            <% } %>
+            <div style="display:flex;gap:28px;flex-wrap:wrap;margin-top:8px;">
+                <div>
+                    <div style="font-size:0.7rem;opacity:0.7;text-transform:uppercase;letter-spacing:0.05em;">Outstanding</div>
+                    <div style="font-size:2rem;font-weight:800;line-height:1.1;color:<%= balance > 0 ? '#fde68a' : '#a7f3d0' %>;">
+                        ₹<%= Math.abs(balance).toLocaleString('en-IN') %>
+                    </div>
+                    <div style="font-size:0.73rem;opacity:0.8;"><%= balance > 0 ? 'Due' : balance < 0 ? 'Credit Balance' : '✅ All Clear' %></div>
+                </div>
+                <div>
+                    <div style="font-size:0.7rem;opacity:0.7;text-transform:uppercase;letter-spacing:0.05em;">Total Charged</div>
+                    <div style="font-size:1.3rem;font-weight:700;">₹<%= totalCharged.toLocaleString('en-IN') %></div>
+                </div>
+                <div>
+                    <div style="font-size:0.7rem;opacity:0.7;text-transform:uppercase;letter-spacing:0.05em;">Paid</div>
+                    <div style="font-size:1.3rem;font-weight:700;color:#a7f3d0;">₹<%= totalPaid.toLocaleString('en-IN') %></div>
+                </div>
+                <% if (totalConcession > 0) { %>
+                <div>
+                    <div style="font-size:0.7rem;opacity:0.7;text-transform:uppercase;letter-spacing:0.05em;">Concession</div>
+                    <div style="font-size:1.3rem;font-weight:700;color:#c4b5fd;">₹<%= totalConcession.toLocaleString('en-IN') %></div>
+                </div>
+                <% } %>
+            </div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:10px;min-width:160px;">
+            <% if (balance > 0) { %>
+            <a href="<%= base %>/pay" style="background:#fff;color:#1d4ed8;padding:12px 22px;border-radius:10px;font-weight:700;font-size:0.95rem;text-decoration:none;text-align:center;box-shadow:0 4px 14px rgba(0,0,0,0.15);">
+                💳 Pay ₹<%= balance.toLocaleString('en-IN') %>
+            </a>
+            <% } else { %>
+            <a href="<%= base %>/pay" style="background:#fff;color:#1d4ed8;padding:12px 22px;border-radius:10px;font-weight:700;font-size:0.9rem;text-decoration:none;text-align:center;box-shadow:0 4px 14px rgba(0,0,0,0.15);">
+                ➕ Pay in Advance
+            </a>
+            <% } %>
+            <a href="/parent/dashboard" style="background:rgba(255,255,255,0.15);color:#fff;padding:9px 18px;border-radius:8px;font-size:0.82rem;text-decoration:none;text-align:center;border:1px solid rgba(255,255,255,0.3);">
+                ← Dashboard
+            </a>
         </div>
     </div>
-    <div class="stat-card">
-        <div class="stat-icon green">💳</div>
-        <div class="stat-info">
-            <div class="stat-value">₹<%= totalPaid.toLocaleString('en-IN') %></div>
-            <div class="stat-label">Total Paid</div>
-        </div>
-    </div>
-    <div class="stat-card">
-        <div class="stat-icon blue">📋</div>
-        <div class="stat-info">
-            <div class="stat-value">₹<%= totalCharged.toLocaleString('en-IN') %></div>
-            <div class="stat-label">Total Charged</div>
-        </div>
-    </div>
-    <% if (totalConcession > 0) { %>
-    <div class="stat-card">
-        <div class="stat-icon" style="background:rgba(147,51,234,0.12);color:#9333ea;">🎁</div>
-        <div class="stat-info">
-            <div class="stat-value">₹<%= totalConcession.toLocaleString('en-IN') %></div>
-            <div class="stat-label">Concession</div>
-        </div>
-    </div>
-    <% } %>
 </div>
 
 <% if (fineAmt > 0) { %>
-<div style="background:#FEF3C7;border:1px solid #F59E0B;border-radius:10px;padding:12px 18px;margin-bottom:20px;display:flex;align-items:center;gap:10px;">
+<div style="background:#FEF3C7;border:1px solid #F59E0B;border-radius:10px;padding:12px 18px;margin-bottom:16px;display:flex;align-items:center;gap:10px;">
     <span style="font-size:1.3rem;">⚠️</span>
     <div>
         <div style="font-weight:700;color:#92400E;">Late Fine Applicable</div>
-        <div style="font-size:0.83rem;color:#78350F;">A late fine of <strong>₹<%= fineAmt.toLocaleString('en-IN') %></strong> may be added for overdue fee components.</div>
+        <div style="font-size:0.83rem;color:#78350F;">A late fine of <strong>₹<%= fineAmt.toLocaleString('en-IN') %></strong> may be added for overdue components.</div>
     </div>
 </div>
 <% } %>
 
-<div style="display:grid;grid-template-columns:2fr 1fr;gap:20px;">
-
-    <!-- Fee Structure -->
-    <div>
-        <div class="card" style="margin-bottom:20px;">
-            <div class="card-header">
-                <div class="card-title">📋 Fee Structure</div>
-                <% if (resolved && resolved.structureName) { %>
-                <span class="badge badge-info" style="font-size:0.72rem;"><%= resolved.structureName %></span>
-                <% } %>
-            </div>
-            <div class="card-body" style="padding:0;">
-                <% if (!resolved || !resolved.items.length) { %>
-                <div style="padding:36px;text-align:center;color:var(--text-muted);">
-                    <div style="font-size:2rem;margin-bottom:10px;">📋</div>
-                    No fee structure assigned. Contact school admin.
-                </div>
-                <% } else { %>
-                <table style="width:100%;border-collapse:collapse;font-size:0.9rem;">
-                    <thead>
-                        <tr style="background:var(--bg-secondary);">
-                            <th style="padding:10px 16px;text-align:left;font-size:0.78rem;text-transform:uppercase;letter-spacing:0.04em;">Component</th>
-                            <th style="padding:10px 16px;text-align:right;font-size:0.78rem;text-transform:uppercase;letter-spacing:0.04em;">Amount</th>
-                            <th style="padding:10px 16px;text-align:center;font-size:0.78rem;text-transform:uppercase;letter-spacing:0.04em;">Due Date</th>
-                            <th style="padding:10px 16px;text-align:center;font-size:0.78rem;text-transform:uppercase;letter-spacing:0.04em;">Status</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <% resolved.items.forEach(item => {
-                            const isOverdue = item.dueDate && new Date(item.dueDate) < new Date();
-                        %>
-                        <tr style="border-bottom:1px solid var(--border);">
-                            <td style="padding:12px 16px;">
-                                <div style="font-weight:500;"><%= item.feeName %></div>
-                                <div style="font-size:0.73rem;color:var(--text-muted);text-transform:capitalize;"><%= (item.category||'').replace(/_/g,' ') %></div>
-                            </td>
-                            <td style="padding:12px 16px;text-align:right;font-weight:700;color:#1d4ed8;">
-                                ₹<%= (item.amount||0).toLocaleString('en-IN') %>
-                            </td>
-                            <td style="padding:12px 16px;text-align:center;font-size:0.82rem;">
-                                <% if (item.dueDate) { %>
-                                <span style="color:<%= isOverdue?'#dc2626':'var(--text-muted)' %>;font-weight:<%= isOverdue?'600':'400' %>;">
-                                    <%= new Date(item.dueDate).toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'}) %>
-                                    <%= isOverdue ? ' ⚠️' : '' %>
-                                </span>
-                                <% } else { %><span style="color:var(--text-muted);">—</span><% } %>
-                            </td>
-                            <td style="padding:12px 16px;text-align:center;">
-                                <% if (isOverdue) { %>
-                                <span class="badge" style="background:#FEE2E2;color:#dc2626;font-size:0.7rem;">Overdue</span>
-                                <% } else if (item.dueDate) { %>
-                                <span class="badge badge-info" style="font-size:0.7rem;">Upcoming</span>
-                                <% } else { %>
-                                <span class="badge badge-secondary" style="font-size:0.7rem;">—</span>
-                                <% } %>
-                            </td>
-                        </tr>
-                        <% }) %>
-                    </tbody>
-                    <tfoot>
-                        <tr style="background:#EBF5FB;border-top:2px solid #BFDBFE;">
-                            <td style="padding:13px 16px;font-weight:700;">Total</td>
-                            <td style="padding:13px 16px;text-align:right;font-weight:800;color:#1d4ed8;font-size:1rem;">
-                                ₹<%= resolved.items.reduce((s,i)=>s+i.amount,0).toLocaleString('en-IN') %>
-                            </td>
-                            <td colspan="2"></td>
-                        </tr>
-                    </tfoot>
-                </table>
-                <% if (balance > 0) { %>
-                <div style="padding:14px 16px;border-top:1px solid var(--border);">
-                    <a href="<%= base %>/pay" class="btn btn-primary" style="width:100%;text-align:center;padding:11px;font-size:0.95rem;font-weight:700;">
-                        💳 Pay ₹<%= balance.toLocaleString('en-IN') %> Now
-                    </a>
-                </div>
-                <% } %>
-                <% } %>
-            </div>
-        </div>
-
-        <!-- Payment History -->
-        <div class="card">
-            <div class="card-header">
-                <div class="card-title">💳 Payment History</div>
-                <span style="font-size:0.82rem;color:var(--text-muted);"><%= payments.length %> transaction(s)</span>
-            </div>
-            <div class="card-body" style="padding:0;">
-                <% if (!payments.length) { %>
-                <div style="padding:30px;text-align:center;color:var(--text-muted);font-size:0.88rem;">No payments recorded yet.</div>
-                <% } else { %>
-                <table style="width:100%;border-collapse:collapse;font-size:0.88rem;">
-                    <thead>
-                        <tr style="background:var(--bg-secondary);">
-                            <th style="padding:10px 14px;text-align:left;">Receipt No.</th>
-                            <th style="padding:10px 14px;text-align:right;">Amount</th>
-                            <th style="padding:10px 14px;text-align:center;">Mode</th>
-                            <th style="padding:10px 14px;text-align:center;">Date</th>
-                            <th style="padding:10px 14px;text-align:center;">Status</th>
-                            <th style="padding:10px 14px;text-align:center;">Receipt</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <% payments.forEach(p => { %>
-                        <tr style="border-bottom:1px solid var(--border);<%= p.paymentStatus==='pending'?'background:#FFFBEB;':'' %>">
-                            <td style="padding:10px 14px;font-family:monospace;font-size:0.8rem;">
-                                <%= p.receiptNumber || '<span style="color:var(--text-muted);">Pending</span>' %>
-                            </td>
-                            <td style="padding:10px 14px;text-align:right;font-weight:700;color:#16a34a;">
-                                ₹<%= (p.amount||0).toLocaleString('en-IN') %>
-                            </td>
-                            <td style="padding:10px 14px;text-align:center;">
-                                <span class="badge badge-secondary" style="font-size:0.7rem;">
-                                    <%= (p.paymentMode||'').replace(/_/g,' ').toUpperCase() %>
-                                </span>
-                            </td>
-                            <td style="padding:10px 14px;text-align:center;color:var(--text-muted);">
-                                <%= new Date(p.paymentDate).toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'}) %>
-                            </td>
-                            <td style="padding:10px 14px;text-align:center;">
-                                <span class="badge badge-<%=
-                                    p.paymentStatus==='completed'?'success':
-                                    p.paymentStatus==='pending'?'warning':'danger'
-                                %>" style="font-size:0.7rem;"><%= p.paymentStatus %></span>
-                            </td>
-                            <td style="padding:10px 14px;text-align:center;">
-                                <% if (p.paymentStatus === 'completed') { %>
-                                <div style="display:flex;gap:5px;justify-content:center;">
-                                    <a href="<%= base %>/payments/<%= p._id %>/receipt" class="btn btn-secondary btn-sm" style="font-size:0.72rem;padding:3px 9px;">View</a>
-                                    <a href="<%= base %>/payments/<%= p._id %>/download" class="btn btn-secondary btn-sm" style="font-size:0.72rem;padding:3px 9px;">PDF</a>
-                                </div>
-                                <% } else { %>
-                                <span style="font-size:0.75rem;color:var(--text-muted);">—</span>
-                                <% } %>
-                            </td>
-                        </tr>
-                        <% }) %>
-                    </tbody>
-                </table>
-                <% } %>
-            </div>
-        </div>
-    </div>
-
-    <!-- Right Sidebar -->
-    <div style="display:flex;flex-direction:column;gap:16px;">
-
-        <!-- Quick Actions -->
-        <div class="card">
-            <div class="card-header"><div class="card-title">Quick Actions</div></div>
-            <div class="card-body" style="display:flex;flex-direction:column;gap:10px;">
-                <% if (balance > 0) { %>
-                <a href="<%= base %>/pay" class="btn btn-primary" style="text-align:center;">💳 Pay Fees</a>
-                <% } %>
-                <a href="/parent/dashboard" class="btn btn-secondary" style="text-align:center;">← Parent Dashboard</a>
-            </div>
-        </div>
-
-        <!-- Concessions -->
-        <% if (concessions && concessions.length) { %>
-        <div class="card">
-            <div class="card-header"><div class="card-title">🎁 Concessions</div></div>
-            <div class="card-body" style="padding:0;">
-                <% concessions.forEach((sc, idx) => { %>
-                <div style="padding:12px 16px;border-bottom:<%= idx<concessions.length-1?'1px solid var(--border)':'none' %>;">
-                    <div style="font-weight:600;font-size:0.87rem;"><%= sc.concession?.name || '—' %></div>
-                    <div style="font-size:0.76rem;color:#16a34a;margin-top:2px;">
-                        <%= sc.concession?.concessionType==='percentage'
-                            ? sc.concession.value+'% off'
-                            : '₹'+(sc.concession?.value||0).toLocaleString('en-IN')+' waiver' %>
-                    </div>
-                </div>
-                <% }) %>
-            </div>
-        </div>
-        <% } %>
-
-        <!-- Balance Summary -->
-        <div class="card" style="background:<%= balance>0?'#FFF5F5':'#F0FDF4' %>;border:1px solid <%= balance>0?'#FED7D7':'#BBF7D0' %>;">
-            <div class="card-body" style="font-size:0.83rem;color:<%= balance>0?'#92400E':'#166534' %>;">
-                <div style="font-weight:700;margin-bottom:10px;font-size:0.9rem;">
-                    <%= balance > 0 ? '⚠️ Payment Due' : '✅ Account Clear' %>
-                </div>
-                <div style="display:flex;justify-content:space-between;margin-bottom:6px;">
-                    <span>Total Charged</span><span style="font-weight:600;">₹<%= totalCharged.toLocaleString('en-IN') %></span>
-                </div>
-                <div style="display:flex;justify-content:space-between;margin-bottom:6px;">
-                    <span>Total Paid</span><span style="font-weight:600;color:#16a34a;">₹<%= totalPaid.toLocaleString('en-IN') %></span>
-                </div>
-                <% if (totalConcession > 0) { %>
-                <div style="display:flex;justify-content:space-between;margin-bottom:6px;">
-                    <span>Concession</span><span style="font-weight:600;color:#9333ea;">₹<%= totalConcession.toLocaleString('en-IN') %></span>
-                </div>
-                <% } %>
-                <div style="display:flex;justify-content:space-between;border-top:1px solid currentColor;padding-top:8px;margin-top:4px;font-weight:700;font-size:0.95rem;">
-                    <span>Balance Due</span>
-                    <span style="color:<%= balance>0?'#dc2626':'#16a34a' %>;">₹<%= Math.abs(balance).toLocaleString('en-IN') %></span>
-                </div>
-            </div>
-        </div>
+<!-- Legend -->
+<div style="display:flex;align-items:center;gap:16px;margin-bottom:14px;flex-wrap:wrap;">
+    <span style="font-weight:700;font-size:0.95rem;color:var(--text-primary);">📅 Month-wise Fee Schedule</span>
+    <div style="display:flex;gap:12px;flex-wrap:wrap;font-size:0.75rem;color:var(--text-muted);">
+        <span>✅ Paid</span>
+        <span>🔴 Due</span>
+        <span>🟡 Partial</span>
+        <span>🔵 Upcoming</span>
     </div>
 </div>
+
+<!-- Month-wise Fee Book (Full Width) -->
+<% if (!resolved) { %>
+<div class="card" style="padding:48px;text-align:center;">
+    <div style="font-size:2.5rem;margin-bottom:12px;">📋</div>
+    <p style="color:var(--text-muted);margin:0;font-size:0.9rem;">No fee structure assigned yet.<br>Contact the school admin.</p>
+</div>
+<% } else if (!monthlySchedule || monthlySchedule.length === 0) { %>
+<div class="card" style="padding:48px;text-align:center;">
+    <div style="font-size:2rem;margin-bottom:10px;">⏳</div>
+    <p style="color:var(--text-muted);font-size:0.88rem;margin:0;">Fee demand not yet generated.<br>Contact your school admin.</p>
+</div>
+<% } else { %>
+
+<% const typeLabels = { one_time:'One-Time', recurring:'Monthly', quarterly:'Quarterly', half_yearly:'Half-Yearly' }; %>
+
+<div style="display:flex;flex-direction:column;gap:10px;">
+<% monthlySchedule.forEach((month, mIdx) => {
+    const isPaid     = month.payStatus === 'paid';
+    const isPartial  = month.payStatus === 'partial';
+    const isDue      = month.payStatus === 'due';
+    const isUpcoming = month.payStatus === 'upcoming';
+    const borderColor = isPaid ? '#16a34a' : isPartial ? '#f59e0b' : isDue ? '#dc2626' : '#94a3b8';
+    const bgLight     = isPaid ? 'rgba(22,163,74,0.06)' : isPartial ? 'rgba(245,158,11,0.07)' : isDue ? 'rgba(220,38,38,0.06)' : month.isCurrentMonth ? 'rgba(59,130,246,0.06)' : 'var(--card-bg)';
+%>
+<div style="border:1px solid var(--border);border-left:4px solid <%= borderColor %>;border-radius:10px;background:<%= bgLight %>;overflow:hidden;">
+
+    <!-- Month Header Row -->
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:14px 18px;flex-wrap:wrap;gap:10px;cursor:pointer;"
+         onclick="toggleMonth(<%= mIdx %>)">
+
+        <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+            <span style="font-size:1rem;">
+                <% if (isPaid) { %>✅<% } else if (isPartial) { %>🟡<% } else if (isDue) { %>🔴<% } else { %>🔵<% } %>
+            </span>
+            <span style="font-weight:700;font-size:0.95rem;">
+                <%= month.monthLabel %>
+                <% if (month.isCurrentMonth) { %>
+                <span style="font-size:0.7rem;font-weight:500;color:#3b82f6;margin-left:4px;">(Current)</span>
+                <% } %>
+            </span>
+            <% if (isPaid) { %>
+            <span style="background:#dcfce7;color:#15803d;font-size:0.68rem;font-weight:700;padding:2px 8px;border-radius:20px;">PAID</span>
+            <% } else if (isPartial) { %>
+            <span style="background:#FEF3C7;color:#92400E;font-size:0.68rem;font-weight:700;padding:2px 8px;border-radius:20px;">PARTIAL</span>
+            <% } else if (isDue) { %>
+            <span style="background:#fee2e2;color:#dc2626;font-size:0.68rem;font-weight:700;padding:2px 8px;border-radius:20px;">DUE</span>
+            <% } else { %>
+            <span style="background:var(--bg-secondary);color:var(--text-muted);font-size:0.68rem;font-weight:600;padding:2px 8px;border-radius:20px;">UPCOMING</span>
+            <% } %>
+        </div>
+
+        <div style="display:flex;align-items:center;gap:12px;">
+            <div style="text-align:right;">
+                <div style="font-weight:700;color:#1d4ed8;font-size:1rem;">
+                    ₹<%= (month.chargedAmount > 0 ? month.chargedAmount : month.totalAmount).toLocaleString('en-IN') %>
+                </div>
+                <% if (isPartial) { %>
+                <div style="font-size:0.72rem;color:#f59e0b;">₹<%= month.amountPaid.toLocaleString('en-IN') %> paid · ₹<%= month.amountDue.toLocaleString('en-IN') %> due</div>
+                <% } else if (isDue) { %>
+                <div style="font-size:0.72rem;color:#dc2626;">₹<%= month.amountDue.toLocaleString('en-IN') %> due</div>
+                <% } %>
+            </div>
+
+            <% if (isDue || isPartial) { %>
+            <a href="<%= base %>/pay?amount=<%= month.amountDue %>&period=<%= encodeURIComponent(month.monthLabel) %>"
+               onclick="event.stopPropagation()"
+               style="background:#dc2626;color:#fff;padding:7px 14px;border-radius:7px;font-weight:700;font-size:0.8rem;text-decoration:none;white-space:nowrap;">
+                💳 Pay ₹<%= month.amountDue.toLocaleString('en-IN') %>
+            </a>
+            <% } else if (isUpcoming) { %>
+            <a href="<%= base %>/pay?amount=<%= month.totalAmount %>&period=<%= encodeURIComponent(month.monthLabel) %>"
+               onclick="event.stopPropagation()"
+               style="background:var(--bg-secondary);color:var(--text-muted);padding:7px 14px;border-radius:7px;font-size:0.8rem;text-decoration:none;white-space:nowrap;border:1px solid var(--border);">
+                Pay Advance
+            </a>
+            <% } %>
+
+            <span id="chevron-<%= mIdx %>" style="color:var(--text-muted);font-size:0.8rem;transition:transform 0.2s;transform:rotate(0deg);">▼</span>
+        </div>
+    </div>
+
+    <!-- Fee Items (collapsible) -->
+    <div id="month-detail-<%= mIdx %>" style="display:none;border-top:1px solid var(--border);padding:10px 18px 14px;">
+        <% month.items.forEach((item, iIdx) => { %>
+        <div style="display:flex;justify-content:space-between;align-items:center;padding:6px 0;font-size:0.85rem;<%= iIdx < month.items.length-1 ? 'border-bottom:1px dashed rgba(0,0,0,0.06);' : '' %>">
+            <div style="display:flex;align-items:center;gap:8px;color:<%= isUpcoming && !item.isGenerated ? 'var(--text-muted)' : 'var(--text-primary)' %>;">
+                <span style="color:<%= item.isGenerated ? '#16a34a' : '#9ca3af' %>;font-size:0.75rem;"><%= item.isGenerated ? '●' : '○' %></span>
+                <span><%= item.name %></span>
+                <span style="font-size:0.66rem;background:rgba(0,0,0,0.06);padding:1px 6px;border-radius:4px;color:var(--text-muted);"><%= typeLabels[item.type] || item.type %></span>
+            </div>
+            <span style="font-weight:600;color:<%= isUpcoming && !item.isGenerated ? 'var(--text-muted)' : '#1d4ed8' %>;">₹<%= item.amount.toLocaleString('en-IN') %></span>
+        </div>
+        <% }) %>
+        <div style="text-align:right;font-size:0.75rem;margin-top:8px;font-weight:600;">
+            <% if (isPaid) { %>
+            <span style="color:#16a34a;">✓ Fully Paid</span>
+            <% } else if (isPartial) { %>
+            <span style="color:#16a34a;">Paid: ₹<%= month.amountPaid.toLocaleString('en-IN') %></span>
+            <span style="color:var(--text-muted);margin:0 6px;">·</span>
+            <span style="color:#dc2626;">Due: ₹<%= month.amountDue.toLocaleString('en-IN') %></span>
+            <% } else if (isDue) { %>
+            <span style="color:#dc2626;">Due: ₹<%= month.amountDue.toLocaleString('en-IN') %></span>
+            <% } else { %>
+            <span style="color:var(--text-muted);">Not yet charged</span>
+            <% } %>
+        </div>
+    </div>
+
+</div>
+<% }) %>
+</div>
+
+<% } %>
+
+<!-- Bottom: Payment History + Concessions -->
+<div style="display:grid;grid-template-columns:<%= (concessions && concessions.length) ? '2fr 1fr' : '1fr' %>;gap:16px;margin-top:20px;">
+
+    <!-- Payment History -->
+    <div class="card">
+        <div class="card-header">
+            <div class="card-title">💳 Payment History</div>
+            <span style="font-size:0.82rem;color:var(--text-muted);"><%= payments.length %> transaction(s)</span>
+        </div>
+        <div class="card-body" style="padding:0;">
+            <% if (!payments.length) { %>
+            <div style="padding:24px;text-align:center;color:var(--text-muted);font-size:0.85rem;">No payments recorded yet.</div>
+            <% } else { %>
+            <table style="width:100%;border-collapse:collapse;font-size:0.85rem;">
+                <thead>
+                    <tr style="background:var(--bg-secondary);">
+                        <th style="padding:9px 14px;text-align:left;font-weight:600;">Receipt</th>
+                        <th style="padding:9px 14px;text-align:right;font-weight:600;">Amount</th>
+                        <th style="padding:9px 14px;text-align:center;font-weight:600;">Mode</th>
+                        <th style="padding:9px 14px;text-align:center;font-weight:600;">Date</th>
+                        <th style="padding:9px 14px;text-align:center;font-weight:600;">Status</th>
+                        <th style="padding:9px 14px;text-align:center;font-weight:600;">Receipt</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <% payments.forEach(p => { %>
+                    <tr style="border-bottom:1px solid var(--border);">
+                        <td style="padding:9px 14px;font-family:monospace;font-size:0.78rem;color:var(--text-muted);">
+                            <%= p.receiptNumber || '—' %>
+                        </td>
+                        <td style="padding:9px 14px;text-align:right;font-weight:700;color:#16a34a;">
+                            ₹<%= (p.amount||0).toLocaleString('en-IN') %>
+                        </td>
+                        <td style="padding:9px 14px;text-align:center;">
+                            <span style="font-size:0.72rem;background:var(--bg-secondary);padding:2px 8px;border-radius:4px;">
+                                <%= (p.paymentMode||'').replace(/_/g,' ').toUpperCase() %>
+                            </span>
+                        </td>
+                        <td style="padding:9px 14px;text-align:center;color:var(--text-muted);font-size:0.82rem;">
+                            <%= new Date(p.paymentDate).toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'}) %>
+                        </td>
+                        <td style="padding:9px 14px;text-align:center;">
+                            <span style="font-size:0.7rem;padding:2px 8px;border-radius:4px;font-weight:600;
+                                background:<%= p.paymentStatus==='completed' ? '#dcfce7' : p.paymentStatus==='pending' ? '#FEF3C7' : '#fee2e2' %>;
+                                color:<%= p.paymentStatus==='completed' ? '#15803d' : p.paymentStatus==='pending' ? '#92400E' : '#dc2626' %>;">
+                                <%= p.paymentStatus %>
+                            </span>
+                        </td>
+                        <td style="padding:9px 14px;text-align:center;">
+                            <% if (p.paymentStatus === 'completed') { %>
+                            <div style="display:flex;gap:5px;justify-content:center;">
+                                <a href="<%= base %>/payments/<%= p._id %>/receipt" style="font-size:0.75rem;color:#3b82f6;text-decoration:none;">View</a>
+                                <span style="color:var(--text-muted);">·</span>
+                                <a href="<%= base %>/payments/<%= p._id %>/download" style="font-size:0.75rem;color:#3b82f6;text-decoration:none;">PDF</a>
+                            </div>
+                            <% } else { %>
+                            <span style="font-size:0.75rem;color:var(--text-muted);">—</span>
+                            <% } %>
+                        </td>
+                    </tr>
+                    <% }) %>
+                </tbody>
+            </table>
+            <% } %>
+        </div>
+    </div>
+
+    <!-- Concessions -->
+    <% if (concessions && concessions.length) { %>
+    <div class="card">
+        <div class="card-header"><div class="card-title">🎁 Concessions</div></div>
+        <div class="card-body" style="padding:0;">
+            <% concessions.forEach((sc, idx) => { %>
+            <div style="padding:12px 16px;border-bottom:<%= idx < concessions.length-1 ? '1px solid var(--border)' : 'none' %>;">
+                <div style="font-weight:600;font-size:0.88rem;"><%= sc.concession?.name || '—' %></div>
+                <div style="font-size:0.78rem;color:#16a34a;margin-top:2px;">
+                    <%= sc.concession?.concessionType === 'percentage'
+                        ? sc.concession.value + '% off'
+                        : '₹' + (sc.concession?.value||0).toLocaleString('en-IN') + ' waiver' %>
+                </div>
+            </div>
+            <% }) %>
+        </div>
+    </div>
+    <% } %>
+
+</div>
+
+<script>
+function toggleMonth(idx) {
+    const detail  = document.getElementById('month-detail-' + idx);
+    const chevron = document.getElementById('chevron-' + idx);
+    const open = detail.style.display === 'none';
+    detail.style.display  = open ? 'block' : 'none';
+    chevron.style.transform = open ? 'rotate(180deg)' : 'rotate(0deg)';
+}
+
+document.addEventListener('DOMContentLoaded', function () {
+    <% monthlySchedule && monthlySchedule.forEach((m, i) => { %>
+        <% if (m.payStatus === 'due' || m.payStatus === 'partial' || m.isCurrentMonth) { %>
+        toggleMonth(<%= i %>);
+        <% } %>
+    <% }) %>
+});
+</script>
