@@ -1,0 +1,54 @@
+<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;">
+    <div>
+        <h2 style="margin:0;">Fee Categories</h2>
+        <p style="margin:4px 0 0;color:var(--text-muted);font-size:0.85rem;">Create dynamic categories used when defining fee heads.</p>
+    </div>
+    <a href="/fees/admin/fee-categories/create" class="btn btn-primary">+ Add Category</a>
+</div>
+
+<% if (success && success.length) { %><div class="alert alert-success"><%= success %></div><% } %>
+<% if (error && error.length) { %><div class="alert alert-error"><%= error %></div><% } %>
+
+<div class="card">
+    <div class="table-wrapper">
+        <% if (!categories.length) { %>
+        <div class="empty-state" style="padding:40px;text-align:center;">
+            <div style="font-size:2.5rem;">🏷️</div>
+            <p style="margin:12px 0 4px;font-weight:600;">No categories yet</p>
+            <p style="color:var(--text-muted);font-size:0.85rem;margin-bottom:16px;">Create categories like Tuition, Transport, Sports, etc.</p>
+            <a href="/fees/admin/fee-categories/create" class="btn btn-primary">Create First Category</a>
+        </div>
+        <% } else { %>
+        <table>
+            <thead>
+                <tr><th>Name</th><th>Status</th><th>Created</th><th>Actions</th></tr>
+            </thead>
+            <tbody>
+                <% categories.forEach(cat => { %>
+                <tr>
+                    <td><strong><%= cat.name %></strong></td>
+                    <td><span class="badge badge-<%= cat.isActive ? 'success' : 'secondary' %>"><%= cat.isActive ? 'Active' : 'Inactive' %></span></td>
+                    <td style="color:var(--text-muted);font-size:0.82rem;"><%= new Date(cat.createdAt).toLocaleDateString('en-IN') %></td>
+                    <td>
+                        <div style="display:flex;gap:6px;">
+                            <a href="/fees/admin/fee-categories/<%= cat._id %>/edit" class="btn btn-secondary btn-sm">Edit</a>
+                            <form method="POST" action="/fees/admin/fee-categories/<%= cat._id %>/toggle" style="display:inline;">
+                                <button type="submit" class="btn btn-sm <%= cat.isActive ? 'btn-warning' : 'btn-success' %>"
+                                    data-confirm="<%= cat.isActive ? 'Deactivate' : 'Activate' %> category '<%= cat.name %>'?"
+                                    data-confirm-title="<%= cat.isActive ? 'Deactivate' : 'Activate' %> Category">
+                                    <%= cat.isActive ? 'Deactivate' : 'Activate' %>
+                                </button>
+                            </form>
+                        </div>
+                    </td>
+                </tr>
+                <% }) %>
+            </tbody>
+        </table>
+        <% } %>
+    </div>
+</div>
+
+<div style="margin-top:16px;padding:12px 16px;background:var(--bg-secondary);border-radius:8px;font-size:0.82rem;color:var(--text-muted);">
+    <strong>Tip:</strong> Create categories before creating fee heads. Examples: Tuition, Transport, Admission, Exam, Library, Sports, Hostel, Activity.
+</div>

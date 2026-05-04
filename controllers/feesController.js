@@ -1,4 +1,6 @@
 const mongoose  = require('mongoose');
+const crypto    = require('crypto');
+const FeeCategory          = require('../models/FeeCategory');
 const FeeHead              = require('../models/FeeHead');
 const FeeStructure         = require('../models/FeeStructure');
 const StudentFeeAssignment = require('../models/StudentFeeAssignment');
@@ -14,6 +16,9 @@ const Class                = require('../models/Class');
 const ClassSection         = require('../models/ClassSection');
 const StudentProfile       = require('../models/StudentProfile');
 const User                 = require('../models/User');
+const Notification         = require('../models/Notification');
+const NotificationReceipt  = require('../models/NotificationReceipt');
+const sseClients           = require('../utils/sseClients');
 const { generateReceiptPDF } = require('../utils/feeReceiptPdf');
 
 // ── Internal helpers ─────────────────────────────────────────────────────────
@@ -47,7 +52,83 @@ async function generateReceiptNumber(schoolId) {
     return `${settings.receiptPrefix || 'REC'}-${year}-${num}`;
 }
 
-// Fee resolution chain: Student → Section → Class
+function computeItemsHash(items) {
+    const data = items.map(i => `${i.feeHead}-${i.amount}`).sort().join('|');
+    return crypto.createHash('md5').update(data || '').digest('hex');
+}
+
+// ── FEE CATEGORIES ───────────────────────────────────────────────────────────
+
+exports.getFeeCategories = async (req, res) => {
+    try {
+        const categories = await FeeCategory.find({ school: req.session.schoolId }).sort({ name: 1 });
+        res.render('fees/admin/fee-categories/index', {
+            title: 'Fee Categories', layout: 'layouts/main', categories,
+        });
+    } catch (err) {
+        req.flash('error', 'Failed to load fee categories.'); res.redirect('/fees/admin/dashboard');
+    }
+};
+
+exports.getCreateFeeCategory = (req, res) => {
+    res.render('fees/admin/fee-categories/form', {
+        title: 'Create Fee Category', layout: 'layouts/main', category: null, isEdit: false,
+    });
+};
+
+exports.postCreateFeeCategory = async (req, res) => {
+    try {
+        const { name } = req.body;
+        if (!name || !name.trim()) { req.flash('error', 'Name is required.'); return res.redirect('/fees/admin/fee-categories/create'); }
+        await FeeCategory.create({ school: req.session.schoolId, name: name.trim() });
+        req.flash('success', `Category "${name.trim()}" created.`);
+        res.redirect('/fees/admin/fee-categories');
+    } catch (err) {
+        if (err.code === 11000) req.flash('error', 'A category with this name already exists.');
+        else { req.flash('error', 'Create failed.'); console.error('[Fees] postCreateFeeCategory:', err); }
+        res.redirect('/fees/admin/fee-categories/create');
+    }
+};
+
+exports.getEditFeeCategory = async (req, res) => {
+    try {
+        const category = await FeeCategory.findOne({ _id: req.params.id, school: req.session.schoolId });
+        if (!category) { req.flash('error', 'Category not found.'); return res.redirect('/fees/admin/fee-categories'); }
+        res.render('fees/admin/fee-categories/form', {
+            title: 'Edit Fee Category', layout: 'layouts/main', category, isEdit: true,
+        });
+    } catch (err) { req.flash('error', 'Not found.'); res.redirect('/fees/admin/fee-categories'); }
+};
+
+exports.postEditFeeCategory = async (req, res) => {
+    try {
+        const category = await FeeCategory.findOne({ _id: req.params.id, school: req.session.schoolId });
+        if (!category) { req.flash('error', 'Category not found.'); return res.redirect('/fees/admin/fee-categories'); }
+        const { name } = req.body;
+        if (!name || !name.trim()) { req.flash('error', 'Name is required.'); return res.redirect(`/fees/admin/fee-categories/${req.params.id}/edit`); }
+        category.name = name.trim();
+        await category.save();
+        req.flash('success', 'Category updated.');
+        res.redirect('/fees/admin/fee-categories');
+    } catch (err) {
+        if (err.code === 11000) req.flash('error', 'A category with this name already exists.');
+        else { req.flash('error', 'Update failed.'); console.error('[Fees] postEditFeeCategory:', err); }
+        res.redirect(`/fees/admin/fee-categories/${req.params.id}/edit`);
+    }
+};
+
+exports.postToggleFeeCategory = async (req, res) => {
+    try {
+        const category = await FeeCategory.findOne({ _id: req.params.id, school: req.session.schoolId });
+        if (!category) { req.flash('error', 'Not found.'); return res.redirect('/fees/admin/fee-categories'); }
+        category.isActive = !category.isActive;
+        await category.save();
+        req.flash('success', `Category ${category.isActive ? 'activated' : 'deactivated'}.`);
+        res.redirect('/fees/admin/fee-categories');
+    } catch (err) { req.flash('error', 'Toggle failed.'); res.redirect('/fees/admin/fee-categories'); }
+};
+
+// ── Fee resolution chain: Student → Section → Class
 async function resolveFeeItems(studentId, academicYearId, schoolId) {
     // Priority 1: explicit student assignment
     const sfa = await StudentFeeAssignment.findOne({
@@ -95,14 +176,13 @@ async function resolveFeeItems(studentId, academicYearId, schoolId) {
 
 function _itemsFromStructure(struct, level, sourceId, sourceType) {
     return {
-        level,
-        sourceId,
-        sourceType,
-        structureId: struct._id,
+        level, sourceId, sourceType, structureId: struct._id,
+        dueDay: struct.dueDay || null,
         items: (struct.items || []).filter(i => i.isActive).map(i => ({
             feeHeadId: i.feeHead?._id, feeName: i.feeHead?.name || '',
-            category: i.feeHead?.category || 'custom',
-            amount: i.amount, dueDate: i.dueDate, installmentLabel: i.installmentLabel,
+            category: i.feeHead?.category?.name || (typeof i.feeHead?.category === 'string' ? i.feeHead?.category : ''),
+            type: i.feeHead?.type || 'recurring',
+            amount: i.amount,
         })),
     };
 }
@@ -135,24 +215,16 @@ function calcConcessionAmount(items, concessions, roundingRule = 'none') {
     return { totalConcession: total, breakdown };
 }
 
-function calcFineAmount(items, fineRule) {
-    if (!fineRule || !fineRule.isActive) return 0;
+function calcFineAmount(dueDay, fineRule) {
+    if (!fineRule || !fineRule.isActive || !dueDay) return 0;
     const now = new Date();
-    let total = 0;
-    for (const item of items) {
-        if (!item.dueDate) continue;
-        const graceDue = new Date(
-            new Date(item.dueDate).getTime() + (fineRule.gracePeriodDays || 0) * 86400000
-        );
-        if (now <= graceDue) continue;
-        const daysLate = Math.max(1, Math.floor((now - graceDue) / 86400000));
-        let fine = fineRule.fineType === 'flat'
-            ? fineRule.flatAmount
-            : fineRule.perDayAmount * daysLate;
-        if (fineRule.maxCap > 0) fine = Math.min(fine, fineRule.maxCap);
-        total += fine;
-    }
-    return Math.round(total * 100) / 100;
+    const dueDate = new Date(now.getFullYear(), now.getMonth(), dueDay);
+    const graceDue = new Date(dueDate.getTime() + (fineRule.gracePeriodDays || 0) * 86400000);
+    if (now <= graceDue) return 0;
+    const daysLate = Math.max(1, Math.floor((now - graceDue) / 86400000));
+    let fine = fineRule.fineType === 'flat' ? fineRule.flatAmount : fineRule.perDayAmount * daysLate;
+    if (fineRule.maxCap > 0) fine = Math.min(fine, fineRule.maxCap);
+    return Math.round(fine * 100) / 100;
 }
 
 // Get student's current balance from ledger (positive = owes, negative = credit)
@@ -240,7 +312,7 @@ exports.getDashboard = async (req, res) => {
 exports.getFeeHeads = async (req, res) => {
     try {
         const schoolId = req.session.schoolId;
-        const feeHeads = await FeeHead.find({ school: schoolId }).sort({ category: 1, name: 1 });
+        const feeHeads = await FeeHead.find({ school: schoolId }).populate('category').sort({ name: 1 });
         res.render('fees/admin/fee-heads/index', {
             title: 'Fee Heads', layout: 'layouts/main', feeHeads,
         });
@@ -251,10 +323,15 @@ exports.getFeeHeads = async (req, res) => {
     }
 };
 
-exports.getCreateFeeHead = (req, res) => {
-    res.render('fees/admin/fee-heads/form', {
-        title: 'Create Fee Head', layout: 'layouts/main', feeHead: null, isEdit: false,
-    });
+exports.getCreateFeeHead = async (req, res) => {
+    try {
+        const categories = await FeeCategory.find({ school: req.session.schoolId, isActive: true }).sort({ name: 1 });
+        res.render('fees/admin/fee-heads/form', {
+            title: 'Create Fee Head', layout: 'layouts/main', feeHead: null, isEdit: false, categories,
+        });
+    } catch (err) {
+        req.flash('error', 'Load failed.'); res.redirect('/fees/admin/fee-heads');
+    }
 };
 
 exports.postCreateFeeHead = async (req, res) => {
@@ -283,10 +360,13 @@ exports.postCreateFeeHead = async (req, res) => {
 
 exports.getEditFeeHead = async (req, res) => {
     try {
-        const feeHead = await FeeHead.findOne({ _id: req.params.id, school: req.session.schoolId });
+        const [feeHead, categories] = await Promise.all([
+            FeeHead.findOne({ _id: req.params.id, school: req.session.schoolId }).populate('category'),
+            FeeCategory.find({ school: req.session.schoolId, isActive: true }).sort({ name: 1 }),
+        ]);
         if (!feeHead) { req.flash('error', 'Fee head not found.'); return res.redirect('/fees/admin/fee-heads'); }
         res.render('fees/admin/fee-heads/form', {
-            title: 'Edit Fee Head', layout: 'layouts/main', feeHead, isEdit: true,
+            title: 'Edit Fee Head', layout: 'layouts/main', feeHead, isEdit: true, categories,
         });
     } catch (err) {
         req.flash('error', 'Not found.'); res.redirect('/fees/admin/fee-heads');
@@ -356,9 +436,8 @@ exports.getCreateFeeStructure = async (req, res) => {
         const schoolId = req.session.schoolId;
         const ay = await getActiveAcademicYear(schoolId);
         const [feeHeads, classes, academicYears] = await Promise.all([
-            FeeHead.find({ school: schoolId, isActive: true }).sort({ category: 1, name: 1 }),
-            Class.find({ school: schoolId, academicYear: ay?._id, status: 'active' })
-                .sort({ classNumber: 1 }),
+            FeeHead.find({ school: schoolId, isActive: true }).populate('category', 'name').sort({ name: 1 }),
+            Class.find({ school: schoolId, academicYear: ay?._id, status: 'active' }).sort({ classNumber: 1 }),
             AcademicYear.find({ school: schoolId }).sort({ startDate: -1 }),
         ]);
         const sections = await ClassSection.find({ school: schoolId, academicYear: ay?._id, status: 'active' })
@@ -376,28 +455,32 @@ exports.getCreateFeeStructure = async (req, res) => {
 exports.postCreateFeeStructure = async (req, res) => {
     try {
         const schoolId = req.session.schoolId;
-        const { name, level, classId, sectionId, academicYearId, feeHeads, amounts, dueDates, installmentLabels } = req.body;
+        const { name, level, classId, sectionId, academicYearId, dueDay, feeHeads, amounts } = req.body;
 
-        const headsArr       = [].concat(feeHeads       || []);
-        const amountsArr     = [].concat(amounts         || []);
-        const dueDatesArr    = [].concat(dueDates        || []);
-        const labelsArr      = [].concat(installmentLabels || []);
+        const headsArr   = [].concat(feeHeads || []);
+        const amountsArr = [].concat(amounts  || []);
 
         const items = headsArr.map((hId, i) => ({
             feeHead: hId,
             amount:  parseFloat(amountsArr[i]) || 0,
-            dueDate: dueDatesArr[i] || null,
-            installmentLabel: labelsArr[i] || '',
-        })).filter(item => item.amount > 0);
+        })).filter(item => item.feeHead && item.amount > 0);
+
+        if (!items.length) {
+            req.flash('error', 'At least one fee component with a fee head and amount is required.');
+            return res.redirect('/fees/admin/fee-structures/create');
+        }
 
         const totalAmount = items.reduce((s, i) => s + i.amount, 0);
         const ayId = academicYearId || (await getActiveAcademicYear(schoolId))?._id;
+        const hash = computeItemsHash(items);
 
         const structure = await FeeStructure.create({
             school: schoolId, academicYear: ayId, name, level,
             class:   level === 'class'   ? classId   : null,
             section: level === 'section' ? sectionId : null,
-            items, totalAmount, createdBy: req.session.userId,
+            dueDay: dueDay ? parseInt(dueDay) : null,
+            items, totalAmount, itemsHash: hash,
+            createdBy: req.session.userId,
         });
         await audit(schoolId, req.session.userId, req.session.userRole,
             'STRUCTURE_CREATED', 'FeeStructure', structure._id, null, { name, level, totalAmount });
@@ -415,7 +498,7 @@ exports.getFeeStructureDetail = async (req, res) => {
         const structure = await FeeStructure.findOne({ _id: req.params.id, school: req.session.schoolId })
             .populate('class', 'className classNumber')
             .populate('section', 'sectionName')
-            .populate('items.feeHead', 'name category')
+            .populate({ path: 'items.feeHead', populate: { path: 'category', select: 'name' } })
             .populate('academicYear', 'yearName')
             .populate('createdBy', 'name');
         if (!structure) { req.flash('error', 'Structure not found.'); return res.redirect('/fees/admin/fee-structures'); }
@@ -431,8 +514,16 @@ exports.getFeeStructureDetail = async (req, res) => {
             studentCount = secs.reduce((s, sec) => s + (sec.enrolledStudents?.length || 0), 0);
         }
 
+        // Available fee heads for mid-year addition (exclude ones already in structure)
+        const existingHeadIds = structure.items.filter(i => i.isActive).map(i => i.feeHead?._id?.toString() || i.feeHead?.toString());
+        const availableFeeHeads = await FeeHead.find({
+            school: req.session.schoolId, isActive: true,
+            _id: { $nin: existingHeadIds.filter(Boolean) },
+        }).sort({ category: 1, name: 1 });
+
         res.render('fees/admin/fee-structures/detail', {
-            title: `Fee Structure — ${structure.name}`, layout: 'layouts/main', structure, studentCount,
+            title: `Fee Structure — ${structure.name}`, layout: 'layouts/main',
+            structure, studentCount, availableFeeHeads,
         });
     } catch (err) {
         console.error('[Fees] getFeeStructureDetail:', err);
@@ -448,7 +539,7 @@ exports.getEditFeeStructure = async (req, res) => {
         if (!structure) { req.flash('error', 'Structure not found.'); return res.redirect('/fees/admin/fee-structures'); }
         const ay = await getActiveAcademicYear(schoolId);
         const [feeHeads, classes, academicYears] = await Promise.all([
-            FeeHead.find({ school: schoolId, isActive: true }).sort({ category: 1, name: 1 }),
+            FeeHead.find({ school: schoolId, isActive: true }).populate('category', 'name').sort({ name: 1 }),
             Class.find({ school: schoolId, status: 'active' }).sort({ classNumber: 1 }),
             AcademicYear.find({ school: schoolId }).sort({ startDate: -1 }),
         ]);
@@ -470,30 +561,40 @@ exports.postEditFeeStructure = async (req, res) => {
         const structure = await FeeStructure.findOne({ _id: req.params.id, school: schoolId });
         if (!structure) { req.flash('error', 'Not found.'); return res.redirect('/fees/admin/fee-structures'); }
 
-        const { name, level, classId, sectionId, academicYearId, feeHeads, amounts, dueDates, installmentLabels } = req.body;
-        const headsArr    = [].concat(feeHeads || []);
-        const amountsArr  = [].concat(amounts || []);
-        const dueDatesArr = [].concat(dueDates || []);
-        const labelsArr   = [].concat(installmentLabels || []);
+        const { name, level, classId, sectionId, academicYearId, dueDay, feeHeads, amounts } = req.body;
+        const headsArr   = [].concat(feeHeads || []);
+        const amountsArr = [].concat(amounts  || []);
 
         const items = headsArr.map((hId, i) => ({
             feeHead: hId, amount: parseFloat(amountsArr[i]) || 0,
-            dueDate: dueDatesArr[i] || null, installmentLabel: labelsArr[i] || '',
-        })).filter(item => item.amount > 0);
+        })).filter(item => item.feeHead && item.amount > 0);
+
+        if (!items.length) {
+            req.flash('error', 'At least one fee component with a fee head and amount is required.');
+            return res.redirect(`/fees/admin/fee-structures/${req.params.id}/edit`);
+        }
 
         const old = { name: structure.name, totalAmount: structure.totalAmount };
-        structure.name = name;
-        structure.level = level;
+        structure.name    = name;
+        structure.level   = level;
         structure.class   = level === 'class'   ? classId   : null;
         structure.section = level === 'section' ? sectionId : null;
-        structure.items = items;
+        structure.dueDay  = dueDay ? parseInt(dueDay) : null;
+        structure.items   = items;
         structure.totalAmount = items.reduce((s, i) => s + i.amount, 0);
         if (academicYearId) structure.academicYear = academicYearId;
-        structure.demandGenerated = false; // reset — structure changed
+
+        // If items changed, reset demand so admin must re-generate
+        const newHash = computeItemsHash(items);
+        if (newHash !== structure.itemsHash) {
+            structure.itemsHash = newHash;
+            structure.demandGeneratedAt = null;
+        }
+
         await structure.save();
         await audit(schoolId, req.session.userId, req.session.userRole,
             'STRUCTURE_UPDATED', 'FeeStructure', structure._id, old, { name, totalAmount: structure.totalAmount });
-        req.flash('success', 'Fee structure updated.');
+        req.flash('success', 'Fee structure updated.' + (structure.demandGeneratedAt === null ? ' Demand has been reset — please re-generate.' : ''));
         res.redirect(`/fees/admin/fee-structures/${structure._id}`);
     } catch (err) {
         req.flash('error', 'Update failed.'); console.error('[Fees] postEditFeeStructure:', err);
@@ -514,6 +615,63 @@ exports.postToggleFeeStructure = async (req, res) => {
     }
 };
 
+const MONTH_NAMES = ['January','February','March','April','May','June',
+                     'July','August','September','October','November','December'];
+
+// Returns { should, periodNum, periodLabel } based on fee type and the structure's start date.
+// periodNum is a 0-based index for idempotency: stored in FeeLedger.feePeriod.
+async function shouldChargeItem(schoolId, studentId, academicYearId, item, startDate) {
+    const feeType = item.feeHead?.type || 'recurring';
+    const now = new Date();
+
+    // If no start date yet (first ever generation), always charge as period 0
+    if (!startDate) {
+        return { should: true, periodNum: 0, periodLabel: _periodLabel(feeType, 0, now, now) };
+    }
+
+    const sy = startDate.getFullYear(), sm = startDate.getMonth();
+    const cy = now.getFullYear(),        cm = now.getMonth();
+    const monthsElapsed = (cy - sy) * 12 + (cm - sm);
+
+    let periodNum;
+    if      (feeType === 'one_time')    periodNum = 0;
+    else if (feeType === 'recurring')   periodNum = monthsElapsed;
+    else if (feeType === 'quarterly')   periodNum = Math.floor(monthsElapsed / 3);
+    else if (feeType === 'half_yearly') periodNum = Math.floor(monthsElapsed / 6);
+    else                                periodNum = monthsElapsed;
+
+    const hit = await FeeLedger.findOne({
+        school: schoolId, student: studentId, academicYear: academicYearId,
+        category: 'fee_charged', feeItemId: item._id, feePeriod: periodNum,
+    });
+    if (hit) return { should: false };
+
+    const label = _periodLabel(feeType, periodNum, startDate, now);
+    return { should: true, periodNum, periodLabel: label };
+}
+
+function _periodLabel(feeType, periodNum, startDate, now) {
+    const MONTH_NAMES_L = MONTH_NAMES;
+    if (feeType === 'recurring') {
+        return `${MONTH_NAMES_L[now.getMonth()]} ${now.getFullYear()}`;
+    }
+    if (feeType === 'one_time') {
+        const sd = startDate || now;
+        return `One-Time — ${MONTH_NAMES_L[sd.getMonth()]} ${sd.getFullYear()}`;
+    }
+    if (feeType === 'quarterly') {
+        const sd = startDate || now;
+        const chargeMonth = new Date(sd.getFullYear(), sd.getMonth() + periodNum * 3, 1);
+        return `Quarter ${periodNum + 1} — ${MONTH_NAMES_L[chargeMonth.getMonth()]} ${chargeMonth.getFullYear()}`;
+    }
+    if (feeType === 'half_yearly') {
+        const sd = startDate || now;
+        const chargeMonth = new Date(sd.getFullYear(), sd.getMonth() + periodNum * 6, 1);
+        return `Half ${periodNum + 1} — ${MONTH_NAMES_L[chargeMonth.getMonth()]} ${chargeMonth.getFullYear()}`;
+    }
+    return `Period ${periodNum}`;
+}
+
 // Generate fee demand for all students in the structure's class/section
 exports.postGenerateFeeDemand = async (req, res) => {
     const structureId = req.params.id;
@@ -523,57 +681,161 @@ exports.postGenerateFeeDemand = async (req, res) => {
             .populate('items.feeHead');
         if (!structure) throw new Error('Structure not found.');
 
-        let students = [];
+        let studentIds = [];
         if (structure.level === 'section' && structure.section) {
             const sec = await ClassSection.findById(structure.section).select('enrolledStudents');
-            students = sec?.enrolledStudents || [];
+            studentIds = sec?.enrolledStudents || [];
         } else if (structure.level === 'class' && structure.class) {
             const secs = await ClassSection.find({ school: schoolId, class: structure.class, status: 'active' })
                 .select('enrolledStudents');
-            students = secs.flatMap(s => s.enrolledStudents || []);
+            studentIds = secs.flatMap(s => s.enrolledStudents || []);
         }
 
-        if (!students.length) throw new Error('No students found in this class/section. Make sure students are enrolled in sections.');
+        if (!studentIds.length) throw new Error('No students found in this class/section. Make sure students are enrolled in sections.');
+
+        const activeItems = (structure.items || []).filter(i => i.isActive && i.feeHead);
+        if (!activeItems.length) throw new Error('No active fee items in this structure.');
+
+        // Record start date on first generation (anchors quarterly / half-yearly calendar)
+        const isFirstGeneration = !structure.demandStartedAt;
+        if (isFirstGeneration) structure.demandStartedAt = new Date();
+        const startDate = structure.demandStartedAt;
 
         let generated = 0;
-        for (const studentId of students) {
-            // Skip if debit already exists for this structure and student (idempotent)
-            const existing = await FeeLedger.findOne({
-                school: schoolId, student: studentId, academicYear: structure.academicYear,
-                referenceType: 'FeeStructure', referenceId: structure._id, category: 'fee_charged',
-            });
-            if (existing) continue;
+        const chargedStudentIds = new Set();
 
-            const activeItems = (structure.items || []).filter(i => i.isActive);
-            const totalCharge = activeItems.reduce((s, i) => s + i.amount, 0);
-            if (totalCharge <= 0) continue;
+        for (const studentId of studentIds) {
+            let studentCharged = false;
 
-            const prevBal = await FeeLedger.findOne(
-                { school: schoolId, student: studentId, academicYear: structure.academicYear },
-                { runningBalance: 1 }, { sort: { createdAt: -1 } }
-            );
-            const runningBalance = Math.round(((prevBal?.runningBalance || 0) + totalCharge) * 100) / 100;
+            for (const item of activeItems) {
+                const result = await shouldChargeItem(
+                    schoolId, studentId, structure.academicYear, item, startDate
+                );
+                if (!result.should) continue;
 
-            await FeeLedger.create({
-                school: schoolId, student: studentId, academicYear: structure.academicYear,
-                entryType: 'debit', category: 'fee_charged', amount: totalCharge,
-                description: `Fee demand — ${structure.name}`,
-                referenceType: 'FeeStructure', referenceId: structure._id,
-                runningBalance,
-                createdBy: req.session.userId,
-            });
-            generated++;
+                const prevBal = await FeeLedger.findOne(
+                    { school: schoolId, student: studentId, academicYear: structure.academicYear },
+                    { runningBalance: 1 }, { sort: { createdAt: -1 } }
+                );
+                const runningBalance = Math.round(((prevBal?.runningBalance || 0) + item.amount) * 100) / 100;
+
+                await FeeLedger.create({
+                    school: schoolId, student: studentId, academicYear: structure.academicYear,
+                    entryType: 'debit', category: 'fee_charged', amount: item.amount,
+                    description: `${item.feeHead.name} — ${result.periodLabel}`,
+                    referenceType: 'FeeStructure', referenceId: structure._id,
+                    feeItemId: item._id, feePeriod: result.periodNum,
+                    periodLabel: result.periodLabel,
+                    feeHeadName: item.feeHead.name || '',
+                    runningBalance,
+                    createdBy: req.session.userId,
+                });
+                generated++;
+                studentCharged = true;
+            }
+
+            if (studentCharged) chargedStudentIds.add(studentId.toString());
         }
 
-        structure.demandGenerated = true;
+        structure.demandGeneratedAt = new Date();
+        structure.itemsHash = computeItemsHash(structure.items.filter(i => i.isActive).map(i => ({ feeHead: i.feeHead?.toString?.() || i.feeHead, amount: i.amount })));
         await structure.save();
         await audit(schoolId, req.session.userId, req.session.userRole,
-            'DEMAND_GENERATED', 'FeeStructure', structure._id, null, { generated, total: students.length });
-        req.flash('success', `Fee demand generated for ${generated} student(s).`);
+            'DEMAND_GENERATED', 'FeeStructure', structure._id, null,
+            { generated, students: chargedStudentIds.size, total: studentIds.length });
+
+        // ── In-app notifications to students and their parents ───────────────
+        if (chargedStudentIds.size > 0) {
+            try {
+                const studentUserIds = Array.from(chargedStudentIds).map(id => new mongoose.Types.ObjectId(id));
+                // Find parent links
+                const profiles = await StudentProfile.find({
+                    user: { $in: studentUserIds }, school: schoolId, parent: { $ne: null },
+                }).select('user parent');
+                const parentIds = [...new Set(profiles.map(p => p.parent.toString()))];
+
+                const recipientIds = [
+                    ...studentUserIds,
+                    ...parentIds.map(id => new mongoose.Types.ObjectId(id)),
+                ];
+
+                const notif = await Notification.create({
+                    title: `Fee Demand Generated — ${structure.name}`,
+                    body: `A new fee demand has been generated. Please log in to view and pay your fees.`,
+                    sender: req.session.userId,
+                    senderRole: req.session.userRole,
+                    school: schoolId,
+                    channels: { inApp: true, email: false },
+                    target: { type: 'individual', schools: [] },
+                    recipientCount: recipientIds.length,
+                });
+                await NotificationReceipt.insertMany(
+                    recipientIds.map(uid => ({ notification: notif._id, recipient: uid, school: schoolId })),
+                    { ordered: false }
+                );
+                sseClients.pushMany(recipientIds, 'notification', {
+                    title: notif.title, body: notif.body,
+                    senderRole: req.session.userRole, createdAt: notif.createdAt,
+                });
+            } catch (notifErr) {
+                console.error('[Fees] Notification send failed:', notifErr.message);
+            }
+        }
+
+        const msg = generated > 0
+            ? `Fee demand generated: ${generated} ledger entr${generated === 1 ? 'y' : 'ies'} for ${chargedStudentIds.size} student(s).`
+            : 'No new charges — all fee items already up to date for every student.';
+        req.flash(generated > 0 ? 'success' : 'info', msg);
         res.redirect(`/fees/admin/fee-structures/${structure._id}`);
     } catch (err) {
         console.error('[Fees] postGenerateFeeDemand:', err);
         req.flash('error', err.message || 'Demand generation failed.');
+        res.redirect(`/fees/admin/fee-structures/${structureId}`);
+    }
+};
+
+// Add a fee head to an existing structure (mid-year)
+exports.postAddFeeHeadToStructure = async (req, res) => {
+    const structureId = req.params.id;
+    const schoolId = req.session.schoolId;
+    try {
+        const structure = await FeeStructure.findOne({ _id: structureId, school: schoolId });
+        if (!structure) { req.flash('error', 'Structure not found.'); return res.redirect('/fees/admin/fee-structures'); }
+
+        const { feeHeadId, amount } = req.body;
+        const parsedAmount = parseFloat(amount) || 0;
+        if (!feeHeadId || parsedAmount <= 0) {
+            req.flash('error', 'Please select a fee head and enter a valid amount.');
+            return res.redirect(`/fees/admin/fee-structures/${structureId}`);
+        }
+
+        const alreadyExists = structure.items.some(
+            i => i.feeHead.toString() === feeHeadId && i.isActive
+        );
+        if (alreadyExists) {
+            req.flash('error', 'This fee head is already in the structure. Edit the structure to change its amount.');
+            return res.redirect(`/fees/admin/fee-structures/${structureId}`);
+        }
+
+        structure.items.push({ feeHead: feeHeadId, amount: parsedAmount, isActive: true });
+        structure.totalAmount = structure.items.filter(i => i.isActive).reduce((s, i) => s + i.amount, 0);
+
+        // Adding a fee head changes the structure — reset demand
+        const activeItems = structure.items.filter(i => i.isActive).map(i => ({ feeHead: i.feeHead.toString(), amount: i.amount }));
+        structure.itemsHash = computeItemsHash(activeItems);
+        structure.demandGeneratedAt = null;
+
+        await structure.save();
+
+        await audit(schoolId, req.session.userId, req.session.userRole,
+            'STRUCTURE_FEE_HEAD_ADDED', 'FeeStructure', structure._id, null,
+            { feeHeadId, amount: parsedAmount });
+
+        req.flash('success', 'Fee head added to structure. Click "Generate Fee Demand" to charge students.');
+        res.redirect(`/fees/admin/fee-structures/${structureId}`);
+    } catch (err) {
+        console.error('[Fees] postAddFeeHeadToStructure:', err);
+        req.flash('error', 'Failed to add fee head.');
         res.redirect(`/fees/admin/fee-structures/${structureId}`);
     }
 };
@@ -820,7 +1082,7 @@ exports.getStudentFeeDetail = async (req, res) => {
         const resolved = await resolveFeeItems(student._id, ay?._id, schoolId);
         const settings = await getOrCreateSettings(schoolId);
         const concData = resolved ? calcConcessionAmount(resolved.items, studentConcessions, settings.roundingRule) : { totalConcession: 0 };
-        const fineAmt = resolved && fineRules.length ? calcFineAmount(resolved.items, fineRules[0]) : 0;
+        const fineAmt = resolved && fineRules.length ? calcFineAmount(resolved.dueDay || null, fineRules[0]) : 0;
         const balance = ledgerEntries.length ? ledgerEntries[0].runningBalance : 0;
 
         const concessionTemplates = await FeeConcession.find({ school: schoolId, isActive: true });
@@ -928,7 +1190,7 @@ exports.getRecordPayment = async (req, res) => {
             resolved = await resolveFeeItems(studentId, ay?._id, schoolId);
             balance  = await getStudentBalance(studentId, ay?._id, schoolId);
         }
-        feeHeads = await FeeHead.find({ school: schoolId, isActive: true }).sort({ category: 1, name: 1 });
+        feeHeads = await FeeHead.find({ school: schoolId, isActive: true }).populate('category', 'name').sort({ name: 1 });
 
         const students = await User.find({ school: schoolId, role: 'student', isActive: true })
             .select('name').sort({ name: 1 });

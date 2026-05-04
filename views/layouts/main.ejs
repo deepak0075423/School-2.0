@@ -270,6 +270,9 @@
                     <a href="/fees/admin/dashboard" class="nav-item <%= _path === 'Fees Dashboard' ? 'active' : '' %>">
                         <span class="nav-icon">💰</span> Dashboard
                     </a>
+                    <a href="/fees/admin/fee-categories" class="nav-item <%= _path === 'Fee Categories' ? 'active' : '' %>">
+                        <span class="nav-icon">📂</span> Categories
+                    </a>
                     <a href="/fees/admin/fee-heads" class="nav-item <%= _path === 'Fee Heads' ? 'active' : '' %>">
                         <span class="nav-icon">🏷️</span> Fee Heads
                     </a>
@@ -556,14 +559,8 @@
 
                     <% if (_hasFees) { %>
                     <div class="nav-section-label">Fees</div>
-                    <a href="/fees/student/my-fees" class="nav-item <%= _path === 'My Fees' ? 'active' : '' %>">
-                        <span class="nav-icon">💰</span> My Fees
-                    </a>
-                    <a href="/fees/student/payments" class="nav-item <%= _path === 'My Payments' ? 'active' : '' %>">
-                        <span class="nav-icon">💳</span> Payments
-                    </a>
-                    <a href="/fees/student/ledger" class="nav-item <%= _path === 'My Fee Ledger' ? 'active' : '' %>">
-                        <span class="nav-icon">📒</span> Ledger
+                    <a href="/fees/student/my-fees" class="nav-item <%= _path === 'Fee Book' || _path === 'My Fees' ? 'active' : '' %>">
+                        <span class="nav-icon">📒</span> Fee Book
                     </a>
                     <% } %>
 
@@ -639,11 +636,8 @@
 
                     <% if (_hasFees) { %>
                     <div class="nav-section-label">Fees</div>
-                    <a href="/fees/parent/fees" class="nav-item <%= _path && _path.includes('Fees') ? 'active' : '' %>">
-                        <span class="nav-icon">💰</span> Child's Fees
-                    </a>
-                    <a href="/fees/parent/fees" class="nav-item <%= _path && _path.includes('Pay') ? 'active' : '' %>">
-                        <span class="nav-icon">💳</span> Pay Fees
+                    <a href="/fees/parent/fees" class="nav-item <%= _path && (_path.includes('Fee Book') || _path.includes('Fees')) ? 'active' : '' %>">
+                        <span class="nav-icon">📒</span> Fee Book
                     </a>
                     <% } %>
 

@@ -13,7 +13,7 @@
                 <div class="form-group">
                     <label class="form-label">Structure Name <span style="color:#dc2626;">*</span></label>
                     <input type="text" name="name" class="form-control" required
-                        value="<%= structure?.name || '' %>" placeholder="e.g. Class 10 Annual Fees 2024-25">
+                        value="<%= structure?.name || '' %>" placeholder="e.g. Class 10 Fees 2025-26">
                 </div>
                 <div class="form-group">
                     <label class="form-label">Academic Year</label>
@@ -28,7 +28,7 @@
                 </div>
             </div>
 
-            <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;">
+            <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:16px;">
                 <div class="form-group">
                     <label class="form-label">Level <span style="color:#dc2626;">*</span></label>
                     <select name="level" class="form-control" id="levelSelect" onchange="toggleScope()">
@@ -58,65 +58,91 @@
                         <% }) %>
                     </select>
                 </div>
+                <div class="form-group">
+                    <label class="form-label">Due Day of Month</label>
+                    <input type="number" name="dueDay" class="form-control" min="1" max="31"
+                        value="<%= structure?.dueDay || '' %>" placeholder="e.g. 10">
+                    <small style="color:var(--text-muted);font-size:0.75rem;">Day (1–31) fees are due each month. Leave blank if not applicable.</small>
+                </div>
             </div>
 
             <hr style="margin:20px 0;border-color:var(--border);">
-            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
-                <h3 style="margin:0;font-size:1rem;">Fee Components</h3>
+
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;">
+                <div>
+                    <h3 style="margin:0;font-size:1rem;">Fee Components</h3>
+                    <p style="margin:2px 0 0;font-size:0.78rem;color:var(--text-muted);">Fee head and amount are required for each component.</p>
+                </div>
                 <button type="button" class="btn btn-secondary btn-sm" onclick="addRow()">+ Add Component</button>
             </div>
 
             <div class="table-wrapper">
                 <table id="feeTable">
                     <thead>
-                        <tr><th style="width:35%;">Fee Head</th><th>Amount (₹)</th><th>Due Date</th><th>Installment Label</th><th></th></tr>
+                        <tr>
+                            <th style="width:45%;">Fee Head <span style="color:#dc2626;">*</span></th>
+                            <th>Amount (₹) <span style="color:#dc2626;">*</span></th>
+                            <th style="width:5%;"></th>
+                        </tr>
                     </thead>
                     <tbody id="feeRows">
                         <% if (structure && structure.items && structure.items.length) { %>
-                            <% structure.items.forEach((item, i) => { %>
+                            <% structure.items.forEach((item, i) => { if (!item.isActive) return; %>
                             <tr id="row-<%= i %>">
                                 <td>
-                                    <select name="feeHeads" class="form-control" required>
-                                        <option value="">— Select Head —</option>
+                                    <select name="feeHeads" class="form-control" required onchange="prefillAmount(this, <%= i %>)">
+                                        <option value="">— Select Fee Head —</option>
                                         <% feeHeads.forEach(h => { %>
-                                        <option value="<%= h._id %>" <%= item.feeHead?._id?.toString() === h._id.toString() || item.feeHead?.toString() === h._id.toString() ? 'selected' : '' %>>
-                                            <%= h.name %> (<%= h.category %>)
+                                        <option value="<%= h._id %>"
+                                            data-default="<%= h.defaultAmount || 0 %>"
+                                            <%= item.feeHead?._id?.toString() === h._id.toString() || item.feeHead?.toString() === h._id.toString() ? 'selected' : '' %>>
+                                            <%= h.name %><% if (h.category?.name) { %> · <%= h.category.name %><% } %> (<%= { recurring:'Monthly', one_time:'One-Time', quarterly:'Quarterly', half_yearly:'Half-Yearly' }[h.type] || h.type %>)
                                         </option>
                                         <% }) %>
                                     </select>
                                 </td>
-                                <td><input type="number" name="amounts" class="form-control amount-input" min="0" step="0.01" value="<%= item.amount || 0 %>" onchange="updateTotal()"></td>
-                                <td><input type="date" name="dueDates" class="form-control" value="<%= item.dueDate ? new Date(item.dueDate).toISOString().split('T')[0] : '' %>"></td>
-                                <td><input type="text" name="installmentLabels" class="form-control" value="<%= item.installmentLabel || '' %>" placeholder="e.g. Term 1, April"></td>
-                                <td><button type="button" class="btn btn-danger btn-sm" onclick="removeRow('<%= i %>')">✕</button></td>
+                                <td>
+                                    <input type="number" name="amounts" id="amt-<%= i %>" class="form-control amount-input"
+                                        min="1" step="0.01" required value="<%= item.amount || '' %>" onchange="updateTotal()">
+                                </td>
+                                <td>
+                                    <button type="button" class="btn btn-danger btn-sm" onclick="removeRow('<%= i %>')">✕</button>
+                                </td>
                             </tr>
                             <% }) %>
                         <% } else { %>
                             <tr id="row-0">
                                 <td>
-                                    <select name="feeHeads" class="form-control" required>
-                                        <option value="">— Select Head —</option>
+                                    <select name="feeHeads" class="form-control" required onchange="prefillAmount(this, 0)">
+                                        <option value="">— Select Fee Head —</option>
                                         <% feeHeads.forEach(h => { %>
-                                        <option value="<%= h._id %>"><%= h.name %> (<%= h.category %>)</option>
+                                        <option value="<%= h._id %>" data-default="<%= h.defaultAmount || 0 %>">
+                                            <%= h.name %><% if (h.category?.name) { %> · <%= h.category.name %><% } %> (<%= { recurring:'Monthly', one_time:'One-Time', quarterly:'Quarterly', half_yearly:'Half-Yearly' }[h.type] || h.type %>)
+                                        </option>
                                         <% }) %>
                                     </select>
                                 </td>
-                                <td><input type="number" name="amounts" class="form-control amount-input" min="0" step="0.01" value="0" onchange="updateTotal()"></td>
-                                <td><input type="date" name="dueDates" class="form-control"></td>
-                                <td><input type="text" name="installmentLabels" class="form-control" placeholder="e.g. Term 1, April"></td>
-                                <td><button type="button" class="btn btn-danger btn-sm" onclick="removeRow('0')">✕</button></td>
+                                <td>
+                                    <input type="number" name="amounts" id="amt-0" class="form-control amount-input"
+                                        min="1" step="0.01" required placeholder="0.00" onchange="updateTotal()">
+                                </td>
+                                <td>
+                                    <button type="button" class="btn btn-danger btn-sm" onclick="removeRow('0')">✕</button>
+                                </td>
                             </tr>
                         <% } %>
                     </tbody>
                 </table>
             </div>
 
-            <div style="text-align:right;margin-top:12px;font-size:1rem;font-weight:700;color:#1d4ed8;">
+            <div style="text-align:right;margin-top:12px;font-size:1.05rem;font-weight:700;color:#1d4ed8;">
                 Total: ₹<span id="totalDisplay">0</span>
             </div>
 
             <div style="display:flex;gap:10px;margin-top:20px;">
-                <button type="submit" class="btn btn-primary"><%= isEdit ? '💾 Update' : '✅ Create' %> Structure</button>
+                <button type="submit" class="btn btn-primary" onclick="return validateForm()">
+                    <%= isEdit ? '💾 Update' : '✅ Create' %> Structure
+                </button>
                 <a href="/fees/admin/fee-structures" class="btn btn-secondary">Cancel</a>
             </div>
         </form>
@@ -124,10 +150,10 @@
 </div>
 
 <script>
-let rowCount = <%= (structure?.items?.length || 1) %>;
+let rowCount = <%= (structure?.items?.filter(i => i.isActive)?.length || 1) %>;
 
-const feeHeadsOptions = `<option value="">— Select Head —</option>` +
-    [<% feeHeads.forEach((h, i) => { %>`<option value="<%= h._id %>"><%= h.name %> (<%= h.category %>)</option>`<%= i < feeHeads.length-1 ? ',' : '' %><% }) %>].join('');
+const feeHeadsOptions = `<option value="">— Select Fee Head —</option>` +
+    [<% feeHeads.forEach((h, i) => { %>`<option value="<%= h._id %>" data-default="<%= h.defaultAmount || 0 %>"><%= h.name %><% if (h.category?.name) { %> · <%= h.category.name %><% } %> (<%= { recurring:'Monthly', one_time:'One-Time', quarterly:'Quarterly', half_yearly:'Half-Yearly' }[h.type] || h.type %>)</option>`<%= i < feeHeads.length-1 ? ',' : '' %><% }) %>].join('');
 
 function toggleScope() {
     const level = document.getElementById('levelSelect').value;
@@ -135,15 +161,23 @@ function toggleScope() {
     document.getElementById('sectionGroup').style.display = level === 'section' ? '' : 'none';
 }
 
+function prefillAmount(sel, rowIdx) {
+    const opt = sel.options[sel.selectedIndex];
+    const def = parseFloat(opt?.dataset?.default) || 0;
+    const amtInput = document.getElementById('amt-' + rowIdx);
+    if (amtInput && (!amtInput.value || parseFloat(amtInput.value) === 0) && def > 0) {
+        amtInput.value = def;
+        updateTotal();
+    }
+}
+
 function addRow() {
     const tbody = document.getElementById('feeRows');
     const tr = document.createElement('tr');
     tr.id = 'row-' + rowCount;
     tr.innerHTML = `
-        <td><select name="feeHeads" class="form-control" required>${feeHeadsOptions}</select></td>
-        <td><input type="number" name="amounts" class="form-control amount-input" min="0" step="0.01" value="0" onchange="updateTotal()"></td>
-        <td><input type="date" name="dueDates" class="form-control"></td>
-        <td><input type="text" name="installmentLabels" class="form-control" placeholder="e.g. Term 1, April"></td>
+        <td><select name="feeHeads" class="form-control" required onchange="prefillAmount(this, ${rowCount})">${feeHeadsOptions}</select></td>
+        <td><input type="number" name="amounts" id="amt-${rowCount}" class="form-control amount-input" min="1" step="0.01" required placeholder="0.00" onchange="updateTotal()"></td>
         <td><button type="button" class="btn btn-danger btn-sm" onclick="removeRow('${rowCount}')">✕</button></td>
     `;
     tbody.appendChild(tr);
@@ -151,10 +185,10 @@ function addRow() {
 }
 
 function removeRow(id) {
+    const rows = document.getElementById('feeRows').children;
+    if (rows.length <= 1) { alert('At least one fee component is required.'); return; }
     const row = document.getElementById('row-' + id);
-    if (row && document.getElementById('feeRows').children.length > 1) {
-        row.remove(); updateTotal();
-    }
+    if (row) { row.remove(); updateTotal(); }
 }
 
 function updateTotal() {
@@ -164,7 +198,19 @@ function updateTotal() {
     document.getElementById('totalDisplay').textContent = total.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
-// Init
+function validateForm() {
+    const selects = document.querySelectorAll('select[name="feeHeads"]');
+    const amounts = document.querySelectorAll('input[name="amounts"]');
+    for (let i = 0; i < selects.length; i++) {
+        if (!selects[i].value) { alert('Please select a fee head for all components.'); selects[i].focus(); return false; }
+        if (!amounts[i].value || parseFloat(amounts[i].value) <= 0) { alert('Please enter a valid amount (> 0) for all components.'); amounts[i].focus(); return false; }
+    }
+    // Check for duplicate fee heads
+    const selected = [...selects].map(s => s.value).filter(Boolean);
+    if (new Set(selected).size !== selected.length) { alert('Each fee head can only appear once in a structure.'); return false; }
+    return true;
+}
+
 toggleScope();
 updateTotal();
 </script>

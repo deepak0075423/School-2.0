@@ -1,22 +1,28 @@
 <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;">
-    <h2 style="margin:0;">🏷️ Fee Heads</h2>
-    <a href="/fees/admin/fee-heads/create" class="btn btn-primary">+ Add Fee Head</a>
+    <div>
+        <h2 style="margin:0;">🏷️ Fee Heads</h2>
+        <p style="margin:4px 0 0;color:var(--text-muted);font-size:0.85rem;">Building blocks of fee structures. Define once, reuse across classes and sections.</p>
+    </div>
+    <div style="display:flex;gap:8px;">
+        <a href="/fees/admin/fee-categories" class="btn btn-secondary btn-sm">Manage Categories</a>
+        <a href="/fees/admin/fee-heads/create" class="btn btn-primary">+ Add Fee Head</a>
+    </div>
 </div>
 
 <% if (success && success.length) { %><div class="alert alert-success"><%= success %></div><% } %>
 <% if (error && error.length) { %><div class="alert alert-error"><%= error %></div><% } %>
 
-<div style="font-size:0.85rem;color:var(--text-muted);margin-bottom:16px;">
-    Fee heads are the building blocks of fee structures. Define them once and reuse across class/section structures.
-</div>
-
 <div class="card">
     <div class="table-wrapper">
         <% if (!feeHeads.length) { %>
-        <div class="empty-state" style="padding:40px;">
+        <div class="empty-state" style="padding:40px;text-align:center;">
             <div style="font-size:2.5rem;">🏷️</div>
-            <p>No fee heads configured yet. Create your first fee component.</p>
-            <a href="/fees/admin/fee-heads/create" class="btn btn-primary">Create Fee Head</a>
+            <p style="margin:12px 0 4px;font-weight:600;">No fee heads yet</p>
+            <p style="color:var(--text-muted);font-size:0.85rem;margin-bottom:16px;">Start by creating categories, then add fee heads.</p>
+            <div style="display:flex;gap:8px;justify-content:center;">
+                <a href="/fees/admin/fee-categories" class="btn btn-secondary">Manage Categories</a>
+                <a href="/fees/admin/fee-heads/create" class="btn btn-primary">Create Fee Head</a>
+            </div>
         </div>
         <% } else { %>
         <table>
@@ -26,12 +32,21 @@
             <tbody>
                 <% feeHeads.forEach(h => { %>
                 <tr>
-                    <td><strong><%= h.name %></strong><% if (h.description) { %><br><span style="font-size:0.78rem;color:var(--text-muted);"><%= h.description %></span><% } %></td>
-                    <td><span class="badge badge-secondary" style="text-transform:capitalize;"><%= h.category %></span></td>
                     <td>
-                        <span class="badge badge-<%= h.type === 'recurring' ? 'info' : 'warning' %>">
-                            <%= h.type === 'recurring' ? 'Recurring' : 'One-Time' %>
-                        </span>
+                        <strong><%= h.name %></strong>
+                        <% if (h.description) { %><br><span style="font-size:0.78rem;color:var(--text-muted);"><%= h.description %></span><% } %>
+                    </td>
+                    <td>
+                        <% if (h.category && h.category.name) { %>
+                        <span class="badge badge-info"><%= h.category.name %></span>
+                        <% } else { %>
+                        <span style="color:var(--text-muted);font-size:0.82rem;">—</span>
+                        <% } %>
+                    </td>
+                    <td>
+                        <% const typeLabel = { one_time: 'One-Time', recurring: 'Monthly', quarterly: 'Quarterly', half_yearly: 'Half-Yearly' }[h.type] || h.type;
+                           const typeBadge = { one_time: 'badge-warning', recurring: 'badge-success', quarterly: 'badge-purple', half_yearly: 'badge-cyan' }[h.type] || 'badge-secondary'; %>
+                        <span class="badge <%= typeBadge %>"><%= typeLabel %></span>
                     </td>
                     <td>₹<%= (h.defaultAmount || 0).toLocaleString('en-IN') %></td>
                     <td><span class="badge badge-<%= h.isActive ? 'success' : 'secondary' %>"><%= h.isActive ? 'Active' : 'Inactive' %></span></td>
@@ -40,7 +55,7 @@
                             <a href="/fees/admin/fee-heads/<%= h._id %>/edit" class="btn btn-secondary btn-sm">Edit</a>
                             <form method="POST" action="/fees/admin/fee-heads/<%= h._id %>/toggle" style="display:inline;">
                                 <button type="submit" class="btn btn-sm <%= h.isActive ? 'btn-warning' : 'btn-success' %>"
-                                    data-confirm="<%= h.isActive ? 'Deactivate' : 'Activate' %> this fee head?"
+                                    data-confirm="<%= h.isActive ? 'Deactivate' : 'Activate' %> fee head '<%= h.name %>'?"
                                     data-confirm-title="<%= h.isActive ? 'Deactivate' : 'Activate' %> Fee Head">
                                     <%= h.isActive ? 'Deactivate' : 'Activate' %>
                                 </button>

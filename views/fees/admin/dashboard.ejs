@@ -46,6 +46,7 @@
             <a href="/fees/admin/payments/record" class="btn btn-primary">💳 Record Payment</a>
             <a href="/fees/admin/fee-structures/create" class="btn btn-secondary">🏗️ Create Fee Structure</a>
             <a href="/fees/admin/fee-heads/create" class="btn btn-secondary">➕ Add Fee Head</a>
+            <a href="/fees/admin/fee-categories" class="btn btn-secondary">🏷️ Manage Categories</a>
             <a href="/fees/admin/reports/dues" class="btn btn-secondary">📊 View Dues Report</a>
             <a href="/fees/admin/ledger" class="btn btn-secondary">📒 School Ledger</a>
         </div>
@@ -104,6 +105,10 @@
 </div>
 
 <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-top:20px;">
+    <a href="/fees/admin/fee-categories" class="card" style="text-decoration:none;padding:16px;display:flex;align-items:center;gap:12px;">
+        <span style="font-size:1.6rem;">📂</span>
+        <div><div style="font-weight:600;">Fee Categories</div><div style="font-size:0.8rem;color:var(--text-muted);">Dynamic dropdowns</div></div>
+    </a>
     <a href="/fees/admin/fee-heads" class="card" style="text-decoration:none;padding:16px;display:flex;align-items:center;gap:12px;">
         <span style="font-size:1.6rem;">🏷️</span>
         <div><div style="font-weight:600;">Fee Heads</div><div style="font-size:0.8rem;color:var(--text-muted);">Configure components</div></div>
