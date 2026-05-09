@@ -1,0 +1,15 @@
+import api from './axios';
+export const getDashboard   = () => api.get('/student/dashboard');
+export const getMyClass     = () => api.get('/student/my-class');
+export const getTimetable   = () => api.get('/student/timetable');
+export const getMyAttendance = (params) => api.get('/student/my-attendance', { params });
+export const getExams       = () => api.get('/student/exams');
+export const getAttempt     = (id) => api.get(`/student/exams/${id}/attempt`);
+export const saveAnswer     = (id, data) => api.post(`/student/exams/${id}/save-answer`, data);
+export const submitExam     = (id) => api.post(`/student/exams/${id}/submit`);
+export const getExamResult  = (id) => api.get(`/student/exams/${id}/result`);
+export const getDocuments   = () => api.get('/student/documents');
+export const getHolidays    = () => api.get('/student/holidays');
+export const getResults     = () => api.get('/student/results');
+export const getResultDetail = (id) => api.get(`/student/results/${id}`);
+export const getClassTests  = () => api.get('/student/results/class-tests');

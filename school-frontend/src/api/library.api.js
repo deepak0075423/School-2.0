@@ -1,0 +1,21 @@
+import api from './axios';
+export const getDashboard   = () => api.get('/library/dashboard');
+export const getBooks       = (params) => api.get('/library/books', { params });
+export const getBook        = (id) => api.get(`/library/books/${id}`);
+export const createBook     = (data) => api.post('/library/books', data);
+export const updateBook     = (id, data) => api.put(`/library/books/${id}`, data);
+export const deleteBook     = (id) => api.delete(`/library/books/${id}`);
+export const getIssuances   = (params) => api.get('/library/issuances', { params });
+export const issueBook      = (data) => api.post('/library/issue', data);
+export const returnBook     = (data) => api.post('/library/return', data);
+export const renewBook      = (id) => api.post(`/library/issuances/${id}/renew`);
+export const getReservations= () => api.get('/library/reservations');
+export const getFines       = () => api.get('/library/fines');
+export const collectFine    = (id) => api.post(`/library/fines/${id}/collect`);
+export const getPolicy      = () => api.get('/library/policy');
+export const updatePolicy   = (data) => api.put('/library/policy', data);
+// Student
+export const studentSearch  = (params) => api.get('/library/student/search', { params });
+export const studentReserve = (bookId) => api.post(`/library/student/books/${bookId}/reserve`);
+export const getMyBooks     = () => api.get('/library/student/my-books');
+export const getMyFines     = () => api.get('/library/student/my-fines');

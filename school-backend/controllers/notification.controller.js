@@ -1,0 +1,248 @@
+'use strict';
+const Notification        = require('../models/Notification');
+const NotificationReceipt = require('../models/NotificationReceipt');
+const User                = require('../models/User');
+const StudentProfile      = require('../models/StudentProfile');
+const ClassSection        = require('../models/ClassSection');
+const mailer              = require('../config/mailer');
+
+exports.getList = async (req, res) => {
+    try {
+        const { page = 1, limit = 20 } = req.query;
+        const filter = { school: req.schoolId };
+        const [notifications, total] = await Promise.all([
+            Notification.find(filter).sort({ createdAt: -1 }).skip((page-1)*limit).limit(+limit).lean(),
+            Notification.countDocuments(filter),
+        ]);
+        res.json({ success: true, data: notifications, total, page: +page, pages: Math.ceil(total/limit) });
+    } catch (err) { res.status(500).json({ success: false, message: err.message }); }
+};
+
+// ── Recipient resolution ──────────────────────────────────────────────────────
+async function resolveRecipients({ targetType, school, classId, sectionId, targetSchools = [] }) {
+    switch (targetType) {
+        case 'all':
+            return User.find({ school, role: { $in: ['teacher', 'student', 'parent', 'school_admin'] } }, '_id email name').lean();
+        case 'all_teachers':
+            return User.find({ school, role: 'teacher' }, '_id email name').lean();
+        case 'all_students':
+            return User.find({ school, role: 'student' }, '_id email name').lean();
+        case 'all_parents':
+            return User.find({ school, role: 'parent' }, '_id email name').lean();
+        case 'class_students': {
+            const secs = await ClassSection.find({ class: classId, school }, 'enrolledStudents').lean();
+            const ids  = [...new Set(secs.flatMap(s => s.enrolledStudents.map(id => id.toString())))];
+            return User.find({ _id: { $in: ids }, school, role: 'student' }, '_id email name').lean();
+        }
+        case 'class_parents': {
+            const secs       = await ClassSection.find({ class: classId, school }, 'enrolledStudents').lean();
+            const studentIds = [...new Set(secs.flatMap(s => s.enrolledStudents.map(id => id.toString())))];
+            const profiles   = await StudentProfile.find({ user: { $in: studentIds }, parent: { $ne: null } }, 'parent').lean();
+            const parentIds  = [...new Set(profiles.map(p => p.parent.toString()))];
+            return User.find({ _id: { $in: parentIds }, school, role: 'parent' }, '_id email name').lean();
+        }
+        case 'section_students': {
+            const sec = await ClassSection.findById(sectionId, 'enrolledStudents').lean();
+            const ids = (sec?.enrolledStudents || []).map(id => id.toString());
+            return User.find({ _id: { $in: ids }, school, role: 'student' }, '_id email name').lean();
+        }
+        case 'section_parents': {
+            const sec        = await ClassSection.findById(sectionId, 'enrolledStudents').lean();
+            const studentIds = (sec?.enrolledStudents || []).map(id => id.toString());
+            const profiles   = await StudentProfile.find({ user: { $in: studentIds }, parent: { $ne: null } }, 'parent').lean();
+            const parentIds  = [...new Set(profiles.map(p => p.parent.toString()))];
+            return User.find({ _id: { $in: parentIds }, school, role: 'parent' }, '_id email name').lean();
+        }
+        case 'section_all': {
+            const sec        = await ClassSection.findById(sectionId, 'enrolledStudents').lean();
+            const studentIds = (sec?.enrolledStudents || []).map(id => id.toString());
+            const profiles   = await StudentProfile.find({ user: { $in: studentIds }, parent: { $ne: null } }, 'parent').lean();
+            const parentIds  = [...new Set(profiles.map(p => p.parent.toString()))];
+            const allIds     = [...new Set([...studentIds, ...parentIds])];
+            return User.find({ _id: { $in: allIds }, school }, '_id email name').lean();
+        }
+        // Super-admin targets — only school_admin recipients
+        case 'all_schools':
+            return User.find({ role: 'school_admin' }, '_id email name').lean();
+        case 'specific_school': {
+            const schoolIds = targetSchools.length ? targetSchools : (school ? [school] : []);
+            return User.find({ school: { $in: schoolIds }, role: 'school_admin' }, '_id email name').lean();
+        }
+        default:
+            return [];
+    }
+}
+
+function dispatchEmails({ recipients, title, body, schoolName }) {
+    const html = `
+    <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;color:#333">
+      <div style="background:#4f46e5;padding:20px 28px;border-radius:8px 8px 0 0">
+        <h2 style="color:#fff;margin:0;font-size:1.15rem">${schoolName}: ${title}</h2>
+      </div>
+      <div style="background:#f9fafb;padding:24px 28px;border-radius:0 0 8px 8px;border:1px solid #e5e7eb;border-top:none">
+        <p style="white-space:pre-wrap;line-height:1.6;margin:0">${body}</p>
+        <hr style="border:none;border-top:1px solid #e5e7eb;margin:20px 0">
+        <p style="color:#9ca3af;font-size:.8rem;margin:0">This notification was sent by your school administration.</p>
+      </div>
+    </div>`;
+
+    recipients.forEach(u => {
+        if (!u.email) return;
+        mailer.sendMail({
+            from:    `"${schoolName}" <${process.env.SMTP_USER}>`,
+            to:      u.email,
+            subject: `[${schoolName}] ${title}`,
+            html,
+        }).catch(e => console.error(`[notif-email] failed → ${u.email}: ${e.message}`));
+    });
+}
+
+// ── Send ──────────────────────────────────────────────────────────────────────
+exports.send = async (req, res) => {
+    try {
+        const { title, body, targetType = 'all', classId, sectionId, targetSchools = [] } = req.body;
+        const channels = {
+            inApp: req.body.channels?.inApp !== false,
+            email: req.body.channels?.email === true,
+        };
+
+        if (!title?.trim()) return res.status(400).json({ success: false, message: 'Title is required' });
+        if (!body?.trim())  return res.status(400).json({ success: false, message: 'Message body is required' });
+        if (!channels.inApp && !channels.email)
+            return res.status(400).json({ success: false, message: 'Select at least one channel (In-App or Email)' });
+
+        // Role-based target type whitelist
+        const adminTargets = ['all','all_teachers','all_students','all_parents',
+                              'class_students','class_parents',
+                              'section_students','section_parents','section_all'];
+        if (req.userRole !== 'super_admin' && !adminTargets.includes(targetType))
+            return res.status(403).json({ success: false, message: 'Invalid target type for your role' });
+
+        // Contextual field validation
+        if (['class_students','class_parents'].includes(targetType) && !classId)
+            return res.status(400).json({ success: false, message: 'Please select a class' });
+        if (['section_students','section_parents','section_all'].includes(targetType) && !sectionId)
+            return res.status(400).json({ success: false, message: 'Please select a section' });
+
+        const target = { type: targetType };
+        if (classId)   target.class   = classId;
+        if (sectionId) target.section = sectionId;
+
+        const notification = await Notification.create({
+            school:     req.schoolId || null,
+            sender:     req.userId,
+            senderRole: req.userRole,
+            title:      title.trim(),
+            body:       body.trim(),
+            channels,
+            target,
+        });
+
+        // Resolve + distribute
+        const recipients = await resolveRecipients({ targetType, school: req.schoolId, classId, sectionId, targetSchools });
+
+        if (channels.inApp && recipients.length) {
+            const docs = recipients.map(u => ({
+                notification: notification._id,
+                recipient:    u._id,
+                school:       req.schoolId || null,
+            }));
+            await NotificationReceipt.insertMany(docs, { ordered: false }).catch(() => {});
+        }
+
+        await Notification.findByIdAndUpdate(notification._id, { recipientCount: recipients.length });
+
+        if (channels.email && recipients.length) {
+            const School = require('../models/School');
+            const school = await School.findById(req.schoolId, 'name').lean();
+            dispatchEmails({ recipients, title: title.trim(), body: body.trim(), schoolName: school?.name || 'School' });
+        }
+
+        res.status(201).json({ success: true, data: { ...notification.toObject(), recipientCount: recipients.length } });
+    } catch (err) { res.status(500).json({ success: false, message: err.message }); }
+};
+
+// ── Inbox ─────────────────────────────────────────────────────────────────────
+exports.getInboxApi = async (req, res) => {
+    try {
+        const { page = 1, limit = 20 } = req.query;
+        const receipts = await NotificationReceipt.find({ recipient: req.userId, isCleared: false })
+            .populate('notification')
+            .sort({ createdAt: -1 })
+            .skip((page-1)*+limit)
+            .limit(+limit)
+            .lean();
+        const unread = await NotificationReceipt.countDocuments({ recipient: req.userId, isRead: false, isCleared: false });
+        res.json({ success: true, data: receipts, unread });
+    } catch (err) { res.status(500).json({ success: false, message: err.message }); }
+};
+
+exports.markAllRead = async (req, res) => {
+    try {
+        await NotificationReceipt.updateMany({ recipient: req.userId, isRead: false }, { isRead: true, readAt: new Date() });
+        res.json({ success: true });
+    } catch (err) { res.status(500).json({ success: false, message: err.message }); }
+};
+
+exports.clearAll = async (req, res) => {
+    try {
+        await NotificationReceipt.updateMany({ recipient: req.userId }, { isCleared: true, clearedAt: new Date() });
+        res.json({ success: true });
+    } catch (err) { res.status(500).json({ success: false, message: err.message }); }
+};
+
+exports.markOneRead = async (req, res) => {
+    try {
+        await NotificationReceipt.findByIdAndUpdate(req.params.receiptId, { isRead: true, readAt: new Date() });
+        res.json({ success: true });
+    } catch (err) { res.status(500).json({ success: false, message: err.message }); }
+};
+
+exports.clearOne = async (req, res) => {
+    try {
+        await NotificationReceipt.findByIdAndUpdate(req.params.receiptId, { isCleared: true, clearedAt: new Date() });
+        res.json({ success: true });
+    } catch (err) { res.status(500).json({ success: false, message: err.message }); }
+};
+
+// ── Sent ──────────────────────────────────────────────────────────────────────
+exports.getSent = async (req, res) => {
+    try {
+        const { page = 1, limit = 20 } = req.query;
+        const [notifications, total] = await Promise.all([
+            Notification.find({ sender: req.userId }).sort({ createdAt: -1 }).skip((page-1)*+limit).limit(+limit).lean(),
+            Notification.countDocuments({ sender: req.userId }),
+        ]);
+        res.json({ success: true, data: notifications, total, page: +page, pages: Math.ceil(total/+limit) });
+    } catch (err) { res.status(500).json({ success: false, message: err.message }); }
+};
+
+exports.getSectionsByClass = async (req, res) => {
+    try {
+        const sections = await ClassSection.find({ class: req.params.classId }).lean();
+        res.json({ success: true, data: sections });
+    } catch (err) { res.status(500).json({ success: false, message: err.message }); }
+};
+
+exports.getUnreadCount = async (req, res) => {
+    try {
+        const count = await NotificationReceipt.countDocuments({ recipient: req.userId, isRead: false, isCleared: false });
+        res.json({ success: true, count });
+    } catch (err) { res.status(500).json({ success: false, message: err.message }); }
+};
+
+// Returns ALL receipts (including cleared) for the notifications page — no deletion allowed
+exports.getAllNotifications = async (req, res) => {
+    try {
+        const { page = 1, limit = 50 } = req.query;
+        const receipts = await NotificationReceipt.find({ recipient: req.userId })
+            .populate('notification')
+            .sort({ createdAt: -1 })
+            .skip((page - 1) * +limit)
+            .limit(+limit)
+            .lean();
+        const total  = await NotificationReceipt.countDocuments({ recipient: req.userId });
+        const unread = await NotificationReceipt.countDocuments({ recipient: req.userId, isRead: false });
+        res.json({ success: true, data: receipts, total, unread, page: +page, pages: Math.ceil(total / +limit) });
+    } catch (err) { res.status(500).json({ success: false, message: err.message }); }
+};

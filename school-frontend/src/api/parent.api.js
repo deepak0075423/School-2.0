@@ -1,0 +1,9 @@
+import api from './axios';
+export const getDashboard     = () => api.get('/parent/dashboard');
+export const getChildClass    = () => api.get('/parent/child-class');
+export const getChildAttendance = (params) => api.get('/parent/child-attendance', { params });
+export const getExams         = () => api.get('/parent/exams');
+export const getResults       = () => api.get('/parent/results');
+export const getResultDetail  = (id) => api.get(`/parent/results/${id}`);
+export const getDocuments     = () => api.get('/parent/documents');
+export const getHolidays      = () => api.get('/parent/holidays');

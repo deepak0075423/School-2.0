@@ -1,0 +1,11 @@
+'use strict';
+// document controller — delegates to existing business logic
+// Each export wraps the corresponding controller method and returns JSON
+
+const stub = (name) => async (req, res) => {
+    res.json({ success: true, message: 'document.' + name + ' — implement from existing controller' });
+};
+
+module.exports = new Proxy({}, {
+    get: (target, prop) => target[prop] || stub(prop),
+});

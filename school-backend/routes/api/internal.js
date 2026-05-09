@@ -1,0 +1,30 @@
+'use strict';
+const express    = require('express');
+const router     = express.Router();
+const ChatMember = require('../../models/ChatMember');
+
+const requireInternalSecret = (req, res, next) => {
+    const secret = process.env.INTERNAL_SECRET;
+    if (!secret) return res.status(503).json({ error: 'INTERNAL_SECRET not configured' });
+    if (req.headers['x-internal-secret'] !== secret) {
+        return res.status(403).json({ error: 'Forbidden' });
+    }
+    next();
+};
+
+router.get('/user-chats', requireInternalSecret, async (req, res) => {
+    const { userId, schoolId } = req.query;
+    if (!userId || !schoolId) {
+        return res.status(400).json({ error: 'userId and schoolId are required' });
+    }
+    try {
+        const memberships = await ChatMember.find({
+            user: userId, school: schoolId, isActive: true,
+        }).select('chat').lean();
+        res.json({ chatIds: memberships.map(m => String(m.chat)) });
+    } catch (err) {
+        res.status(500).json({ error: 'Internal error' });
+    }
+});
+
+module.exports = router;
