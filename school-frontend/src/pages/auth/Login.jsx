@@ -27,6 +27,7 @@ export default function Login() {
     setLoading(true);
     try {
       const res = await login(form);
+      if (!res?.user) throw new Error('Unexpected server response. Check API configuration.');
       signIn(res.token, res.refreshToken, res.user);
       toast.success(`Welcome, ${res.user.name}!`);
       if (res.user.isFirstLogin) navigate('/reset-password');

@@ -75,10 +75,15 @@ export const uploadDocument = (data) => api.post('/admin/documents', data);
 export const deleteDocument = (id) => api.delete(`/admin/documents/${id}`);
 
 // Holidays
-export const getHolidays   = () => api.get('/admin/holidays');
-export const createHoliday = (data) => api.post('/admin/holidays', data);
-export const updateHoliday = (id, data) => api.put(`/admin/holidays/${id}`, data);
-export const deleteHoliday = (id) => api.delete(`/admin/holidays/${id}`);
+export const getHolidays            = ()         => api.get('/admin/holidays');
+export const getMyHolidays          = ()         => api.get('/admin/holidays/mine');
+export const createHoliday          = (data)     => api.post('/admin/holidays', data);
+export const updateHoliday          = (id, data) => api.put(`/admin/holidays/${id}`, data);
+export const deleteHoliday          = (id)       => api.delete(`/admin/holidays/${id}`);
+export const importHolidays         = (fd)       => api.post('/admin/holidays/import', fd).then(r => r.data ?? r);
+export const exportHolidays         = ()         => api.get('/admin/holidays/export',   { responseType: 'arraybuffer' }).then(r => r.data ?? r);
+export const downloadHolidayTemplate= ()         => api.get('/admin/holidays/template', { responseType: 'arraybuffer' }).then(r => r.data ?? r);
+export const getHolidayAuditLog     = (params)   => api.get('/admin/holidays/audit', { params });
 
 // Results
 export const getFormalExams = () => api.get('/admin/results/exams');

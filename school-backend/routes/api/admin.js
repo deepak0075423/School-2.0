@@ -35,7 +35,20 @@ router.get('/dashboard', guard, adminCtrl.getDashboard);
 router.get('/modules', guard, async (req, res) => {
     try {
         const school = await School.findById(req.schoolId).select('modules').lean();
-        res.json({ success: true, data: school?.modules || {} });
+        const m = school?.modules ?? {};
+        res.json({ success: true, data: {
+            attendance:   !!m.attendance,
+            notification: !!m.notification,
+            aptitudeExam: !!m.aptitudeExam,
+            result:       !!m.result,
+            timetable:    !!m.timetable,
+            holiday:      !!m.holiday,
+            leave:        !!m.leave,
+            document:     !!m.document,
+            library:      !!m.library,
+            payroll:      !!m.payroll,
+            fees:         !!m.fees,
+        }});
     } catch (e) {
         res.status(500).json({ success: false, message: e.message });
     }
@@ -196,6 +209,7 @@ router.post('/documents/:docId/versions/:versionId/restore', docGuard, docCtrl.a
 
 // ── Holidays ──────────────────────────────────────────────────────────────────
 router.get('/holidays',            holidayGuard, holidayCtrl.adminGetHolidays);
+router.get('/holidays/mine',       holidayGuard, holidayCtrl.adminGetMyHolidays);
 router.post('/holidays',           holidayGuard, holidayCtrl.adminCreateHoliday);
 router.put('/holidays/:id',        holidayGuard, holidayCtrl.adminUpdateHoliday);
 router.delete('/holidays/:id',     holidayGuard, holidayCtrl.adminDeleteHoliday);

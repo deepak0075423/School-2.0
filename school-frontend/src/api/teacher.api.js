@@ -1,5 +1,6 @@
 import api from './axios';
-export const getDashboard   = () => api.get('/teacher/dashboard');
+export const getDashboard = () => api.get('/teacher/dashboard');
+export const getModules   = () => api.get('/teacher/modules');
 export const getMySection   = () => api.get('/teacher/my-section');
 export const createAnnouncement = (data) => api.post('/teacher/announcements', data);
 export const deleteAnnouncement = (id) => api.delete(`/teacher/announcements/${id}`);
@@ -23,7 +24,8 @@ export const getMyLeaves    = () => api.get('/teacher/leave');
 export const applyLeave     = (data) => api.post('/teacher/leave/apply', data);
 export const cancelLeave    = (id) => api.delete(`/teacher/leave/${id}`);
 export const getDocuments   = () => api.get('/teacher/documents');
-export const getHolidays    = () => api.get('/teacher/holidays');
+export const getHolidays         = () => api.get('/teacher/holidays');
+export const getClassHolidays    = () => api.get('/teacher/class-holidays');
 export const getMarksEntry  = () => api.get('/teacher/results/marks-entry');
 export const getMarksForm   = (examId, subjectId) => api.get(`/teacher/results/marks-entry/${examId}/${subjectId}`);
 export const saveMarks      = (examId, subjectId, data) => api.post(`/teacher/results/marks-entry/${examId}/${subjectId}/save`, data);

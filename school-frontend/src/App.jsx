@@ -50,7 +50,7 @@ const TExams        = lazy(() => import('./pages/teacher/Exams'));
 const TResults      = lazy(() => import('./pages/teacher/Results'));
 const TLeave        = lazy(() => import('./pages/teacher/Leave'));
 const TDocuments    = lazy(() => import('./pages/teacher/Documents'));
-const TPayroll      = lazy(() => import('./pages/teacher/Payroll'));
+const THolidays     = lazy(() => import('./pages/teacher/Holidays'));
 
 // ── Student ───────────────────────────────────────────────────────────────────
 const SDashboard    = lazy(() => import('./pages/student/Dashboard'));
@@ -238,6 +238,7 @@ export default function App() {
             <Route path="library/search"   element={<SLibSearch />} />
             <Route path="library/my-books" element={<SLibMyBooks />} />
             <Route path="library/my-fines" element={<SLibMyFines />} />
+            <Route path="holidays"         element={<THolidays />} />
             <Route path="notifications"    element={<SharedNotifications />} />
           </Route>
 

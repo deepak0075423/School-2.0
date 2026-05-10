@@ -185,3 +185,191 @@ export const PageHeader = ({ title, subtitle, action }) => (
 export const Alert = ({ variant = 'info', children }) => (
   <div className={`alert alert-${variant}`}>{children}</div>
 );
+
+// ── MiniCalendar ──────────────────────────────────────────────────────────────
+import { useMemo } from 'react';
+import { Link } from 'react-router-dom';
+
+const CAL_DAYS   = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+const CAL_MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+
+// Always use local date parts to avoid UTC-offset shifts
+function localIso(d) {
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+}
+
+// Convert a UTC-midnight date string (from server) to a local-midnight Date
+function parseServerDate(isoStr) {
+  const d = new Date(isoStr);
+  return new Date(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate());
+}
+
+function buildGrid(year, month) {
+  const first = new Date(year, month, 1);
+  const last  = new Date(year, month + 1, 0);
+  let dow = first.getDay();
+  dow = dow === 0 ? 6 : dow - 1;
+  const cells = [];
+  for (let i = 0; i < dow; i++)
+    cells.push({ date: new Date(year, month, -dow + i + 1), cur: false });
+  for (let d = 1; d <= last.getDate(); d++)
+    cells.push({ date: new Date(year, month, d), cur: true });
+  const rem = (7 - (cells.length % 7)) % 7;
+  for (let i = 1; i <= rem; i++)
+    cells.push({ date: new Date(year, month + 1, i), cur: false });
+  return cells;
+}
+
+export function MiniCalendar({ holidays = [], holidayListPath = '' }) {
+  const today        = new Date();
+  const todayIso     = localIso(today);
+  const [view, setView] = React.useState(() => new Date(today.getFullYear(), today.getMonth(), 1));
+
+  const yr  = view.getFullYear();
+  const mon = view.getMonth();
+  const isCurrentMonth = yr === today.getFullYear() && mon === today.getMonth();
+  const cells = useMemo(() => buildGrid(yr, mon), [yr, mon]);
+
+  // Build a map: "YYYY-MM-DD" → [holiday, ...] using local midnight dates
+  const holidayMap = useMemo(() => {
+    const map = {};
+    holidays.forEach(h => {
+      if (!h.startDate) return;
+      const cur = parseServerDate(h.startDate);
+      const end = parseServerDate(h.endDate || h.startDate);
+      while (cur <= end) {
+        const k = localIso(cur);
+        (map[k] = map[k] || []).push(h);
+        cur.setDate(cur.getDate() + 1);
+      }
+    });
+    return map;
+  }, [holidays]);
+
+  const monthHolidays = useMemo(() => {
+    const monthStr = `${yr}-${String(mon + 1).padStart(2, '0')}`;
+    const seen = new Set();
+    const result = [];
+    Object.entries(holidayMap).forEach(([iso, hs]) => {
+      if (!iso.startsWith(monthStr)) return;
+      hs.forEach(h => { if (!seen.has(h._id || h.name)) { seen.add(h._id || h.name); result.push(h); } });
+    });
+    result.sort((a, b) => new Date(a.startDate) - new Date(b.startDate));
+    return result;
+  }, [holidayMap, yr, mon]);
+
+  const goToday = () => setView(new Date(today.getFullYear(), today.getMonth(), 1));
+
+  return (
+    <div className="card">
+      <div className="card-body" style={{ padding: '16px 18px' }}>
+
+        {/* Month navigation */}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+          <button
+            onClick={() => setView(new Date(yr, mon - 1, 1))}
+            style={{ background: 'none', border: '1px solid var(--border)', borderRadius: 6, width: 30, height: 30, cursor: 'pointer', fontSize: '.95rem', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            ‹
+          </button>
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2 }}>
+            <strong style={{ fontSize: '.92rem' }}>{CAL_MONTHS[mon]} {yr}</strong>
+            {!isCurrentMonth && (
+              <button onClick={goToday} style={{
+                background: 'none', border: 'none', cursor: 'pointer', fontSize: '.7rem',
+                color: 'var(--primary)', padding: '0 4px', fontWeight: 600, lineHeight: 1,
+              }}>
+                Today
+              </button>
+            )}
+          </div>
+          <button
+            onClick={() => setView(new Date(yr, mon + 1, 1))}
+            style={{ background: 'none', border: '1px solid var(--border)', borderRadius: 6, width: 30, height: 30, cursor: 'pointer', fontSize: '.95rem', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            ›
+          </button>
+        </div>
+
+        {/* Day-of-week headers */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', marginBottom: 4 }}>
+          {CAL_DAYS.map(d => (
+            <div key={d} style={{ textAlign: 'center', fontSize: '.68rem', fontWeight: 700, color: 'var(--text-muted)', padding: '3px 0' }}>{d}</div>
+          ))}
+        </div>
+
+        {/* Day cells */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 2 }}>
+          {cells.map((cell, i) => {
+            const iso     = localIso(cell.date);
+            const isToday = iso === todayIso;
+            const dayHols = holidayMap[iso] || [];
+            const isHol   = dayHols.length > 0 && cell.cur;
+            return (
+              <div key={i}
+                title={dayHols.map(h => h.name).join(' • ')}
+                style={{
+                  minHeight: 32, display: 'flex', flexDirection: 'column',
+                  alignItems: 'center', justifyContent: 'flex-start', padding: '3px 1px',
+                  borderRadius: 5,
+                  background: isToday ? 'var(--primary)' : isHol ? '#fef3c7' : 'transparent',
+                }}>
+                <span style={{
+                  fontSize: '.78rem', fontWeight: isToday ? 700 : 400, lineHeight: 1,
+                  color: isToday ? '#fff' : cell.cur ? 'var(--text)' : 'var(--text-muted)',
+                  opacity: cell.cur ? 1 : 0.35,
+                }}>
+                  {cell.date.getDate()}
+                </span>
+                {isHol && (
+                  <span style={{ width: 5, height: 5, borderRadius: '50%', background: '#d97706', marginTop: 2 }} />
+                )}
+              </div>
+            );
+          })}
+        </div>
+
+        {/* Monthly holidays list */}
+        {monthHolidays.length > 0 && (
+          <div style={{ marginTop: 12, paddingTop: 10, borderTop: '1px solid var(--border)' }}>
+            {monthHolidays.slice(0, 4).map((h, i) => {
+              const start = parseServerDate(h.startDate);
+              const end   = h.endDate ? parseServerDate(h.endDate) : null;
+              const sameDay = !end || localIso(start) === localIso(end);
+              return (
+                <div key={i} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '.78rem', padding: '3px 0', color: 'var(--text)' }}>
+                  <span>🎉 {h.name}</span>
+                  <span style={{ color: 'var(--text-muted)' }}>
+                    {start.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}
+                    {!sameDay ? ` – ${end.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}` : ''}
+                  </span>
+                </div>
+              );
+            })}
+            {monthHolidays.length > 4 && (
+              <div style={{ fontSize: '.75rem', color: 'var(--text-muted)', paddingTop: 2 }}>+{monthHolidays.length - 4} more</div>
+            )}
+          </div>
+        )}
+
+        {/* Footer */}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 10, paddingTop: 8, borderTop: '1px solid var(--border)' }}>
+          <div style={{ display: 'flex', gap: 12, fontSize: '.72rem', color: 'var(--text-muted)' }}>
+            <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+              <span style={{ width: 10, height: 10, borderRadius: '50%', background: 'var(--primary)', display: 'inline-block' }} />Today
+            </span>
+            {holidays.length > 0 && (
+              <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                <span style={{ width: 10, height: 10, borderRadius: 2, background: '#fef3c7', border: '1px solid #fcd34d', display: 'inline-block' }} />Holiday
+              </span>
+            )}
+          </div>
+          {holidayListPath && (
+            <Link to={holidayListPath} style={{ fontSize: '.78rem', color: 'var(--primary)', textDecoration: 'none' }}>
+              All holidays →
+            </Link>
+          )}
+        </div>
+
+      </div>
+    </div>
+  );
+}

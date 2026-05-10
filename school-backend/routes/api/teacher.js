@@ -29,6 +29,28 @@ const holidayGuard     = [...guard, requireModule('holiday')];
 // Dashboard
 router.get('/dashboard', guard, teacherCtrl.getDashboard);
 
+// Enabled modules for this school (used by frontend to show/hide nav items)
+router.get('/modules', guard, async (req, res) => {
+    try {
+        const School = require('../../models/School');
+        const school = await School.findById(req.schoolId).select('modules').lean();
+        const m = school?.modules ?? {};
+        res.json({ success: true, data: {
+            attendance:   !!m.attendance,
+            notification: !!m.notification,
+            aptitudeExam: !!m.aptitudeExam,
+            result:       !!m.result,
+            timetable:    !!m.timetable,
+            holiday:      !!m.holiday,
+            leave:        !!m.leave,
+            document:     !!m.document,
+            library:      !!m.library,
+            payroll:      !!m.payroll,
+            fees:         !!m.fees,
+        }});
+    } catch (e) { res.status(500).json({ success: false, message: e.message }); }
+});
+
 // ── My Section ────────────────────────────────────────────────────────────────
 router.get('/my-section',              guard, sectionCtrl.getMySection);
 router.post('/announcements',          guard, sectionCtrl.createAnnouncement);
@@ -98,7 +120,8 @@ router.get('/documents/:id/submissions',             docGuard, docCtrl.teacherGe
 router.post('/documents/submissions/:submissionId/review', docGuard, docCtrl.teacherReviewSubmission);
 
 // ── Holidays ──────────────────────────────────────────────────────────────────
-router.get('/holidays', holidayGuard, holidayCtrl.teacherGetHolidays);
+router.get('/holidays',        holidayGuard, holidayCtrl.teacherGetHolidays);
+router.get('/class-holidays',  holidayGuard, holidayCtrl.teacherGetClassHolidays);
 
 // ── Results: Formal Exam (marks entry) ───────────────────────────────────────
 router.get('/results/marks-entry',                           resultGuard, formalExamCtrl.teacherGetMarksEntry);

@@ -1,25 +1,34 @@
-import React from 'react';
+import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import useFetch from '../../hooks/useFetch';
-import { getDashboard } from '../../api/parent.api';
-import { Spinner, StatCard } from '../../components/ui/index';
+import { getDashboard, getModules, getHolidays } from '../../api/parent.api';
+import { Spinner, MiniCalendar } from '../../components/ui/index';
+
+const ALL_QUICK_LINKS = [
+  { to: '/parent/child-class',      icon: '🏛️', label: "Child's Class", color: '#dbeafe' },
+  { to: '/parent/child-attendance', icon: '✅', label: 'Attendance',    color: '#d1fae5', module: 'attendance' },
+  { to: '/parent/exams',            icon: '📝', label: 'Exams',          color: '#ede9fe', module: 'aptitudeExam' },
+  { to: '/parent/results',          icon: '📊', label: 'Results',        color: '#ffedd5', module: 'result' },
+  { to: '/parent/child-fees',       icon: '💰', label: 'Fees',           color: '#fef3c7', module: 'fees' },
+  { to: '/parent/documents',        icon: '📁', label: 'Documents',      color: '#fee2e2', module: 'document' },
+];
 
 export default function ParentDashboard() {
-  const { user }          = useAuth();
-  const { data, loading } = useFetch(getDashboard);
+  const { user }                               = useAuth();
+  const { data, loading: dashLoading }         = useFetch(getDashboard);
+  const { data: modules, loading: modLoading } = useFetch(getModules);
+  const [holidays, setHolidays]                = useState([]);
 
-  if (loading) return <div className="loading-page"><Spinner /></div>;
+  useEffect(() => {
+    if (!modules) return;
+    if (!modules.holiday) { setHolidays([]); return; }
+    getHolidays().then(r => setHolidays(r.data ?? r ?? [])).catch(() => {});
+  }, [modules]);
 
-  const quickLinks = [
-    { to: '/parent/child-class',      icon: '🏛️', label: 'Child\'s Class',  color: '#dbeafe' },
-    { to: '/parent/child-attendance', icon: '✅', label: 'Attendance',      color: '#d1fae5' },
-    { to: '/parent/exams',            icon: '📝', label: 'Exams',           color: '#ede9fe' },
-    { to: '/parent/results',          icon: '📊', label: 'Results',         color: '#ffedd5' },
-    { to: '/parent/child-fees',       icon: '💰', label: 'Fees',            color: '#fef3c7' },
-    { to: '/parent/documents',        icon: '📁', label: 'Documents',       color: '#fee2e2' },
-    { to: '/parent/holidays',         icon: '🎉', label: 'Holidays',        color: '#ccfbf1' },
-  ];
+  if (dashLoading || modLoading) return <div className="loading-page"><Spinner /></div>;
+
+  const quickLinks = ALL_QUICK_LINKS.filter(l => !l.module || modules?.[l.module]);
 
   return (
     <div className="page">
@@ -30,6 +39,7 @@ export default function ParentDashboard() {
         </div>
       </div>
 
+      {/* Child info card */}
       {data?.child && (
         <div className="card" style={{ marginBottom: 20 }}>
           <div className="card-body">
@@ -44,22 +54,31 @@ export default function ParentDashboard() {
         </div>
       )}
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill,minmax(160px,1fr))', gap: 12 }}>
-        {quickLinks.map(l => (
-          <Link key={l.to} to={l.to}
-            style={{
-              display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
-              background: l.color, borderRadius: 'var(--radius-lg)', padding: '20px 12px',
-              textDecoration: 'none', color: 'var(--text)', gap: 8,
-              transition: 'transform .15s, box-shadow .15s', textAlign: 'center',
-            }}
-            onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.boxShadow = 'var(--shadow)'; }}
-            onMouseLeave={e => { e.currentTarget.style.transform = ''; e.currentTarget.style.boxShadow = ''; }}
-          >
-            <span style={{ fontSize: '1.8rem' }}>{l.icon}</span>
-            <span style={{ fontWeight: 500, fontSize: '.85rem' }}>{l.label}</span>
-          </Link>
-        ))}
+      <div className="dashboard-layout">
+        {/* Quick links */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill,minmax(155px,1fr))', gap: 12 }}>
+          {quickLinks.map(l => (
+            <Link key={l.to} to={l.to}
+              style={{
+                display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+                background: l.color, borderRadius: 'var(--radius-lg)', padding: '20px 12px',
+                textDecoration: 'none', color: 'var(--text)', gap: 8,
+                transition: 'transform .15s, box-shadow .15s', textAlign: 'center',
+              }}
+              onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.boxShadow = 'var(--shadow)'; }}
+              onMouseLeave={e => { e.currentTarget.style.transform = ''; e.currentTarget.style.boxShadow = ''; }}
+            >
+              <span style={{ fontSize: '1.8rem' }}>{l.icon}</span>
+              <span style={{ fontWeight: 500, fontSize: '.85rem' }}>{l.label}</span>
+            </Link>
+          ))}
+        </div>
+
+        {/* Calendar */}
+        <MiniCalendar
+          holidays={holidays}
+          holidayListPath={modules?.holiday ? '/parent/holidays' : ''}
+        />
       </div>
     </div>
   );

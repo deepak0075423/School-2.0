@@ -851,3 +851,14 @@ select.form-control {
 .progress-bar__fill.success { background: var(--success); }
 .progress-bar__fill.warning { background: var(--warning); }
 .progress-bar__fill.danger  { background: var(--danger); }
+
+/* ── Dashboard: main content + calendar sidebar ─────────────────────────────── */
+.dashboard-layout {
+  display:               grid;
+  grid-template-columns: minmax(0,1fr) 280px;
+  gap:                   20px;
+  align-items:           start;
+}
+@media (max-width: 900px) {
+  .dashboard-layout { grid-template-columns: 1fr; }
+}

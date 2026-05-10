@@ -1,4 +1,5 @@
 'use strict';
+if (typeof globalThis.crypto === 'undefined') globalThis.crypto = require('crypto').webcrypto;
 require('dotenv').config();
 const express  = require('express');
 const cors     = require('cors');
@@ -16,11 +17,38 @@ app.set('etag', false);
 
 // ── Security & Parsing ────────────────────────────────────────────────────────
 app.use(helmet({ crossOriginResourcePolicy: { policy: 'cross-origin' } }));
+// app.use(cors({
+//     origin: process.env.FRONTEND_URL || 'http://localhost:3000',
+//     credentials: true,
+//     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+//     allowedHeaders: ['Content-Type', 'Authorization'],
+// }));
+const allowedOrigins = [
+  'http://localhost:3000',
+  'http://localhost:8081',
+  'http://35.154.216.100:5010',
+  process.env.FRONTEND_URL
+].filter(Boolean);
+
 app.use(cors({
-    origin: process.env.FRONTEND_URL || 'http://localhost:3000',
-    credentials: true,
-    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization'],
+  origin: function (origin, callback) {
+
+    // allow requests with no origin
+    // (mobile apps, postman, curl)
+    if (!origin) {
+      return callback(null, true);
+    }
+
+    if (allowedOrigins.includes(origin)) {
+      callback(null, true);
+    } else {
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
+
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
 }));
 app.use(morgan('dev'));
 app.use(express.json({ limit: '10mb' }));

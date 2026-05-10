@@ -21,8 +21,30 @@ const docGuard         = [...guard, requireModule('document')];
 const holidayGuard     = [...guard, requireModule('holiday')];
 const resultGuard      = [...guard, requireModule('result')];
 
-router.get('/dashboard',     guard, studentCtrl.getDashboard);
-router.get('/my-class',      guard, studentCtrl.getMyClass);
+router.get('/dashboard', guard, studentCtrl.getDashboard);
+router.get('/my-class',  guard, studentCtrl.getMyClass);
+
+// Enabled modules for this school
+router.get('/modules', guard, async (req, res) => {
+    try {
+        const School = require('../../models/School');
+        const school = await School.findById(req.schoolId).select('modules').lean();
+        const m = school?.modules ?? {};
+        res.json({ success: true, data: {
+            attendance:   !!m.attendance,
+            notification: !!m.notification,
+            aptitudeExam: !!m.aptitudeExam,
+            result:       !!m.result,
+            timetable:    !!m.timetable,
+            holiday:      !!m.holiday,
+            leave:        !!m.leave,
+            document:     !!m.document,
+            library:      !!m.library,
+            payroll:      !!m.payroll,
+            fees:         !!m.fees,
+        }});
+    } catch (e) { res.status(500).json({ success: false, message: e.message }); }
+});
 
 // Timetable
 router.get('/timetable',          timetableGuard, timetableCtrl.studentViewTimetable);

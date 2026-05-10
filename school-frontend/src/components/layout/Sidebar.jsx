@@ -1,7 +1,10 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { NavLink } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
-import { getModules } from '../../api/admin.api';
+import { getModules as getAdminModules }   from '../../api/admin.api';
+import { getModules as getTeacherModules } from '../../api/teacher.api';
+import { getModules as getStudentModules } from '../../api/student.api';
+import { getModules as getParentModules }  from '../../api/parent.api';
 
 const Icon = ({ name }) => <span className="sidebar__link-icon">{name}</span>;
 
@@ -49,17 +52,18 @@ const TEACHER_NAV = [
   { to: '/teacher/dashboard',       icon: '🏠', label: 'Dashboard' },
   { section: 'My Class' },
   { to: '/teacher/my-section',      icon: '🏛️', label: 'My Section' },
-  { to: '/teacher/attendance',      icon: '✅', label: 'Attendance' },
-  { to: '/teacher/timetable',       icon: '🕐', label: 'Timetable' },
+  { to: '/teacher/attendance',      icon: '✅', label: 'Attendance',    module: 'attendance' },
+  { to: '/teacher/timetable',       icon: '🕐', label: 'Timetable',     module: 'timetable' },
   { section: 'Academics' },
-  { to: '/teacher/exams',           icon: '📝', label: 'Aptitude Exams' },
-  { to: '/teacher/results',         icon: '📊', label: 'Results' },
+  { to: '/teacher/exams',           icon: '📝', label: 'Aptitude Exams', module: 'aptitudeExam' },
+  { to: '/teacher/results',         icon: '📊', label: 'Results',       module: 'result' },
   { section: 'Modules' },
-  { to: '/teacher/leave',           icon: '🏖️', label: 'My Leave' },
-  { to: '/teacher/documents',       icon: '📁', label: 'Documents' },
-  { to: '/teacher/payroll/ctc',     icon: '💵', label: 'Payroll' },
-  { to: '/teacher/library',         icon: '📖', label: 'Library' },
-  { to: '/teacher/notifications',   icon: '🔔', label: 'Notifications' },
+  { to: '/teacher/leave',           icon: '🏖️', label: 'My Leave',      module: 'leave' },
+  { to: '/teacher/documents',       icon: '📁', label: 'Documents',     module: 'document' },
+  { to: '/teacher/payroll/ctc',     icon: '💵', label: 'Payroll',       module: 'payroll' },
+  { to: '/teacher/library',         icon: '📖', label: 'Library',       module: 'library' },
+  { to: '/teacher/holidays',        icon: '🎉', label: 'Holidays',      module: 'holiday' },
+  { to: '/teacher/notifications',   icon: '🔔', label: 'Notifications', module: 'notification' },
   { section: 'Account' },
   { to: '/profile',                 icon: '👤', label: 'Profile' },
 ];
@@ -69,16 +73,16 @@ const STUDENT_NAV = [
   { to: '/student/dashboard',       icon: '🏠', label: 'Dashboard' },
   { section: 'Academics' },
   { to: '/student/my-class',        icon: '🏛️', label: 'My Class' },
-  { to: '/student/timetable',       icon: '🕐', label: 'Timetable' },
-  { to: '/student/attendance',      icon: '✅', label: 'Attendance' },
-  { to: '/student/exams',           icon: '📝', label: 'Exams' },
-  { to: '/student/results',         icon: '📊', label: 'Results' },
+  { to: '/student/timetable',       icon: '🕐', label: 'Timetable',     module: 'timetable' },
+  { to: '/student/attendance',      icon: '✅', label: 'Attendance',    module: 'attendance' },
+  { to: '/student/exams',           icon: '📝', label: 'Exams',         module: 'aptitudeExam' },
+  { to: '/student/results',         icon: '📊', label: 'Results',       module: 'result' },
   { section: 'Resources' },
-  { to: '/student/documents',       icon: '📁', label: 'Documents' },
-  { to: '/student/holidays',        icon: '🎉', label: 'Holidays' },
-  { to: '/student/fees',            icon: '💰', label: 'Fees' },
-  { to: '/student/library',         icon: '📖', label: 'Library' },
-  { to: '/student/notifications',   icon: '🔔', label: 'Notifications' },
+  { to: '/student/documents',       icon: '📁', label: 'Documents',     module: 'document' },
+  { to: '/student/holidays',        icon: '🎉', label: 'Holidays',      module: 'holiday' },
+  { to: '/student/fees',            icon: '💰', label: 'Fees',          module: 'fees' },
+  { to: '/student/library',         icon: '📖', label: 'Library',       module: 'library' },
+  { to: '/student/notifications',   icon: '🔔', label: 'Notifications', module: 'notification' },
   { section: 'Account' },
   { to: '/profile',                 icon: '👤', label: 'Profile' },
 ];
@@ -88,14 +92,14 @@ const PARENT_NAV = [
   { to: '/parent/dashboard',        icon: '🏠', label: 'Dashboard' },
   { section: "My Child" },
   { to: '/parent/child-class',      icon: '🏛️', label: 'Class Info' },
-  { to: '/parent/child-attendance', icon: '✅', label: 'Attendance' },
-  { to: '/parent/exams',            icon: '📝', label: 'Exams' },
-  { to: '/parent/results',          icon: '📊', label: 'Results' },
+  { to: '/parent/child-attendance', icon: '✅', label: 'Attendance',    module: 'attendance' },
+  { to: '/parent/exams',            icon: '📝', label: 'Exams',         module: 'aptitudeExam' },
+  { to: '/parent/results',          icon: '📊', label: 'Results',       module: 'result' },
   { section: 'Resources' },
-  { to: '/parent/documents',        icon: '📁', label: 'Documents' },
-  { to: '/parent/holidays',         icon: '🎉', label: 'Holidays' },
-  { to: '/parent/child-fees',       icon: '💰', label: 'Fees' },
-  { to: '/parent/notifications',    icon: '🔔', label: 'Notifications' },
+  { to: '/parent/documents',        icon: '📁', label: 'Documents',     module: 'document' },
+  { to: '/parent/holidays',         icon: '🎉', label: 'Holidays',      module: 'holiday' },
+  { to: '/parent/child-fees',       icon: '💰', label: 'Fees',          module: 'fees' },
+  { to: '/parent/notifications',    icon: '🔔', label: 'Notifications', module: 'notification' },
   { section: 'Account' },
   { to: '/profile',                 icon: '👤', label: 'Profile' },
 ];
@@ -108,18 +112,30 @@ const NAV_MAP = {
   parent:       PARENT_NAV,
 };
 
+const MODULE_FETCHER = {
+  school_admin: getAdminModules,
+  teacher:      getTeacherModules,
+  student:      getStudentModules,
+  parent:       getParentModules,
+};
+
 export default function Sidebar({ onLinkClick, collapsed }) {
   const { user } = useAuth();
-  const [modules, setModules] = useState(null);
+  const [modules, setModules]       = useState(null);
+  const [modulesReady, setModulesReady] = useState(false);
 
   useEffect(() => {
-    if (user?.role === 'school_admin') {
-      getModules().then(res => setModules(res.data ?? res)).catch(() => setModules({}));
-    }
+    const fetcher = MODULE_FETCHER[user?.role];
+    if (!fetcher) { setModulesReady(true); return; }
+    fetcher()
+      .then(res => setModules(res.data ?? res))
+      .catch(() => {})
+      .finally(() => setModulesReady(true));
   }, [user?.role]);
 
   const rawNav = NAV_MAP[user?.role] || [];
-  const nav = user?.role === 'school_admin' && modules
+  // While loading show everything; once ready filter by enabled flags
+  const nav = (modulesReady && modules)
     ? rawNav.filter(item => !item.module || modules[item.module])
     : rawNav;
 
