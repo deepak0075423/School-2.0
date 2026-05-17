@@ -15,7 +15,7 @@ const docCtrl        = require('../../controllers/document.controller');
 const holidayCtrl    = require('../../controllers/holiday.controller');
 const { verifyToken, requireRole, requirePasswordReset } = require('../../middleware/auth');
 const requireModule  = require('../../middleware/requireModule');
-const { uploadExcel, uploadDocument, uploadCsv } = require('../../middleware/upload');
+const { uploadExcel, uploadDocument, uploadCsv, uploadLeaveDoc, uploadImage } = require('../../middleware/upload');
 const School         = require('../../models/School');
 
 const guard            = [verifyToken, requirePasswordReset, requireRole('school_admin')];
@@ -30,6 +30,10 @@ const holidayGuard     = [...guard, requireModule('holiday')];
 
 // Dashboard
 router.get('/dashboard', guard, adminCtrl.getDashboard);
+
+// School Settings
+router.get('/school-settings', guard, adminCtrl.getSchoolSettings);
+router.put('/school-settings', guard, uploadImage.single('logo'), adminCtrl.updateSchoolSettings);
 
 // Modules — returns enabled module flags for the current school
 router.get('/modules', guard, async (req, res) => {
@@ -188,7 +192,7 @@ router.put('/leave/types/:id',                     leaveGuard, leaveCtrl.adminUp
 router.delete('/leave/types/:id',                  leaveGuard, leaveCtrl.adminDeleteLeaveType);
 router.put('/leave/settings',                      leaveGuard, leaveCtrl.adminUpdateLeaveSettings);
 router.get('/leave/requests',                      leaveGuard, leaveCtrl.adminGetRequests);
-router.post('/leave/requests',                     leaveGuard, leaveCtrl.adminApplyLeave);
+router.post('/leave/requests',                     leaveGuard, uploadLeaveDoc.single('document'), leaveCtrl.adminApplyLeave);
 router.get('/leave/balance',                       leaveGuard, leaveCtrl.adminGetTeacherBalance);
 router.post('/leave/requests/:id/approve',         leaveGuard, leaveCtrl.adminApproveRequest);
 router.post('/leave/requests/:id/reject',          leaveGuard, leaveCtrl.adminRejectRequest);
@@ -198,6 +202,9 @@ router.post('/leave/allocations',                  leaveGuard, leaveCtrl.adminAl
 router.get('/leave/allocations/template',          leaveGuard, leaveCtrl.adminGetAllocationTemplate);
 router.post('/leave/allocations/excel',            leaveGuard, uploadExcel.single('excelFile'), leaveCtrl.adminBulkAllocateExcel);
 router.post('/leave/allocations/carry-forward',    leaveGuard, leaveCtrl.adminRunCarryForward);
+router.post('/leave/accrual/run',                  leaveGuard, leaveCtrl.adminRunMonthlyAccrual);
+router.get('/leave/requests/export',               leaveGuard, leaveCtrl.adminExportRequests);
+router.get('/leave/allocations/export',            leaveGuard, leaveCtrl.adminExportAllocations);
 router.get('/leave/reports',                       leaveGuard, leaveCtrl.adminGetReports);
 router.get('/leave/reports/export',                leaveGuard, leaveCtrl.adminExportReports);
 

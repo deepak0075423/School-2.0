@@ -17,7 +17,8 @@ const LeaveTypeSchema = new mongoose.Schema({
         enabled: { type: Boolean, default: false },
         maxDays: { type: Number, default: 0 },
     },
-    encashable: { type: Boolean, default: false },
+    encashable:         { type: Boolean, default: false },
+    maxEncashableDays:  { type: Number,  default: 0 },    // 0 = no limit
     maxConsecutiveDays: { type: Number, default: 0 }, // 0 = no limit
     requiresDocument: { type: Boolean, default: false },
     // 0 = document always required; N > 0 = required only when leave exceeds N days

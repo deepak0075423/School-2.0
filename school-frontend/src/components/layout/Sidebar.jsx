@@ -43,6 +43,8 @@ const ADMIN_NAV = [
   { to: '/admin/holidays',          icon: '🎉', label: 'Holidays',      module: 'holiday' },
   { to: '/admin/notifications',     icon: '🔔', label: 'Notifications', module: 'notification' },
   { to: '/admin/reports',           icon: '📈', label: 'Reports' },
+  { section: 'Settings' },
+  { to: '/admin/school-settings',   icon: '⚙️', label: 'School Settings' },
   { section: 'Account' },
   { to: '/profile',                 icon: '👤', label: 'Profile' },
 ];

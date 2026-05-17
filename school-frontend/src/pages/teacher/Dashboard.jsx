@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import useFetch from '../../hooks/useFetch';
-import { getDashboard, getModules, getHolidays } from '../../api/teacher.api';
+import { getDashboard, getModules, getHolidays, getMyLeaves } from '../../api/teacher.api';
 import { Spinner, MiniCalendar } from '../../components/ui/index';
 import { useAuth } from '../../contexts/AuthContext';
 
@@ -20,13 +20,22 @@ export default function TeacherDashboard() {
   const { user }                                 = useAuth();
   const { loading: dashLoading }                 = useFetch(getDashboard);
   const { data: modules, loading: modLoading }   = useFetch(getModules);
-  const [holidays, setHolidays]                  = useState([]);
+  const [holidays, setHolidays] = useState([]);
+  const [leaves,   setLeaves]   = useState([]);
 
-  // Fetch holidays only when holiday module is confirmed enabled
   useEffect(() => {
     if (!modules) return;
     if (!modules.holiday) { setHolidays([]); return; }
     getHolidays().then(r => setHolidays(r.data ?? r ?? [])).catch(() => {});
+  }, [modules]);
+
+  useEffect(() => {
+    if (!modules) return;
+    if (!modules.leave) { setLeaves([]); return; }
+    getMyLeaves().then(r => {
+      const data = r.data ?? r ?? [];
+      setLeaves(Array.isArray(data) ? data.filter(l => ['approved', 'pending', 'modification_requested'].includes(l.status)) : []);
+    }).catch(() => {});
   }, [modules]);
 
   if (dashLoading || modLoading) return <div className="loading-page"><Spinner /></div>;
@@ -65,6 +74,7 @@ export default function TeacherDashboard() {
         {/* Calendar */}
         <MiniCalendar
           holidays={holidays}
+          leaves={leaves}
           holidayListPath={modules?.holiday ? '/teacher/holidays' : ''}
         />
       </div>

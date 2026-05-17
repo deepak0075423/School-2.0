@@ -220,7 +220,7 @@ function buildGrid(year, month) {
   return cells;
 }
 
-export function MiniCalendar({ holidays = [], holidayListPath = '' }) {
+export function MiniCalendar({ holidays = [], leaves = [], holidayListPath = '' }) {
   const today        = new Date();
   const todayIso     = localIso(today);
   const [view, setView] = React.useState(() => new Date(today.getFullYear(), today.getMonth(), 1));
@@ -245,6 +245,22 @@ export function MiniCalendar({ holidays = [], holidayListPath = '' }) {
     });
     return map;
   }, [holidays]);
+
+  // Build leave map: "YYYY-MM-DD" → [leave, ...]
+  const leaveMap = useMemo(() => {
+    const map = {};
+    leaves.forEach(l => {
+      if (!l.fromDate) return;
+      const cur = parseServerDate(l.fromDate);
+      const end = parseServerDate(l.toDate || l.fromDate);
+      while (cur <= end) {
+        const k = localIso(cur);
+        (map[k] = map[k] || []).push(l);
+        cur.setDate(cur.getDate() + 1);
+      }
+    });
+    return map;
+  }, [leaves]);
 
   const monthHolidays = useMemo(() => {
     const monthStr = `${yr}-${String(mon + 1).padStart(2, '0')}`;
@@ -299,18 +315,27 @@ export function MiniCalendar({ holidays = [], holidayListPath = '' }) {
         {/* Day cells */}
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 2 }}>
           {cells.map((cell, i) => {
-            const iso     = localIso(cell.date);
-            const isToday = iso === todayIso;
-            const dayHols = holidayMap[iso] || [];
-            const isHol   = dayHols.length > 0 && cell.cur;
+            const iso       = localIso(cell.date);
+            const isToday   = iso === todayIso;
+            const dayHols   = holidayMap[iso] || [];
+            const dayLeaves = leaveMap[iso]   || [];
+            const isHol     = dayHols.length > 0   && cell.cur;
+            const isLeave   = dayLeaves.length > 0 && cell.cur;
+            const tipParts  = [
+              ...dayHols.map(h => h.name),
+              ...dayLeaves.map(l => `${l.leaveType?.code || 'Leave'} (${l.status})`),
+            ];
+            const bg = isToday  ? 'var(--primary)'
+                     : isLeave  ? 'rgba(180,83,9,.13)'
+                     : isHol    ? '#fef3c7'
+                     : 'transparent';
             return (
               <div key={i}
-                title={dayHols.map(h => h.name).join(' • ')}
+                title={tipParts.join(' • ')}
                 style={{
                   minHeight: 32, display: 'flex', flexDirection: 'column',
                   alignItems: 'center', justifyContent: 'flex-start', padding: '3px 1px',
-                  borderRadius: 5,
-                  background: isToday ? 'var(--primary)' : isHol ? '#fef3c7' : 'transparent',
+                  borderRadius: 5, background: bg,
                 }}>
                 <span style={{
                   fontSize: '.78rem', fontWeight: isToday ? 700 : 400, lineHeight: 1,
@@ -319,9 +344,10 @@ export function MiniCalendar({ holidays = [], holidayListPath = '' }) {
                 }}>
                   {cell.date.getDate()}
                 </span>
-                {isHol && (
-                  <span style={{ width: 5, height: 5, borderRadius: '50%', background: '#d97706', marginTop: 2 }} />
-                )}
+                <div style={{ display: 'flex', gap: 2, marginTop: 2 }}>
+                  {isHol   && <span style={{ width: 5, height: 5, borderRadius: '50%', background: '#d97706' }} />}
+                  {isLeave && <span style={{ width: 5, height: 5, borderRadius: '50%', background: '#b45309' }} />}
+                </div>
               </div>
             );
           })}
@@ -352,13 +378,18 @@ export function MiniCalendar({ holidays = [], holidayListPath = '' }) {
 
         {/* Footer */}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 10, paddingTop: 8, borderTop: '1px solid var(--border)' }}>
-          <div style={{ display: 'flex', gap: 12, fontSize: '.72rem', color: 'var(--text-muted)' }}>
+          <div style={{ display: 'flex', gap: 12, fontSize: '.72rem', color: 'var(--text-muted)', flexWrap: 'wrap' }}>
             <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
               <span style={{ width: 10, height: 10, borderRadius: '50%', background: 'var(--primary)', display: 'inline-block' }} />Today
             </span>
             {holidays.length > 0 && (
               <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
                 <span style={{ width: 10, height: 10, borderRadius: 2, background: '#fef3c7', border: '1px solid #fcd34d', display: 'inline-block' }} />Holiday
+              </span>
+            )}
+            {leaves.length > 0 && (
+              <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                <span style={{ width: 10, height: 10, borderRadius: 2, background: 'rgba(180,83,9,.13)', border: '1px solid #b45309', display: 'inline-block' }} />My Leave
               </span>
             )}
           </div>

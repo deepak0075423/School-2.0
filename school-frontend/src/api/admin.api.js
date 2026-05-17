@@ -3,6 +3,10 @@ import api from './axios';
 export const getDashboard = () => api.get('/admin/dashboard');
 export const getModules   = () => api.get('/admin/modules');
 
+// School Settings
+export const getSchoolSettings    = ()   => api.get('/admin/school-settings');
+export const updateSchoolSettings = (fd) => api.put('/admin/school-settings', fd);
+
 // Users
 export const getTeachers = (params) => api.get('/admin/teachers', { params });
 export const getTeacher  = (id) => api.get(`/admin/teachers/${id}`);
@@ -72,9 +76,12 @@ export const rejectLeave            = (id, data) => api.post(`/admin/leave/reque
 export const requestLeaveModification = (id, data) => api.post(`/admin/leave/requests/${id}/modification`, data);
 export const getLeaveAllocations    = (params)   => api.get('/admin/leave/allocations', { params });
 export const allocateLeave          = (data)     => api.post('/admin/leave/allocations', data);
+export const runLeaveAccrual        = ()         => api.post('/admin/leave/accrual/run');
 export const downloadAllocationTemplate = ()     => api.get('/admin/leave/allocations/template', { responseType: 'arraybuffer' });
 export const bulkAllocateLeaveExcel = (fd)       => api.post('/admin/leave/allocations/excel', fd);
 export const runCarryForward        = (data)     => api.post('/admin/leave/allocations/carry-forward', data);
+export const exportLeaveRequests    = (params)   => api.get('/admin/leave/requests/export',    { params, responseType: 'arraybuffer' });
+export const exportLeaveAllocations = (params)   => api.get('/admin/leave/allocations/export', { params, responseType: 'arraybuffer' });
 export const getLeaveReports        = (params)   => api.get('/admin/leave/reports', { params });
 export const exportLeaveReports     = (params)   => api.get('/admin/leave/reports/export', { params, responseType: 'arraybuffer' });
 

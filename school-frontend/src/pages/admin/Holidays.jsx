@@ -230,13 +230,13 @@ export default function Holidays() {
           ? `${myData.length} holidays · ${myUpcoming} upcoming`
           : `${allData.length} total · ${allUpcoming} upcoming`
         }
-        action={tab === 'manage' && (
+        action={
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-            <Button variant="secondary" onClick={() => setImportModal(true)}>⬆ Import</Button>
+            {tab === 'manage' && <Button variant="secondary" onClick={() => setImportModal(true)}>⬆ Import</Button>}
             <Button variant="secondary" onClick={handleExport}>⬇ Export</Button>
-            <Button onClick={openCreate}>+ Add Holiday</Button>
+            {tab === 'manage' && <Button onClick={openCreate}>+ Add Holiday</Button>}
           </div>
-        )}
+        }
       />
 
       <input ref={fileRef} type="file" accept=".xlsx,.xls,.csv" style={{ display: 'none' }}

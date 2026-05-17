@@ -9,6 +9,7 @@ const ParentProfile  = require('../models/ParentProfile');
 const ClassSection   = require('../models/ClassSection');
 const Class          = require('../models/Class');
 const AcademicYear   = require('../models/AcademicYear');
+const School         = require('../models/School');
 const mailer         = require('../config/mailer');
 
 // Generates a random 10-char one-time password, avoiding visually confusing chars
@@ -572,4 +573,42 @@ exports.parentLookup = async (req, res) => {
         const parent = await User.findOne(filter).lean();
         res.json({ success: true, data: parent });
     } catch (err) { jsonErr(res, err); }
+};
+
+// ── School Settings ───────────────────────────────────────────────────────────
+
+exports.getSchoolSettings = async (req, res) => {
+    try {
+        const school = await School.findById(req.schoolId)
+            .select('name code email phone website logo leaveSettings')
+            .lean();
+        if (!school) return res.status(404).json({ success: false, message: 'School not found' });
+        res.json({ success: true, data: school });
+    } catch (e) { jsonErr(res, e); }
+};
+
+exports.updateSchoolSettings = async (req, res) => {
+    try {
+        const { code, email, phone, website } = req.body;
+        const update = {};
+        if (code    !== undefined) update.code    = (code    || '').trim();
+        if (email   !== undefined) update.email   = (email   || '').trim().toLowerCase();
+        if (phone   !== undefined) update.phone   = (phone   || '').trim();
+        if (website !== undefined) update.website = (website || '').trim();
+
+        // leaveSettings may arrive as JSON string (FormData) or object (JSON body)
+        let ls = req.body.leaveSettings;
+        if (ls) {
+            if (typeof ls === 'string') ls = JSON.parse(ls);
+            if (ls.saturdayWorking !== undefined)  update['leaveSettings.saturdayWorking']  = !!ls.saturdayWorking;
+            if (ls.saturdayMode   !== undefined)   update['leaveSettings.saturdayMode']     = ls.saturdayMode;
+            if (ls.saturdayHalfDay !== undefined)  update['leaveSettings.saturdayHalfDay']  = !!ls.saturdayHalfDay;
+        }
+        if (req.file) update.logo = req.file.filename;
+
+        const school = await School.findByIdAndUpdate(
+            req.schoolId, update, { new: true, select: 'name code email phone website logo leaveSettings' }
+        ).lean();
+        res.json({ success: true, data: school });
+    } catch (e) { jsonErr(res, e); }
 };

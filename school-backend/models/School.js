@@ -106,10 +106,9 @@ const SchoolSchema = new mongoose.Schema({
         },
     },
     leaveSettings: {
-        saturdayWorking: {
-            type: Boolean,
-            default: true,
-        },
+        saturdayWorking:  { type: Boolean, default: true },
+        saturdayMode:     { type: String, enum: ['all', '1_3_5', '2_4'], default: 'all' },
+        saturdayHalfDay:  { type: Boolean, default: false },
     },
     createdAt: {
         type: Date,

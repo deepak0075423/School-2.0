@@ -20,7 +20,8 @@ const LeaveBalanceSchema = new mongoose.Schema({
     totalAllocated: { type: Number, default: 0 },
     carriedForward: { type: Number, default: 0 },
     used: { type: Number, default: 0 },
-    pending: { type: Number, default: 0 }, // awaiting approval
+    pending:        { type: Number, default: 0 },  // awaiting approval
+    lastAccrualAt:  { type: Date,   default: null }, // last monthly accrual timestamp
 }, { timestamps: true });
 
 LeaveBalanceSchema.index(
