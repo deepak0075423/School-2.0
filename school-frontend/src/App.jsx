@@ -104,6 +104,9 @@ const LibReservations=lazy(() => import('./pages/library/librarian/Reservations'
 const LibFines      = lazy(() => import('./pages/library/librarian/Fines'));
 const LibPolicy     = lazy(() => import('./pages/library/librarian/Policy'));
 
+// ── Chat ─────────────────────────────────────────────────────────────────────
+const Chat = lazy(() => import('./pages/Chat'));
+
 // ── Profile ───────────────────────────────────────────────────────────────────
 const Profile = lazy(() => import('./pages/Profile'));
 
@@ -275,6 +278,13 @@ export default function App() {
             <Route path="holidays"         element={<PHolidays />} />
             <Route path="child-fees"       element={<PFees />} />
             <Route path="notifications"    element={<SharedNotifications />} />
+          </Route>
+
+          {/* Chat (all authenticated roles) */}
+          <Route path="/chat" element={
+            <Protected><AppLayout /></Protected>
+          }>
+            <Route index element={<Chat />} />
           </Route>
 
           {/* Profile (all roles) */}

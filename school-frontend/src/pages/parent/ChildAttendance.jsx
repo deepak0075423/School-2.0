@@ -19,7 +19,7 @@ export default function ParentChildAttendance() {
   const firstDay    = new Date(year, month - 1, 1).getDay();
 
   const recordMap = {};
-  (records || []).forEach(r => {
+  (records?.data || []).forEach(r => {
     const d = new Date(r.date).getDate();
     recordMap[d] = r.status;
   });

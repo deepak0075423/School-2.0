@@ -202,7 +202,7 @@ export default function SAUsers() {
     {
       key: 'role',
       label: <SortHeader label="Role" field="role" sort={sort} onSort={handleSort} />,
-      render: r => <Badge variant="info">{r.role.replace(/_/g, ' ')}</Badge>,
+      render: r => <Badge variant="info">{(r.role || '').replace(/_/g, ' ')}</Badge>,
     },
     {
       key: 'school',

@@ -8,11 +8,12 @@ export default function PayrollAdminDashboard() {
 
   if (loading) return <div className="loading-page"><Spinner /></div>;
 
+  const d = data?.data || {};
   const stats = [
-    { label: 'Total Employees',   value: data?.totalEmployees || 0,                               icon: '👥', color: '#dbeafe' },
-    { label: 'This Month Payout', value: `₹${((data?.thisMonthPayout)||0).toLocaleString()}`,     icon: '💰', color: '#d1fae5' },
-    { label: 'Pending Runs',      value: data?.pendingRuns || 0,                                  icon: '⏳', color: '#fef3c7' },
-    { label: 'Payslips Issued',   value: data?.payslipsIssued || 0,                               icon: '📄', color: '#ede9fe' },
+    { label: 'Total Employees',    value: d.totalEmployees || 0,                                                          icon: '👥', color: '#dbeafe' },
+    { label: 'Active Assignments', value: d.activeAssignments || 0,                                                       icon: '📋', color: '#d1fae5' },
+    { label: 'Current Run',        value: d.currentRun ? `${d.currentRun.month}/${d.currentRun.year}` : 'None',           icon: '⚙️', color: '#fef3c7' },
+    { label: 'Recent Runs',        value: Array.isArray(d.recentRuns) ? d.recentRuns.length : 0,                          icon: '📄', color: '#ede9fe' },
   ];
 
   return (

@@ -91,9 +91,15 @@ router.get('/classes-with-sections', guard, async (req, res) => {
         const Class        = require('../../models/Class');
         const ClassSection = require('../../models/ClassSection');
         const activeYear   = await AcademicYear.findOne({ school: req.schoolId, status: 'active' }).lean();
-        if (!activeYear) return res.json({ success: true, data: [] });
-        const classes  = await Class.find({ school: req.schoolId, academicYear: activeYear._id }).sort({ classNumber: 1 }).lean();
-        const sections = await ClassSection.find({ school: req.schoolId, academicYear: activeYear._id, status: 'active' }).lean();
+        const classFilter  = { school: req.schoolId };
+        const secFilter    = { school: req.schoolId };
+        if (activeYear) {
+            classFilter.academicYear = activeYear._id;
+            secFilter.academicYear   = activeYear._id;
+            secFilter.status         = 'active';
+        }
+        const classes  = await Class.find(classFilter).sort({ classNumber: 1 }).lean();
+        const sections = await ClassSection.find(secFilter).lean();
         const secMap   = {};
         sections.forEach(s => { const k = s.class.toString(); (secMap[k] = secMap[k] || []).push(s); });
         res.json({ success: true, data: classes.map(c => ({ ...c, sections: secMap[c._id.toString()] || [] })) });

@@ -6,8 +6,12 @@ export const createAnnouncement = (data) => api.post('/teacher/announcements', d
 export const deleteAnnouncement = (id) => api.delete(`/teacher/announcements/${id}`);
 export const getAttendance  = (params) => api.get('/teacher/attendance', { params });
 export const markAttendance = (data) => api.post('/teacher/attendance/mark', data);
-export const getMyAttendance = (params) => api.get('/teacher/my-attendance', { params });
-export const getTimetable   = () => api.get('/teacher/timetable');
+export const getMyAttendance       = (params) => api.get('/teacher/my-attendance', { params });
+export const markMyAttendance      = (data)   => api.post('/teacher/my-attendance/mark', data);
+export const submitRegularization  = (data)   => api.post('/teacher/regularization', data);
+export const getCorrectionRequests = ()       => api.get('/teacher/correction-requests');
+export const reviewCorrection      = (data)   => api.post('/teacher/correction-requests/review', data);
+export const getTimetable          = ()       => api.get('/teacher/timetable');
 export const getExams       = () => api.get('/teacher/exams');
 export const createExam     = (data) => api.post('/teacher/exams', data);
 export const getExam        = (id) => api.get(`/teacher/exams/${id}`);
@@ -20,9 +24,10 @@ export const updateQuestion = (id, qid, data) => api.put(`/teacher/exams/${id}/q
 export const deleteQuestion = (id, qid) => api.delete(`/teacher/exams/${id}/questions/${qid}`);
 export const getSubmissions = (id) => api.get(`/teacher/exams/${id}/submissions`);
 export const getAnalytics   = (id) => api.get(`/teacher/exams/${id}/analytics`);
-export const getMyLeaves    = () => api.get('/teacher/leave');
-export const applyLeave     = (data) => api.post('/teacher/leave/apply', data);
-export const cancelLeave    = (id) => api.delete(`/teacher/leave/${id}`);
+export const getMyLeaves     = (params) => api.get('/teacher/leave', { params });
+export const getLeaveBalance = ()       => api.get('/teacher/leave/balance');
+export const applyLeave      = (data)   => api.post('/teacher/leave/apply', data);
+export const cancelLeave     = (id)     => api.delete(`/teacher/leave/${id}`);
 export const getDocuments   = () => api.get('/teacher/documents');
 export const getHolidays         = () => api.get('/teacher/holidays');
 export const getClassHolidays    = () => api.get('/teacher/class-holidays');

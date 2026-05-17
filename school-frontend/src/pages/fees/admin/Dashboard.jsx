@@ -8,11 +8,12 @@ export default function FeesAdminDashboard() {
 
   if (loading) return <div className="loading-page"><Spinner /></div>;
 
+  const d = data?.data || {};
   const stats = [
-    { label: 'Total Collected',  value: `₹${((data?.totalCollected)||0).toLocaleString()}`, icon: '💰', color: '#d1fae5' },
-    { label: 'Total Due',        value: `₹${((data?.totalDue)||0).toLocaleString()}`,       icon: '⚠️', color: '#fee2e2' },
-    { label: 'Students Paid',    value: data?.studentsPaid || 0,                             icon: '✅', color: '#dbeafe' },
-    { label: 'Pending Payments', value: data?.pendingPayments || 0,                         icon: '⏳', color: '#fef3c7' },
+    { label: 'Total Collected',    value: `₹${(d.totalCollected||0).toLocaleString()}`,   icon: '💰', color: '#d1fae5' },
+    { label: 'Pending Dues',       value: `₹${(d.pendingDues||0).toLocaleString()}`,      icon: '⚠️', color: '#fee2e2' },
+    { label: 'Total Students',     value: d.totalStudents || 0,                            icon: '👥', color: '#dbeafe' },
+    { label: 'Total Transactions', value: d.totalTransactions || 0,                        icon: '📋', color: '#fef3c7' },
   ];
 
   return (
@@ -21,12 +22,12 @@ export default function FeesAdminDashboard() {
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill,minmax(200px,1fr))', gap: 16, marginBottom: 24 }}>
         {stats.map(s => <StatCard key={s.label} {...s} />)}
       </div>
-      {data?.recentPayments?.length > 0 && (
+      {d.recentPayments?.length > 0 && (
         <div className="card">
           <div className="card-header"><h3 className="card-title">Recent Payments</h3></div>
           <div className="card-body" style={{ padding: 0 }}>
             <table className="table"><tbody>
-              {data.recentPayments.map(p => (
+              {d.recentPayments.map(p => (
                 <tr key={p._id}>
                   <td><strong>{p.student?.name}</strong></td>
                   <td className="text-muted">{p.feeHead?.name || '—'}</td>

@@ -109,8 +109,13 @@ exports.getParentChildAttendance = async (req, res) => {
     try {
         const ParentProfile = require('../models/ParentProfile');
         const parent = await ParentProfile.findOne({ user: req.userId }).lean();
-        const childId = parent?.student;
-        const records = await AttendanceRecord.find({ student: childId }).sort({ date: -1 }).limit(60).lean();
+        const childId = parent?.children?.[0] || parent?.student;
+        const { month, year } = req.query;
+        const filter = { student: childId };
+        if (month && year) {
+            filter.date = { $gte: new Date(year, month - 1, 1), $lte: new Date(year, month, 0) };
+        }
+        const records = await AttendanceRecord.find(filter).sort({ date: 1 }).lean();
         ok(res, records);
     } catch (e) { err(res, e); }
 };

@@ -13,4 +13,5 @@ export const getAuditLog    = () => api.get('/payroll/admin/audit');
 // Teacher
 export const getMyCtc       = () => api.get('/payroll/teacher/ctc');
 export const getMyPayslips  = () => api.get('/payroll/teacher/payslips');
-export const getPayslipDetail = (id) => api.get(`/payroll/teacher/payslips/${id}`);
+export const getPayslipDetail    = (id) => api.get(`/payroll/teacher/payslips/${id}`);
+export const downloadMyPayslip   = (id) => api.get(`/payroll/teacher/payslips/${id}/download`, { responseType: 'blob' });

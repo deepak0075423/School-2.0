@@ -59,14 +59,31 @@ export const updateSubject = (id, data) => api.put(`/admin/subjects/${id}`, data
 export const deleteSubject = (id) => api.delete(`/admin/subjects/${id}`);
 
 // Leave
-export const getLeaveTypes    = () => api.get('/admin/leave/types');
-export const createLeaveType  = (data) => api.post('/admin/leave/types', data);
-export const getLeaveRequests = (params) => api.get('/admin/leave/requests', { params });
-export const approveLeave     = (id) => api.post(`/admin/leave/requests/${id}/approve`);
-export const rejectLeave      = (id, data) => api.post(`/admin/leave/requests/${id}/reject`, data);
-export const getLeaveAllocations = () => api.get('/admin/leave/allocations');
-export const allocateLeave    = (data) => api.post('/admin/leave/allocations', data);
-export const getLeaveReports  = (params) => api.get('/admin/leave/reports', { params });
+export const getLeaveTypes          = ()         => api.get('/admin/leave/types');
+export const createLeaveType        = (data)     => api.post('/admin/leave/types', data);
+export const updateLeaveType        = (id, data) => api.put(`/admin/leave/types/${id}`, data);
+export const deleteLeaveType        = (id)       => api.delete(`/admin/leave/types/${id}`);
+export const updateLeaveSettings    = (data)     => api.put('/admin/leave/settings', data);
+export const getLeaveRequests       = (params)   => api.get('/admin/leave/requests', { params });
+export const adminApplyLeave        = (data)     => api.post('/admin/leave/requests', data);
+export const getTeacherLeaveBalance = (teacherId) => api.get('/admin/leave/balance', { params: { teacherId } });
+export const approveLeave           = (id, data) => api.post(`/admin/leave/requests/${id}/approve`, data);
+export const rejectLeave            = (id, data) => api.post(`/admin/leave/requests/${id}/reject`, data);
+export const requestLeaveModification = (id, data) => api.post(`/admin/leave/requests/${id}/modification`, data);
+export const getLeaveAllocations    = (params)   => api.get('/admin/leave/allocations', { params });
+export const allocateLeave          = (data)     => api.post('/admin/leave/allocations', data);
+export const downloadAllocationTemplate = ()     => api.get('/admin/leave/allocations/template', { responseType: 'arraybuffer' });
+export const bulkAllocateLeaveExcel = (fd)       => api.post('/admin/leave/allocations/excel', fd);
+export const runCarryForward        = (data)     => api.post('/admin/leave/allocations/carry-forward', data);
+export const getLeaveReports        = (params)   => api.get('/admin/leave/reports', { params });
+export const exportLeaveReports     = (params)   => api.get('/admin/leave/reports/export', { params, responseType: 'arraybuffer' });
+
+// Timetable
+export const getSectionTimetable    = (sectionId)       => api.get(`/admin/sections/${sectionId}/timetable`);
+export const saveTimetableStructure = (sectionId, data) => api.put(`/admin/sections/${sectionId}/timetable/structure`, data);
+export const getSectionEntries      = (sectionId)       => api.get(`/admin/sections/${sectionId}/timetable/entries`);
+export const saveTimetableEntries   = (sectionId, data) => api.put(`/admin/sections/${sectionId}/timetable/entries`, data);
+export const getTimetableTeachers   = (subjectId)       => api.get('/admin/timetable/teachers', { params: { subjectId } });
 
 // Documents
 export const getDocuments  = (params) => api.get('/admin/documents', { params });
@@ -97,5 +114,5 @@ export const sendNotification = (data) => api.post('/admin/notifications/send', 
 export const getNotifications  = () => api.get('/admin/notifications');
 
 // Attendance
-export const getRegularizationRequests = () => api.get('/admin/regularization-requests');
+export const getRegularizationRequests = (params) => api.get('/admin/regularization-requests', { params });
 export const reviewRegularization = (data) => api.post('/admin/regularization-requests/review', data);
