@@ -5,6 +5,19 @@ const User                = require('../models/User');
 const StudentProfile      = require('../models/StudentProfile');
 const ClassSection        = require('../models/ClassSection');
 const mailer              = require('../config/mailer');
+const { publishNotificationCount } = require('../utils/redisPublisher');
+
+// Recompute and push unread count for one user via the WebSocket Gateway
+async function _pushCount(userId) {
+    try {
+        const count = await NotificationReceipt.countDocuments({
+            recipient: userId,
+            isRead:    false,
+            isCleared: false,
+        });
+        await publishNotificationCount(userId, count);
+    } catch {}
+}
 
 exports.getList = async (req, res) => {
     try {
@@ -148,6 +161,8 @@ exports.send = async (req, res) => {
                 school:       req.schoolId || null,
             }));
             await NotificationReceipt.insertMany(docs, { ordered: false }).catch(() => {});
+            // Fire-and-forget: push updated count to each recipient via the WebSocket Gateway
+            recipients.forEach(u => _pushCount(u._id));
         }
 
         await Notification.findByIdAndUpdate(notification._id, { recipientCount: recipients.length });
@@ -180,6 +195,7 @@ exports.getInboxApi = async (req, res) => {
 exports.markAllRead = async (req, res) => {
     try {
         await NotificationReceipt.updateMany({ recipient: req.userId, isRead: false }, { isRead: true, readAt: new Date() });
+        _pushCount(req.userId);
         res.json({ success: true });
     } catch (err) { res.status(500).json({ success: false, message: err.message }); }
 };
@@ -187,6 +203,7 @@ exports.markAllRead = async (req, res) => {
 exports.clearAll = async (req, res) => {
     try {
         await NotificationReceipt.updateMany({ recipient: req.userId }, { isCleared: true, clearedAt: new Date() });
+        _pushCount(req.userId);
         res.json({ success: true });
     } catch (err) { res.status(500).json({ success: false, message: err.message }); }
 };
@@ -194,6 +211,7 @@ exports.clearAll = async (req, res) => {
 exports.markOneRead = async (req, res) => {
     try {
         await NotificationReceipt.findByIdAndUpdate(req.params.receiptId, { isRead: true, readAt: new Date() });
+        _pushCount(req.userId);
         res.json({ success: true });
     } catch (err) { res.status(500).json({ success: false, message: err.message }); }
 };

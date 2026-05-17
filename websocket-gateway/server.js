@@ -24,16 +24,19 @@ const express   = require('express');
 const { Server } = require('socket.io');
 const Redis     = require('ioredis');
 const session   = require('express-session');
+const jwt       = require('jsonwebtoken');
 // const { default: RedisStore } = require('connect-redis');
 const { RedisStore } = require('connect-redis');
 
 // ── Env ───────────────────────────────────────────────────────────────────────
-const REDIS_URL        = process.env.REDIS_URL;
-const CHAT_SERVICE_URL = process.env.CHAT_SERVICE_URL;   // e.g. http://localhost:3000
-const INTERNAL_SECRET  = process.env.INTERNAL_SECRET;
-const SESSION_SECRET   = process.env.SESSION_SECRET  || 'fallback_secret';
-const PORT             = process.env.PORT             || 4000;
-const ALLOWED_ORIGINS  = (process.env.ALLOWED_ORIGINS || '').split(',').map(s => s.trim()).filter(Boolean);
+const REDIS_URL           = process.env.REDIS_URL;
+const CHAT_SERVICE_URL    = process.env.CHAT_SERVICE_URL;   // e.g. http://localhost:3000
+const SCHOOL_BACKEND_URL  = process.env.SCHOOL_BACKEND_URL || CHAT_SERVICE_URL;
+const INTERNAL_SECRET     = process.env.INTERNAL_SECRET;
+const SESSION_SECRET      = process.env.SESSION_SECRET  || 'fallback_secret';
+const JWT_SECRET          = process.env.JWT_SECRET;
+const PORT                = process.env.PORT             || 4000;
+const ALLOWED_ORIGINS     = (process.env.ALLOWED_ORIGINS || '').split(',').map(s => s.trim()).filter(Boolean);
 
 if (!REDIS_URL)        { console.error('FATAL: REDIS_URL is required');        process.exit(1); }
 if (!CHAT_SERVICE_URL) { console.error('FATAL: CHAT_SERVICE_URL is required'); process.exit(1); }
@@ -99,14 +102,29 @@ const io = new Server(server, {
 io.engine.use(sessionMiddleware);
 
 // ── Socket.io auth middleware ─────────────────────────────────────────────────
+// Accepts either a JWT token (school-backend users) or a Redis session (chat users).
 io.use((socket, next) => {
+    const token = socket.handshake.auth?.token;
+    if (token && JWT_SECRET) {
+        try {
+            const decoded = jwt.verify(token, JWT_SECRET);
+            socket.userId   = String(decoded.userId);
+            socket.userRole = decoded.role     || 'unknown';
+            socket.schoolId = decoded.schoolId || '';
+            socket.authType = 'jwt';
+            return next();
+        } catch {
+            // fall through to session auth
+        }
+    }
     const sess = socket.request.session;
     if (!sess || !sess.userId) {
-        return next(new Error('Unauthenticated — no valid session'));
+        return next(new Error('Unauthenticated — no valid session or token'));
     }
     socket.userId   = String(sess.userId);
     socket.userRole = sess.userRole  || 'unknown';
     socket.schoolId = String(sess.schoolId);
+    socket.authType = 'session';
     next();
 });
 
@@ -131,7 +149,7 @@ function _isOnline(userId) {
     return !!(set && set.size > 0);
 }
 
-// ── Internal REST helper ──────────────────────────────────────────────────────
+// ── Internal REST helpers ─────────────────────────────────────────────────────
 async function _getUserChats(userId, schoolId) {
     const url = `${CHAT_SERVICE_URL}/internal/user-chats?userId=${encodeURIComponent(userId)}&schoolId=${encodeURIComponent(schoolId)}`;
     const res = await fetch(url, {
@@ -141,6 +159,21 @@ async function _getUserChats(userId, schoolId) {
     if (!res.ok) throw new Error(`/internal/user-chats returned HTTP ${res.status}`);
     const body = await res.json();
     return body.chatIds || [];
+}
+
+async function _getNotificationCount(userId) {
+    try {
+        const url = `${SCHOOL_BACKEND_URL}/internal/user-notification-count?userId=${encodeURIComponent(userId)}`;
+        const res = await fetch(url, {
+            headers: { 'x-internal-secret': INTERNAL_SECRET },
+            signal: AbortSignal.timeout(3000),
+        });
+        if (!res.ok) return 0;
+        const body = await res.json();
+        return body.count ?? 0;
+    } catch {
+        return 0;
+    }
 }
 
 // ── Redis publish helper ──────────────────────────────────────────────────────
@@ -171,8 +204,13 @@ io.on('connection', async (socket) => {
 
     _addSocket(userId, socket.id);
 
-    // Personal room — used by publishToUser() from Chat Service
+    // Personal room — used by publishToUser() from Chat/Notification Service
     socket.join(`user:${userId}`);
+
+    // Push initial unread notification count
+    _getNotificationCount(userId).then(count => {
+        socket.emit('notification:unread_count', { count });
+    });
 
     // Join all chat rooms the user belongs to
     let chatIds = [];
@@ -259,27 +297,38 @@ io.on('connection', async (socket) => {
     });
 });
 
-// ── Redis Pub/Sub: inbound from Chat Service ──────────────────────────────────
-const CH_DELIVER = 'chat.deliver';
-const CH_MEMBER  = 'chat.member';
+// ── Redis Pub/Sub: inbound from Chat Service & Notification Service ───────────
+const CH_DELIVER       = 'chat.deliver';
+const CH_MEMBER        = 'chat.member';
+const CH_NOTIF_COUNT   = 'notification.count';
 
-subClient.subscribe(CH_DELIVER, CH_MEMBER, (err) => {
+subClient.subscribe(CH_DELIVER, CH_MEMBER, CH_NOTIF_COUNT, (err) => {
     if (err) {
         console.error('[Gateway] Redis subscribe failed:', err.message);
         return;
     }
-    console.log(`✅ Gateway subscribed to [${CH_DELIVER}, ${CH_MEMBER}]`);
+    console.log(`✅ Gateway subscribed to [${CH_DELIVER}, ${CH_MEMBER}, ${CH_NOTIF_COUNT}]`);
 });
 
 subClient.on('message', (channel, raw) => {
     try {
         const payload = JSON.parse(raw);
-        if (channel === CH_DELIVER) _onDeliver(payload);
-        if (channel === CH_MEMBER)  _onMember(payload);
+        if (channel === CH_DELIVER)     _onDeliver(payload);
+        if (channel === CH_MEMBER)      _onMember(payload);
+        if (channel === CH_NOTIF_COUNT) _onNotifCount(payload);
     } catch (err) {
         console.error('[Gateway] Redis message parse error:', err.message);
     }
 });
+
+/**
+ * Forward notification unread count to a specific user's sockets.
+ * Payload: { userId, count }
+ */
+function _onNotifCount({ userId, count }) {
+    if (!userId) return;
+    io.to(`user:${userId}`).emit('notification:unread_count', { count });
+}
 
 /**
  * Deliver an event to a Socket.io room or a specific user's sockets.

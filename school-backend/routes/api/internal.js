@@ -1,7 +1,8 @@
 'use strict';
-const express    = require('express');
-const router     = express.Router();
-const ChatMember = require('../../models/ChatMember');
+const express                = require('express');
+const router                 = express.Router();
+const ChatMember             = require('../../models/ChatMember');
+const NotificationReceipt    = require('../../models/NotificationReceipt');
 
 const requireInternalSecret = (req, res, next) => {
     const secret = process.env.INTERNAL_SECRET;
@@ -23,6 +24,22 @@ router.get('/user-chats', requireInternalSecret, async (req, res) => {
         }).select('chat').lean();
         res.json({ chatIds: memberships.map(m => String(m.chat)) });
     } catch (err) {
+        res.status(500).json({ error: 'Internal error' });
+    }
+});
+
+// Gateway calls this on socket connect to get the user's initial unread count
+router.get('/user-notification-count', requireInternalSecret, async (req, res) => {
+    const { userId } = req.query;
+    if (!userId) return res.status(400).json({ error: 'userId is required' });
+    try {
+        const count = await NotificationReceipt.countDocuments({
+            recipient: userId,
+            isRead:    false,
+            isCleared: false,
+        });
+        res.json({ count });
+    } catch {
         res.status(500).json({ error: 'Internal error' });
     }
 });

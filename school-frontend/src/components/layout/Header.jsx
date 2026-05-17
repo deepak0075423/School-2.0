@@ -1,8 +1,9 @@
-import React, { useState, useRef, useEffect, useCallback } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { logout } from '../../api/auth.api';
-import { getInbox, getUnreadCount, markAllRead, markOneRead, clearAll } from '../../api/notifications.api';
+import { getInbox, markAllRead, markOneRead, clearAll } from '../../api/notifications.api';
+import { connectSocket, disconnectSocket } from '../../socket';
 import toast from 'react-hot-toast';
 import { Modal } from '../ui/index';
 
@@ -45,10 +46,9 @@ export default function Header({ onMenuClick, onCollapseClick }) {
   const [unreadCount, setUnreadCount] = useState(0);
   const [detailNotif, setDetailNotif] = useState(null);
 
-  const dropRef      = useRef(null);
-  const bellRef      = useRef(null);
-  const prevUnread   = useRef(0);
-  const pollTimer    = useRef(null);
+  const dropRef    = useRef(null);
+  const bellRef    = useRef(null);
+  const prevUnread = useRef(0);
 
   // Close dropdowns on outside click
   useEffect(() => {
@@ -60,26 +60,24 @@ export default function Header({ onMenuClick, onCollapseClick }) {
     return () => document.removeEventListener('mousedown', handler);
   }, []);
 
-  const fetchUnreadCount = useCallback(async () => {
+  // Connect to WebSocket Gateway — push-based unread count, no polling
+  useEffect(() => {
     if (!user) return;
-    try {
-      const res = await getUnreadCount();
-      const count = res?.count ?? 0;
+    const token = localStorage.getItem('token');
+    if (!token) return;
+    const sock = connectSocket(token);
+
+    sock.on('notification:unread_count', ({ count }) => {
       if (count > prevUnread.current) {
         playNotifSound();
         requestBrowserPush('New Notification', 'You have a new notification');
       }
       prevUnread.current = count;
       setUnreadCount(count);
-    } catch {}
-  }, [user]);
+    });
 
-  // Start polling on mount
-  useEffect(() => {
-    fetchUnreadCount();
-    pollTimer.current = setInterval(fetchUnreadCount, 30000);
-    return () => clearInterval(pollTimer.current);
-  }, [fetchUnreadCount]);
+    return () => { sock.off('notification:unread_count'); };
+  }, [user]);
 
   const fetchNotifs = async () => {
     setNotifLoad(true);
@@ -104,12 +102,12 @@ export default function Header({ onMenuClick, onCollapseClick }) {
   };
 
   const handleMarkAll = async () => {
-    try { await markAllRead(); fetchNotifs(); fetchUnreadCount(); }
+    try { await markAllRead(); fetchNotifs(); }
     catch { toast.error('Failed to mark all read'); }
   };
 
   const handleClearAll = async () => {
-    try { await clearAll(); fetchNotifs(); fetchUnreadCount(); }
+    try { await clearAll(); fetchNotifs(); }
     catch { toast.error('Failed to clear inbox'); }
   };
 
@@ -120,7 +118,6 @@ export default function Header({ onMenuClick, onCollapseClick }) {
     if (!receipt.isRead) {
       try {
         await markOneRead(receipt._id);
-        fetchUnreadCount();
         setNotifs(prev => prev.map(r => r._id === receipt._id ? { ...r, isRead: true } : r));
       } catch {}
     }
@@ -128,6 +125,7 @@ export default function Header({ onMenuClick, onCollapseClick }) {
 
   const handleLogout = async () => {
     try { await logout(); } catch {}
+    disconnectSocket();
     signOut();
     navigate('/login');
     toast.success('Logged out successfully');
