@@ -406,7 +406,19 @@ export default function SAUsers() {
             <div style={{ background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 'var(--radius)', padding: '10px 12px', fontFamily: 'monospace', fontSize: '.8rem', wordBreak: 'break-all', marginBottom: 12 }}>
               {generatedLink}
             </div>
-            <Button onClick={() => { navigator.clipboard.writeText(generatedLink); toast.success('Copied!'); }}>
+            <Button onClick={() => {
+              if (navigator.clipboard?.writeText) {
+                navigator.clipboard.writeText(generatedLink).then(() => toast.success('Copied!'));
+              } else {
+                const el = document.createElement('textarea');
+                el.value = generatedLink;
+                el.style.position = 'fixed'; el.style.opacity = '0';
+                document.body.appendChild(el); el.select();
+                document.execCommand('copy');
+                document.body.removeChild(el);
+                toast.success('Copied!');
+              }
+            }}>
               📋 Copy Link
             </Button>
           </div>
