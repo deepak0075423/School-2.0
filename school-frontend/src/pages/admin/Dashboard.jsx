@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import useFetch from '../../hooks/useFetch';
-import { getDashboard, getModules, getMyHolidays } from '../../api/admin.api';
+import { getDashboard, getModules, getMyHolidays, getSchoolSettings } from '../../api/admin.api';
 import { StatCard, Spinner, MiniCalendar } from '../../components/ui/index';
 
 const ALL_MODULES = [
@@ -20,6 +20,7 @@ const ALL_MODULES = [
 export default function AdminDashboard() {
   const { data: stats,   loading: statsLoading  } = useFetch(getDashboard);
   const { data: modules, loading: modulesLoading } = useFetch(getModules);
+  const { data: schoolData }                       = useFetch(getSchoolSettings);
   const [holidays, setHolidays]                    = useState([]);
 
   useEffect(() => {
@@ -31,6 +32,10 @@ export default function AdminDashboard() {
   if (statsLoading || modulesLoading) return <div className="loading-page"><Spinner /></div>;
 
   const enabledModules = ALL_MODULES.filter(m => modules?.[m.key]);
+  const ls             = schoolData?.leaveSettings;
+  const saturdayConfig = ls
+    ? { working: ls.saturdayWorking !== false, mode: ls.saturdayMode || 'all', halfDay: !!ls.saturdayHalfDay }
+    : modules?.saturdayConfig;
 
   return (
     <div className="page">
@@ -79,6 +84,7 @@ export default function AdminDashboard() {
         <MiniCalendar
           holidays={holidays}
           holidayListPath={modules?.holiday ? '/admin/holidays' : ''}
+          saturdayConfig={saturdayConfig}
         />
       </div>
     </div>

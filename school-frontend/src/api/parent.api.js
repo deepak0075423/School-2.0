@@ -1,6 +1,7 @@
 import api from './axios';
-export const getDashboard = () => api.get('/parent/dashboard');
-export const getModules   = () => api.get('/parent/modules');
+export const getDashboard    = () => api.get('/parent/dashboard');
+export const getModules      = () => api.get('/parent/modules');
+export const getSchoolConfig = () => api.get('/profile/school-config');
 export const getChildClass    = () => api.get('/parent/child-class');
 export const getChildAttendance = (params) => api.get('/parent/child-attendance', { params });
 export const getExams         = () => api.get('/parent/exams');

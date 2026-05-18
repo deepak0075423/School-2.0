@@ -6,6 +6,7 @@ export const getModules   = () => api.get('/admin/modules');
 // School Settings
 export const getSchoolSettings    = ()   => api.get('/admin/school-settings');
 export const updateSchoolSettings = (fd) => api.put('/admin/school-settings', fd);
+export const getSchoolConfig      = ()   => api.get('/profile/school-config');
 
 // Users
 export const getTeachers = (params) => api.get('/admin/teachers', { params });
@@ -86,11 +87,13 @@ export const getLeaveReports        = (params)   => api.get('/admin/leave/report
 export const exportLeaveReports     = (params)   => api.get('/admin/leave/reports/export', { params, responseType: 'arraybuffer' });
 
 // Timetable
-export const getSectionTimetable    = (sectionId)       => api.get(`/admin/sections/${sectionId}/timetable`);
-export const saveTimetableStructure = (sectionId, data) => api.put(`/admin/sections/${sectionId}/timetable/structure`, data);
-export const getSectionEntries      = (sectionId)       => api.get(`/admin/sections/${sectionId}/timetable/entries`);
-export const saveTimetableEntries   = (sectionId, data) => api.put(`/admin/sections/${sectionId}/timetable/entries`, data);
-export const getTimetableTeachers   = (subjectId)       => api.get('/admin/timetable/teachers', { params: { subjectId } });
+export const getSectionTimetable         = (sectionId, yearId) => api.get(`/admin/sections/${sectionId}/timetable`, { params: yearId ? { yearId } : {} });
+export const saveTimetableStructure      = (sectionId, data)   => api.put(`/admin/sections/${sectionId}/timetable/structure`, data);
+export const getSectionEntries           = (sectionId, yearId) => api.get(`/admin/sections/${sectionId}/timetable/entries`, { params: yearId ? { yearId } : {} });
+export const saveTimetableEntries        = (sectionId, data)   => api.put(`/admin/sections/${sectionId}/timetable/entries`, data);
+export const getTimetableTeachers        = (params)            => api.get('/admin/timetable/teachers', { params });
+export const downloadSectionTimetable    = (sectionId, yearId) => api.get(`/admin/sections/${sectionId}/timetable/download`, { params: yearId ? { yearId } : {}, responseType: 'blob' });
+export const downloadAllTimetables       = (params)            => api.get('/admin/timetable/download-all', { params, responseType: 'blob' });
 
 // Documents
 export const getDocuments  = (params) => api.get('/admin/documents', { params });

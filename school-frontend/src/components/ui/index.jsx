@@ -220,7 +220,21 @@ function buildGrid(year, month) {
   return cells;
 }
 
-export function MiniCalendar({ holidays = [], leaves = [], holidayListPath = '' }) {
+// Returns true if this date is an off day (Sunday always; Saturday based on config)
+function isWeekendOff(date, satConfig) {
+  const dow = date.getDay(); // 0=Sun, 6=Sat
+  if (dow === 0) return true;                          // Sunday always off
+  if (dow !== 6) return false;                         // Mon-Fri never off here
+  if (!satConfig || satConfig.working == null) return false; // no config → assume working
+  if (satConfig.working === false) return true;        // all saturdays off
+  if (!satConfig.mode || satConfig.mode === 'all') return false; // all on
+  const nth = Math.ceil(date.getDate() / 7);           // nth occurrence in month
+  if (satConfig.mode === '1_3_5') return nth % 2 === 0; // 2nd & 4th are off
+  if (satConfig.mode === '2_4')   return nth % 2 === 1; // 1st, 3rd & 5th are off
+  return false;
+}
+
+export function MiniCalendar({ holidays = [], leaves = [], holidayListPath = '', saturdayConfig }) {
   const today        = new Date();
   const todayIso     = localIso(today);
   const [view, setView] = React.useState(() => new Date(today.getFullYear(), today.getMonth(), 1));
@@ -321,13 +335,16 @@ export function MiniCalendar({ holidays = [], leaves = [], holidayListPath = '' 
             const dayLeaves = leaveMap[iso]   || [];
             const isHol     = dayHols.length > 0   && cell.cur;
             const isLeave   = dayLeaves.length > 0 && cell.cur;
+            const isOff     = cell.cur && !isToday && isWeekendOff(cell.date, saturdayConfig);
             const tipParts  = [
+              ...(isOff && !isHol ? [cell.date.getDay() === 0 ? 'Sunday' : 'Holiday'] : []),
               ...dayHols.map(h => h.name),
               ...dayLeaves.map(l => `${l.leaveType?.code || 'Leave'} (${l.status})`),
             ];
             const bg = isToday  ? 'var(--primary)'
                      : isLeave  ? 'rgba(180,83,9,.13)'
                      : isHol    ? '#fef3c7'
+                     : isOff    ? 'rgba(0,0,0,.05)'
                      : 'transparent';
             return (
               <div key={i}
@@ -339,7 +356,7 @@ export function MiniCalendar({ holidays = [], leaves = [], holidayListPath = '' 
                 }}>
                 <span style={{
                   fontSize: '.78rem', fontWeight: isToday ? 700 : 400, lineHeight: 1,
-                  color: isToday ? '#fff' : cell.cur ? 'var(--text)' : 'var(--text-muted)',
+                  color: isToday ? '#fff' : (isOff && !isHol && !isLeave) ? 'var(--text-muted)' : cell.cur ? 'var(--text)' : 'var(--text-muted)',
                   opacity: cell.cur ? 1 : 0.35,
                 }}>
                   {cell.date.getDate()}

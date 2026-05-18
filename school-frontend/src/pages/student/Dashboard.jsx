@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import useFetch from '../../hooks/useFetch';
-import { getDashboard, getModules, getHolidays } from '../../api/student.api';
+import { getDashboard, getModules, getHolidays, getSchoolConfig } from '../../api/student.api';
 import { Spinner, MiniCalendar } from '../../components/ui/index';
 
 const ALL_QUICK_LINKS = [
@@ -20,6 +20,7 @@ export default function StudentDashboard() {
   const { user }                               = useAuth();
   const { loading: dashLoading }               = useFetch(getDashboard);
   const { data: modules, loading: modLoading } = useFetch(getModules);
+  const { data: schoolConfig }                 = useFetch(getSchoolConfig);
   const [holidays, setHolidays]                = useState([]);
 
   useEffect(() => {
@@ -30,7 +31,10 @@ export default function StudentDashboard() {
 
   if (dashLoading || modLoading) return <div className="loading-page"><Spinner /></div>;
 
-  const quickLinks = ALL_QUICK_LINKS.filter(l => !l.module || modules?.[l.module]);
+  const quickLinks     = ALL_QUICK_LINKS.filter(l => !l.module || modules?.[l.module]);
+  const saturdayConfig = schoolConfig
+    ? { working: schoolConfig.saturdayWorking, mode: schoolConfig.saturdayMode, halfDay: schoolConfig.saturdayHalfDay }
+    : modules?.saturdayConfig;
 
   return (
     <div className="page">
@@ -65,6 +69,7 @@ export default function StudentDashboard() {
         <MiniCalendar
           holidays={holidays}
           holidayListPath={modules?.holiday ? '/student/holidays' : ''}
+          saturdayConfig={saturdayConfig}
         />
       </div>
     </div>

@@ -1,6 +1,7 @@
 import api from './axios';
-export const getDashboard = () => api.get('/teacher/dashboard');
-export const getModules   = () => api.get('/teacher/modules');
+export const getDashboard    = () => api.get('/teacher/dashboard');
+export const getModules      = () => api.get('/teacher/modules');
+export const getSchoolConfig = () => api.get('/profile/school-config');
 export const getMySection   = () => api.get('/teacher/my-section');
 export const createAnnouncement = (data) => api.post('/teacher/announcements', data);
 export const deleteAnnouncement = (id) => api.delete(`/teacher/announcements/${id}`);
@@ -11,7 +12,9 @@ export const markMyAttendance      = (data)   => api.post('/teacher/my-attendanc
 export const submitRegularization  = (data)   => api.post('/teacher/regularization', data);
 export const getCorrectionRequests = ()       => api.get('/teacher/correction-requests');
 export const reviewCorrection      = (data)   => api.post('/teacher/correction-requests/review', data);
-export const getTimetable          = ()       => api.get('/teacher/timetable');
+export const getTimetable          = (params) => api.get('/teacher/timetable', { params });
+export const downloadTimetable     = ()       => api.get('/teacher/timetable/download', { responseType: 'blob' });
+export const getClassTimetable     = ()       => api.get('/teacher/timetable/my-class');
 export const getExams       = () => api.get('/teacher/exams');
 export const createExam     = (data) => api.post('/teacher/exams', data);
 export const getExam        = (id) => api.get(`/teacher/exams/${id}`);

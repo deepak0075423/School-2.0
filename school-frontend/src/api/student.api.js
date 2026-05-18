@@ -1,8 +1,10 @@
 import api from './axios';
-export const getDashboard = () => api.get('/student/dashboard');
-export const getModules   = () => api.get('/student/modules');
+export const getDashboard    = () => api.get('/student/dashboard');
+export const getModules      = () => api.get('/student/modules');
+export const getSchoolConfig = () => api.get('/profile/school-config');
 export const getMyClass     = () => api.get('/student/my-class');
-export const getTimetable   = () => api.get('/student/timetable');
+export const getTimetable        = () => api.get('/student/timetable');
+export const downloadTimetable   = () => api.get('/student/timetable/download', { responseType: 'blob' });
 export const getMyAttendance   = (params) => api.get('/student/my-attendance', { params });
 export const submitCorrection  = (data)   => api.post('/student/correction/submit', data);
 export const getExams       = () => api.get('/student/exams');

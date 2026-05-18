@@ -27,8 +27,8 @@ const TimetableSchema = new mongoose.Schema({
     periodsStructure: [
         {
             periodNumber: { type: Number },
-            startTime: { type: String, required: true },
-            endTime: { type: String, required: true },
+            startTime: { type: String, default: '' },
+            endTime: { type: String, default: '' },
             isRecess: { type: Boolean, default: false },
             recessName: { type: String, default: 'Break' }
         }

@@ -25,8 +25,9 @@ router.get('/child-class', guard, parentCtrl.getChildClass);
 router.get('/modules', guard, async (req, res) => {
     try {
         const School = require('../../models/School');
-        const school = await School.findById(req.schoolId).select('modules').lean();
-        const m = school?.modules ?? {};
+        const school = await School.findById(req.schoolId).select('modules leaveSettings').lean();
+        const m  = school?.modules      ?? {};
+        const ls = school?.leaveSettings ?? {};
         res.json({ success: true, data: {
             attendance:   !!m.attendance,
             notification: !!m.notification,
@@ -39,6 +40,11 @@ router.get('/modules', guard, async (req, res) => {
             library:      !!m.library,
             payroll:      !!m.payroll,
             fees:         !!m.fees,
+            saturdayConfig: {
+                working: ls.saturdayWorking !== false,
+                mode:    ls.saturdayMode    || 'all',
+                halfDay: !!ls.saturdayHalfDay,
+            },
         }});
     } catch (e) { res.status(500).json({ success: false, message: e.message }); }
 });

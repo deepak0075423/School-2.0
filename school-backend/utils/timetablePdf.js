@@ -128,9 +128,13 @@ function _drawPage(doc, data, schoolName) {
                     en => en.dayOfWeek === day && en.periodNumber === p.periodNumber
                 );
                 if (e) {
+                    const extras = (e.additionalSubjects || [])
+                        .filter(a => a.subject)
+                        .map(a => ({ text: a.subject?.subjectName || '', sub: a.teacher?.name || '' }));
                     _cell(doc, x, y, cw, DAY_ROW_H, {
                         text: e.subject?.subjectName || '\u2014',
                         sub: e.teacher?.name || '',
+                        extras,
                         bold: true,
                         bg: CELL_BG,
                         color: PRIMARY,
@@ -156,6 +160,7 @@ function _cell(doc, x, y, w, h, opts) {
     const {
         text     = '',
         sub      = '',
+        extras   = [],   // [{text, sub}] additional subjects
         bold     = false,
         bg       = CELL_BG,
         color    = TEXT_DARK,
@@ -170,34 +175,69 @@ function _cell(doc, x, y, w, h, opts) {
     const tw   = w - 2 * pad;
     const lh   = fontSize + 2.5;
     const slh  = Math.max(fontSize - 1, 6) + 2;
+    const efs  = Math.max(fontSize - 1, 6);   // extra subject font size
+    const elh  = efs + 2.5;
+    const eslh = Math.max(efs - 1, 5) + 2;
 
     const mainLines = String(text).split('\n');
     const subLines  = sub ? String(sub).split('\n') : [];
-    const totalH    = mainLines.length * lh + subLines.length * slh;
-    let   ty        = y + (h - totalH) / 2;
+
+    // Calculate total height to vertically centre content
+    let extraH = 0;
+    extras.forEach(ex => {
+        extraH += 3; // divider gap
+        extraH += String(ex.text || '').split('\n').length * elh;
+        if (ex.sub) extraH += String(ex.sub).split('\n').length * eslh;
+    });
+    const totalH = mainLines.length * lh + subLines.length * slh + extraH;
+    let ty = y + (h - totalH) / 2;
     if (ty < y + pad) ty = y + pad;
 
-    // Main text
-    doc.font(bold ? 'Helvetica-Bold' : 'Helvetica')
-       .fontSize(fontSize)
-       .fillColor(color);
+    // Primary subject text
+    doc.font(bold ? 'Helvetica-Bold' : 'Helvetica').fontSize(fontSize).fillColor(color);
     mainLines.forEach(line => {
-        doc.text(line, x + pad, ty, {
-            width: tw, align: 'center', lineBreak: false, ellipsis: true
-        });
+        doc.text(line, x + pad, ty, { width: tw, align: 'center', lineBreak: false, ellipsis: true });
         ty += lh;
     });
 
-    // Sub text (teacher name / time)
+    // Primary teacher / sub text
     if (subLines.length) {
         doc.font('Helvetica').fontSize(Math.max(fontSize - 1, 6)).fillColor(subColor);
         subLines.forEach(line => {
-            doc.text(line, x + pad, ty, {
-                width: tw, align: 'center', lineBreak: false, ellipsis: true
-            });
+            doc.text(line, x + pad, ty, { width: tw, align: 'center', lineBreak: false, ellipsis: true });
             ty += slh;
         });
     }
+
+    // Additional subjects
+    extras.forEach(ex => {
+        ty += 2;
+        // Thin divider
+        doc.moveTo(x + pad * 2, ty).lineTo(x + w - pad * 2, ty)
+           .strokeColor('#CBD5E1').lineWidth(0.3).stroke();
+        ty += 2;
+
+        const etLines = String(ex.text || '').split('\n');
+        const esLines = ex.sub ? String(ex.sub).split('\n') : [];
+
+        doc.font('Helvetica-Bold').fontSize(efs).fillColor(PRIMARY);
+        etLines.forEach(line => {
+            if (ty < y + h - pad) {
+                doc.text(line, x + pad, ty, { width: tw, align: 'center', lineBreak: false, ellipsis: true });
+                ty += elh;
+            }
+        });
+
+        if (esLines.length) {
+            doc.font('Helvetica').fontSize(Math.max(efs - 1, 5)).fillColor(TEXT_MUTED);
+            esLines.forEach(line => {
+                if (ty < y + h - pad) {
+                    doc.text(line, x + pad, ty, { width: tw, align: 'center', lineBreak: false, ellipsis: true });
+                    ty += eslh;
+                }
+            });
+        }
+    });
 
     doc.fillColor(TEXT_DARK); // reset
 }
