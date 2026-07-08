@@ -25,8 +25,8 @@ const DocumentSchema = new mongoose.Schema({
     },
     category: {
         type: String,
-        enum: ['Assignment', 'Notes', 'Circular', 'Report', 'Other'],
         required: true,
+        trim: true,
     },
     subject: {
         type: String,

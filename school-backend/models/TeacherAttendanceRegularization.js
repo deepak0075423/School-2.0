@@ -25,6 +25,15 @@ const TeacherAttendanceRegularizationSchema = new mongoose.Schema({
         enum: ['Present', 'Absent', 'Half-Day', 'Leave'],
         required: true,
     },
+    // Requested clock times ('HH:mm') — whichever punches were missed
+    checkIn: {
+        type: String,
+        default: '',
+    },
+    checkOut: {
+        type: String,
+        default: '',
+    },
     reason: {
         type: String,
         required: true,

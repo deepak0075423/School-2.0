@@ -7,7 +7,7 @@ const fmtDate = (d) => d ? new Date(d).toLocaleDateString('en-IN', { day:'2-digi
 
 export default function LibraryParentOverview() {
   const { data, loading } = useFetch(getParentOverview);
-  const children = data?.data?.children || [];
+  const children = data?.children || [];
 
   const now = new Date();
   const issuanceColor = (r) => {

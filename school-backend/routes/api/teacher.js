@@ -33,10 +33,15 @@ router.get('/dashboard', guard, teacherCtrl.getDashboard);
 router.get('/modules', guard, async (req, res) => {
     try {
         const School = require('../../models/School');
-        const school = await School.findById(req.schoolId).select('modules leaveSettings').lean();
+        const TeacherProfile = require('../../models/TeacherProfile');
+        const [school, profile] = await Promise.all([
+            School.findById(req.schoolId).select('modules leaveSettings').lean(),
+            TeacherProfile.findOne({ user: req.userId }).select('designation').lean(),
+        ]);
         const m  = school?.modules      ?? {};
         const ls = school?.leaveSettings ?? {};
         res.json({ success: true, data: {
+            isLibrarian:  profile?.designation === 'Librarian',
             attendance:   !!m.attendance,
             notification: !!m.notification,
             aptitudeExam: !!m.aptitudeExam,
@@ -48,6 +53,7 @@ router.get('/modules', guard, async (req, res) => {
             library:      !!m.library,
             payroll:      !!m.payroll,
             fees:         !!m.fees,
+            chat:         !!m.chat,
             saturdayConfig: {
                 working: ls.saturdayWorking !== false,
                 mode:    ls.saturdayMode    || 'all',
@@ -70,7 +76,8 @@ router.post('/attendance/mark',        attendanceGuard, sectionCtrl.markAttendan
 
 // ── Teacher Self Attendance ───────────────────────────────────────────────────
 router.get('/my-attendance',           attendanceGuard, attendanceCtrl.getTeacherSelfAttendance);
-router.post('/my-attendance/mark',     attendanceGuard, attendanceCtrl.markTeacherSelfAttendance);
+router.post('/my-attendance/clock-in',  attendanceGuard, attendanceCtrl.clockIn);
+router.post('/my-attendance/clock-out', attendanceGuard, attendanceCtrl.clockOut);
 
 // ── Regularization ────────────────────────────────────────────────────────────
 router.get('/regularization',          attendanceGuard, attendanceCtrl.getRegularizationForm);
@@ -95,6 +102,7 @@ router.post('/notifications/send',  notifGuard, notifCtrl.send);
 
 // ── Aptitude Exams ────────────────────────────────────────────────────────────
 router.get('/exams',                           examGuard, examCtrl.getTeacherExams);
+router.get('/exams/meta',                      examGuard, examCtrl.getExamMeta);
 router.post('/exams',                          examGuard, examCtrl.createExam);
 router.get('/exams/:id',                       examGuard, examCtrl.getExamDetail);
 router.put('/exams/:id',                       examGuard, examCtrl.updateExam);
@@ -116,6 +124,15 @@ router.get('/leave',           leaveGuard, leaveCtrl.teacherGetMyLeaves);
 router.get('/leave/balance',   leaveGuard, leaveCtrl.teacherGetLeaveBalance);
 router.post('/leave/apply',    leaveGuard, uploadLeaveDoc.single('document'), leaveCtrl.teacherApplyLeave);
 router.delete('/leave/:id',    leaveGuard, leaveCtrl.teacherCancelLeave);
+
+// ── Document Categories (read-only for teachers) ──────────────────────────────
+const DocumentCategory = require('../../models/DocumentCategory');
+router.get('/document-categories', docGuard, async (req, res) => {
+    try {
+        const cats = await DocumentCategory.find({ school: req.schoolId, isActive: true }).sort({ name: 1 }).lean();
+        res.json({ success: true, data: cats });
+    } catch (e) { res.status(500).json({ success: false, message: e.message }); }
+});
 
 // ── Documents ─────────────────────────────────────────────────────────────────
 router.get('/documents',                             docGuard, docCtrl.teacherGetDocuments);

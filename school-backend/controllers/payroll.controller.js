@@ -341,7 +341,17 @@ exports.getRunDetail = async (req, res) => {
         const entries = await PayrollEntry.find({ payrollRun: run._id })
             .populate('employee','name email employeeId')
             .lean();
-        res.json({ success: true, data: { ...run, entries } });
+
+        // Attach payslip ids (exist once the run is published) so the admin can download PDFs
+        const payslips = await Payslip.find({ payrollEntry: { $in: entries.map(e => e._id) } })
+            .select('payrollEntry status').lean();
+        const slipByEntry = Object.fromEntries(payslips.map(p => [p.payrollEntry.toString(), p]));
+        const withSlips = entries.map(e => ({
+            ...e,
+            payslip: slipByEntry[e._id.toString()] || null,
+        }));
+
+        res.json({ success: true, data: { ...run, entries: withSlips } });
     } catch (e) { res.status(500).json({ success: false, message: e.message }); }
 };
 

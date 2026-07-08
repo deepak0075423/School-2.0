@@ -3,6 +3,7 @@ import { Outlet, useLocation } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import Sidebar from './Sidebar';
 import Header  from './Header';
+import { ChatNotifyProvider } from '../../contexts/ChatNotifyContext';
 
 export default function AppLayout() {
   const [sidebarOpen,      setSidebarOpen]      = useState(false);
@@ -34,6 +35,7 @@ export default function AppLayout() {
   const closeSidebar = () => setSidebarOpen(false);
 
   return (
+    <ChatNotifyProvider>
     <div className={`app-shell${sidebarCollapsed ? ' sidebar-collapsed' : ''}`}>
       <div className={`sidebar-overlay${sidebarOpen ? ' show' : ''}`} onClick={closeSidebar} />
 
@@ -55,5 +57,6 @@ export default function AppLayout() {
         </div>
       </main>
     </div>
+    </ChatNotifyProvider>
   );
 }

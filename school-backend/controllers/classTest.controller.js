@@ -38,7 +38,7 @@ exports.teacherGetClassTests = async (req, res) => {
 
         const tests = await ClassTest.find(filter)
             .populate('section', 'sectionName')
-            .populate('subject', 'name')
+            .populate('subject', 'subjectName name')
             .sort({ testDate: -1 })
             .lean();
         res.json({ success: true, data: tests });
@@ -70,7 +70,7 @@ exports.teacherGetTestMarks = async (req, res) => {
     try {
         const test = await ClassTest.findOne({ _id: req.params.id, school: req.schoolId, createdBy: req.userId })
             .populate('section', 'sectionName enrolledStudents')
-            .populate('subject', 'name')
+            .populate('subject', 'subjectName name')
             .lean();
         if (!test) return res.status(404).json({ success: false, message: 'Test not found' });
 
@@ -143,7 +143,7 @@ exports.teacherGetClassTestValidation = async (req, res) => {
             school:  req.schoolId,
             status:  { $in: ['SUBMITTED', 'REOPENED'] },
         })
-            .populate('subject',  'name')
+            .populate('subject',  'subjectName name')
             .populate('section',  'sectionName')
             .populate('createdBy','name')
             .sort({ testDate: -1 })
@@ -155,7 +155,7 @@ exports.teacherGetClassTestValidation = async (req, res) => {
 exports.teacherGetClassTestValidationDetail = async (req, res) => {
     try {
         const test = await ClassTest.findOne({ _id: req.params.id, school: req.schoolId })
-            .populate('subject',   'name')
+            .populate('subject',   'subjectName name')
             .populate('section',   'sectionName')
             .populate('createdBy', 'name')
             .lean();
@@ -226,7 +226,7 @@ exports.studentGetClassTests = async (req, res) => {
             school:  req.schoolId,
             status:  'FINAL_APPROVED',
         })
-            .populate('subject', 'name')
+            .populate('subject', 'subjectName name')
             .sort({ testDate: -1 })
             .lean();
 
@@ -265,7 +265,7 @@ exports.parentGetClassTests = async (req, res) => {
         const tests = await ClassTest.find({
             section: profile.currentSection, school: req.schoolId, status: 'FINAL_APPROVED',
         })
-            .populate('subject', 'name')
+            .populate('subject', 'subjectName name')
             .sort({ testDate: -1 })
             .lean();
 

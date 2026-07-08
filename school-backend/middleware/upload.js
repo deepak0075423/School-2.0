@@ -35,11 +35,17 @@ const excelFilter = (req, file, cb) => {
     cb(ok ? null : new Error('Only Excel/CSV files allowed'), ok);
 };
 
+const chatFilter = (req, file, cb) => {
+    const ok = /\.(pdf|doc|docx|xls|xlsx|ppt|pptx|txt|jpg|jpeg|png|gif|webp|mp3|mp4|zip)$/i.test(file.originalname);
+    cb(ok ? null : new Error('Unsupported file type'), ok);
+};
+
 const uploadProfile  = multer({ storage: diskStorage('profiles'),  fileFilter: imageFilter, limits: { fileSize: 5 * 1024 * 1024 } });
 const uploadDocument = multer({ storage: diskStorage('documents'), fileFilter: docFilter,   limits: { fileSize: 10 * 1024 * 1024 } });
 const uploadExcel    = multer({ storage: multer.memoryStorage(),   fileFilter: excelFilter, limits: { fileSize: 5 * 1024 * 1024 } });
 const uploadImage    = multer({ storage: diskStorage('images'),    fileFilter: imageFilter, limits: { fileSize: 5 * 1024 * 1024 } });
 const uploadLeaveDoc = multer({ storage: diskStorage('leave-docs'), fileFilter: docFilter,  limits: { fileSize: 5 * 1024 * 1024 } });
 const uploadCsv      = multer({ storage: multer.memoryStorage(),   fileFilter: excelFilter, limits: { fileSize: 2 * 1024 * 1024 } });
+const uploadChat     = multer({ storage: diskStorage('chat'),      fileFilter: chatFilter,  limits: { fileSize: 10 * 1024 * 1024 } });
 
-module.exports = { uploadProfile, uploadDocument, uploadExcel, uploadImage, uploadLeaveDoc, uploadCsv };
+module.exports = { uploadProfile, uploadDocument, uploadExcel, uploadImage, uploadLeaveDoc, uploadCsv, uploadChat };

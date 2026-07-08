@@ -10,9 +10,12 @@ export const submitCorrection  = (data)   => api.post('/student/correction/submi
 export const getExams       = () => api.get('/student/exams');
 export const getAttempt     = (id) => api.get(`/student/exams/${id}/attempt`);
 export const saveAnswer     = (id, data) => api.post(`/student/exams/${id}/save-answer`, data);
+export const logViolation   = (id) => api.post(`/student/exams/${id}/violation`);
 export const submitExam     = (id) => api.post(`/student/exams/${id}/submit`);
 export const getExamResult  = (id) => api.get(`/student/exams/${id}/result`);
-export const getDocuments   = () => api.get('/student/documents');
+export const getDocuments       = () => api.get('/student/documents');
+export const getDocument        = (id)   => api.get(`/student/documents/${id}`);
+export const submitAssignment   = (id, data) => api.post(`/student/documents/${id}/submit`, data);
 export const getHolidays    = () => api.get('/student/holidays');
 export const getResults     = () => api.get('/student/results');
 export const getResultDetail = (id) => api.get(`/student/results/${id}`);

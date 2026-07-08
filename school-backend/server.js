@@ -100,6 +100,9 @@ app.use((err, req, res, next) => {
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
 
+// ── Chat broker (Redis pub/sub ⇄ WebSocket Gateway) ──────────────────────────
+require('./services/chatBrokerService').init();
+
 // ── Monthly Leave Accrual Scheduler ──────────────────────────────────────────
 (function scheduleMonthlyAccrual() {
     const School     = require('./models/School');

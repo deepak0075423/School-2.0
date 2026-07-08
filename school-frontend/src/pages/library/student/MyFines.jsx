@@ -7,7 +7,7 @@ const fmtDate = (d) => d ? new Date(d).toLocaleDateString('en-IN', { day:'2-digi
 
 export default function LibraryMyFines() {
   const { data, loading } = useFetch(getMyFines);
-  const fines = data?.data || [];
+  const fines = Array.isArray(data) ? data : [];
 
   const pending = fines.filter(f => f.status === 'pending');
   const totalDue = pending.reduce((s, f) => s + (f.amount || 0), 0);

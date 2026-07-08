@@ -7,7 +7,7 @@ const fmtDate = (d) => d ? new Date(d).toLocaleDateString('en-IN', { day:'2-digi
 
 export default function LibraryMyBooks() {
   const { data, loading } = useFetch(getMyBooks);
-  const books = data?.data || [];
+  const books = Array.isArray(data) ? data : [];
 
   const now = new Date();
   const statusColor = (r) => {

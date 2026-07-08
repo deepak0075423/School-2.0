@@ -86,7 +86,7 @@ exports.adminGetHolidays = async (req, res) => {
 
         const holidays = await Holiday.find(filter)
             .populate('createdBy', 'name')
-            .populate('academicYear', 'year label')
+            .populate('academicYear', 'yearName year label')
             .sort({ startDate: 1 })
             .lean();
         res.json({ success: true, data: holidays });

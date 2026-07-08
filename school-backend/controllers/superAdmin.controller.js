@@ -62,11 +62,20 @@ const sendWelcomeEmail = (to, name, email, otp, schoolName = 'School Management'
 
 exports.getDashboard = async (req, res) => {
     try {
-        const [schoolCount, userCount] = await Promise.all([
+        const [schoolCount, userCount, admins, teachers, students, parents, recentSchools] = await Promise.all([
             School.countDocuments(),
             User.countDocuments(),
+            User.countDocuments({ role: 'school_admin' }),
+            User.countDocuments({ role: 'teacher' }),
+            User.countDocuments({ role: 'student' }),
+            User.countDocuments({ role: 'parent' }),
+            School.find().sort({ createdAt: -1 }).limit(5).select('name code logo isActive createdAt').lean(),
         ]);
-        res.json({ success: true, data: { schoolCount, userCount } });
+        res.json({ success: true, data: {
+            schoolCount, userCount,
+            roles: { admins, teachers, students, parents },
+            recentSchools,
+        }});
     } catch (err) { res.status(500).json({ success: false, message: err.message }); }
 };
 

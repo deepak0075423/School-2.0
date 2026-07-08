@@ -10,6 +10,8 @@ export const getSchoolConfig      = ()   => api.get('/profile/school-config');
 
 // Users
 export const getTeachers = (params) => api.get('/admin/teachers', { params });
+export const getDesignations    = () => api.get('/admin/designations');
+export const updateDesignations = (designations) => api.put('/admin/designations', { designations });
 export const getTeacher  = (id) => api.get(`/admin/teachers/${id}`);
 export const createTeacher = (data) => api.post('/admin/teachers', data);
 export const deleteTeacher = (id) => api.delete(`/admin/teachers/${id}`);
@@ -96,10 +98,16 @@ export const downloadSectionTimetable    = (sectionId, yearId) => api.get(`/admi
 export const downloadAllTimetables       = (params)            => api.get('/admin/timetable/download-all', { params, responseType: 'blob' });
 
 // Documents
-export const getDocuments  = (params) => api.get('/admin/documents', { params });
-export const getDocument   = (id) => api.get(`/admin/documents/${id}`);
-export const uploadDocument = (data) => api.post('/admin/documents', data);
-export const deleteDocument = (id) => api.delete(`/admin/documents/${id}`);
+export const getDocuments    = (params)     => api.get('/admin/documents', { params });
+export const getDocument     = (id)         => api.get(`/admin/documents/${id}`);
+export const uploadDocument  = (data)       => api.post('/admin/documents', data);
+export const updateDocument  = (id, data)   => api.put(`/admin/documents/${id}`, data);
+export const deleteDocument  = (id)         => api.delete(`/admin/documents/${id}`);
+export const archiveDocument = (id)         => api.post(`/admin/documents/${id}/archive`);
+// Document Categories
+export const getDocumentCategories    = ()       => api.get('/admin/document-categories');
+export const createDocumentCategory   = (data)   => api.post('/admin/document-categories', data);
+export const deleteDocumentCategory   = (id)     => api.delete(`/admin/document-categories/${id}`);
 
 // Holidays
 export const getHolidays            = ()         => api.get('/admin/holidays');
@@ -112,12 +120,20 @@ export const exportHolidays         = ()         => api.get('/admin/holidays/exp
 export const downloadHolidayTemplate= ()         => api.get('/admin/holidays/template', { responseType: 'arraybuffer' }).then(r => r.data ?? r);
 export const getHolidayAuditLog     = (params)   => api.get('/admin/holidays/audit', { params });
 
+// Aptitude Exams (overview)
+export const getExams = (params) => api.get('/admin/exams', { params });
+
 // Results
-export const getFormalExams = () => api.get('/admin/results/exams');
+export const getFormalExams = (params) => api.get('/admin/results/exams', { params });
 export const createFormalExam = (data) => api.post('/admin/results/exams', data);
 export const getFormalExam  = (id) => api.get(`/admin/results/exams/${id}`);
+export const updateFormalExam  = (id, data) => api.put(`/admin/results/exams/${id}`, data);
+export const deleteFormalExam  = (id) => api.delete(`/admin/results/exams/${id}`);
 export const approveFormalExam = (id) => api.post(`/admin/results/exams/${id}/approve`);
 export const rejectFormalExam  = (id, data) => api.post(`/admin/results/exams/${id}/reject`, data);
+export const reopenFormalExam  = (id, data) => api.post(`/admin/results/exams/${id}/reopen`, data);
+export const getMarksReview    = (id) => api.get(`/admin/results/exams/${id}/marks-review`);
+export const getResultSectionSubjects = (sectionId) => api.get(`/admin/results/sections/${sectionId}/subjects`);
 
 // Notifications
 export const sendNotification = (data) => api.post('/admin/notifications/send', data);
@@ -126,3 +142,8 @@ export const getNotifications  = () => api.get('/admin/notifications');
 // Attendance
 export const getRegularizationRequests = (params) => api.get('/admin/regularization-requests', { params });
 export const reviewRegularization = (data) => api.post('/admin/regularization-requests/review', data);
+export const getMyAttendance  = (params) => api.get('/admin/my-attendance', { params });
+export const clockIn          = ()       => api.post('/admin/my-attendance/clock-in');
+export const clockOut         = ()       => api.post('/admin/my-attendance/clock-out');
+export const submitRegularization = (data) => api.post('/admin/regularization', data);
+export const getMyRegularizations = ()     => api.get('/admin/regularization');

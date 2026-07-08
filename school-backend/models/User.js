@@ -48,6 +48,11 @@ const UserSchema = new mongoose.Schema({
         type: Boolean,
         default: true,
     },
+    // Presence — refreshed by the client heartbeat; "online" = within ~60s
+    lastSeenAt: {
+        type: Date,
+        default: null,
+    },
     createdBy: {
         type: mongoose.Schema.Types.ObjectId,
         ref: 'User',

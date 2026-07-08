@@ -35,6 +35,37 @@ export default function Teachers() {
     [page, search],
   );
 
+  // Designation dropdown options (admin-managed)
+  const { data: desigData, refetch: refetchDesigs } = useFetch(api.getDesignations);
+  const designations = Array.isArray(desigData) ? desigData : [];
+  const [desigModal, setDesigModal] = useState(false);
+  const [newDesig, setNewDesig]     = useState('');
+  const [desigSaving, setDesigSaving] = useState(false);
+
+  const saveDesignations = async (list) => {
+    setDesigSaving(true);
+    try {
+      await api.updateDesignations(list);
+      refetchDesigs();
+    } catch (err) { toast.error(err.message); }
+    finally { setDesigSaving(false); }
+  };
+
+  const addDesignation = async (e) => {
+    e.preventDefault();
+    const name = newDesig.trim();
+    if (!name) return;
+    if (designations.some(d => d.toLowerCase() === name.toLowerCase()))
+      return toast.error('Already exists');
+    await saveDesignations([...designations, name]);
+    setNewDesig('');
+  };
+
+  const removeDesignation = async (name) => {
+    if (designations.length <= 1) return toast.error('Keep at least one designation');
+    await saveDesignations(designations.filter(d => d !== name));
+  };
+
   const f = (key) => (e) => setForm(p => ({ ...p, [key]: e.target.value }));
 
   const handleCreate = async (e) => {
@@ -120,7 +151,12 @@ export default function Teachers() {
   return (
     <div className="page">
       <PageHeader title="Teachers" subtitle={`${data?.total ?? 0} teachers`}
-        action={<Button onClick={() => { setForm(EMPTY); setFieldErr({}); setModal(true); }}>+ Add Teacher</Button>} />
+        action={
+          <div style={{ display: 'flex', gap: 8 }}>
+            <Button variant="secondary" onClick={() => setDesigModal(true)}>⚙️ Designations</Button>
+            <Button onClick={() => { setForm(EMPTY); setFieldErr({}); setModal(true); }}>+ Add Teacher</Button>
+          </div>
+        } />
 
       <div className="card">
         <div className="card-header">
@@ -160,8 +196,10 @@ export default function Teachers() {
             </div>
             <div className="form-group">
               <label className="form-label">Designation</label>
-              <input className="form-control" placeholder="e.g. Head of Science"
-                value={form.designation} onChange={f('designation')} />
+              <select className="form-control" value={form.designation} onChange={f('designation')}>
+                <option value="">— Select —</option>
+                {designations.map(d => <option key={d} value={d}>{d}</option>)}
+              </select>
             </div>
           </div>
           <p style={{ fontSize: '.75rem', color: 'var(--text-muted)', marginTop: 8 }}>
@@ -190,8 +228,14 @@ export default function Teachers() {
             </div>
             <div className="form-group">
               <label className="form-label">Designation</label>
-              <input className="form-control"
-                value={editForm.designation} onChange={e => setEditForm(p => ({ ...p, designation: e.target.value }))} />
+              <select className="form-control" value={editForm.designation}
+                onChange={e => setEditForm(p => ({ ...p, designation: e.target.value }))}>
+                <option value="">— Select —</option>
+                {editForm.designation && !designations.includes(editForm.designation) && (
+                  <option value={editForm.designation}>{editForm.designation}</option>
+                )}
+                {designations.map(d => <option key={d} value={d}>{d}</option>)}
+              </select>
             </div>
             <div className="form-group" style={{ gridColumn: 'span 2' }}>
               <label className="form-label">New Password</label>
@@ -200,6 +244,28 @@ export default function Teachers() {
             </div>
           </div>
         </form>
+      </Modal>
+
+      {/* ── Manage Designations Modal ─────────────────────────────────────────── */}
+      <Modal open={desigModal} onClose={() => setDesigModal(false)} title="Manage Designations">
+        <p style={{ fontSize: '.82rem', color: 'var(--text-muted)', marginBottom: 12 }}>
+          These options appear in the Designation dropdown when creating or editing a teacher.
+          A teacher with the <strong>Librarian</strong> designation can manage the library module.
+        </p>
+        <form onSubmit={addDesignation} style={{ display: 'flex', gap: 8, marginBottom: 14 }}>
+          <input className="form-control" placeholder="e.g. Head of Science"
+            value={newDesig} onChange={e => setNewDesig(e.target.value)} />
+          <Button type="submit" loading={desigSaving}>Add</Button>
+        </form>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 6, maxHeight: 300, overflowY: 'auto' }}>
+          {designations.map(d => (
+            <div key={d} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', border: '1px solid var(--border)', borderRadius: 8, padding: '8px 12px' }}>
+              <span style={{ fontSize: '.9rem' }}>{d}{d === 'Librarian' && <span style={{ marginLeft: 8, fontSize: '.72rem', color: 'var(--text-muted)' }}>📖 library access</span>}</span>
+              <button className="btn btn-danger btn-sm" disabled={desigSaving}
+                onClick={() => removeDesignation(d)}>✕</button>
+            </div>
+          ))}
+        </div>
       </Modal>
 
       <Confirm open={!!del} onClose={() => setDel(null)} onConfirm={handleDelete}

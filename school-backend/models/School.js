@@ -55,6 +55,11 @@ const SchoolSchema = new mongoose.Schema({
         default: true,
     },
     // Per-school module feature flags — controlled by Super Admin
+    // Teacher designations the admin can assign (dropdown source)
+    designations: {
+        type: [String],
+        default: ['Teacher', 'Class Teacher', 'Librarian'],
+    },
     modules: {
         attendance: {
             type: Boolean,

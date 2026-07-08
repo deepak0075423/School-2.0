@@ -2,6 +2,10 @@ import React, { Suspense, lazy } from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import AppLayout from './components/layout/AppLayout';
+import ModuleNav, {
+  FEES_ADMIN_TABS, PAYROLL_ADMIN_TABS, LIBRARY_ADMIN_TABS,
+  LIBRARY_STUDENT_TABS, PAYROLL_TEACHER_TABS, LIBRARY_MANAGE_TABS,
+} from './components/layout/ModuleNav';
 
 // ── Auth Pages ────────────────────────────────────────────────────────────────
 const Login          = lazy(() => import('./pages/auth/Login'));
@@ -35,6 +39,7 @@ const ALeave        = lazy(() => import('./pages/admin/Leave'));
 const ADocuments    = lazy(() => import('./pages/admin/Documents'));
 const AHolidays     = lazy(() => import('./pages/admin/Holidays'));
 const AAttendance   = lazy(() => import('./pages/admin/Attendance'));
+const AExams        = lazy(() => import('./pages/admin/Exams'));
 const AAdmins       = lazy(() => import('./pages/admin/Admins'));
 const AReports         = lazy(() => import('./pages/admin/Reports'));
 const ASchoolSettings  = lazy(() => import('./pages/admin/SchoolSettings'));
@@ -88,6 +93,7 @@ const FConcessions  = lazy(() => import('./pages/fees/admin/Concessions'));
 const FStudentFees  = lazy(() => import('./pages/fees/admin/StudentFees'));
 const FPayments     = lazy(() => import('./pages/fees/admin/Payments'));
 const FReports      = lazy(() => import('./pages/fees/admin/Reports'));
+const FSettings     = lazy(() => import('./pages/fees/admin/Settings'));
 
 // ── Payroll ───────────────────────────────────────────────────────────────────
 const PayDashboard  = lazy(() => import('./pages/payroll/admin/Dashboard'));
@@ -194,6 +200,7 @@ export default function App() {
             <Route path="subjects"        element={<ASubjects />} />
             <Route path="timetable"       element={<ATimetable />} />
             <Route path="notifications"   element={<ANotifications />} />
+            <Route path="exams"           element={<AExams />} />
             <Route path="results/*"       element={<AResults />} />
             <Route path="leave/*"         element={<ALeave />} />
             <Route path="documents"       element={<ADocuments />} />
@@ -202,27 +209,37 @@ export default function App() {
             <Route path="reports"          element={<AReports />} />
             <Route path="school-settings" element={<ASchoolSettings />} />
             {/* Fees */}
-            <Route path="fees/dashboard"      element={<FAdminDash />} />
-            <Route path="fees/categories"     element={<FCategories />} />
-            <Route path="fees/heads"          element={<FHeads />} />
-            <Route path="fees/structures"     element={<FStructures />} />
-            <Route path="fees/fine-rules"     element={<FFineRules />} />
-            <Route path="fees/concessions"    element={<FConcessions />} />
-            <Route path="fees/student-fees"   element={<FStudentFees />} />
-            <Route path="fees/payments"       element={<FPayments />} />
-            <Route path="fees/reports"        element={<FReports />} />
+            <Route path="fees" element={<ModuleNav tabs={FEES_ADMIN_TABS} />}>
+              <Route index element={<Navigate to="dashboard" replace />} />
+              <Route path="dashboard"      element={<FAdminDash />} />
+              <Route path="categories"     element={<FCategories />} />
+              <Route path="heads"          element={<FHeads />} />
+              <Route path="structures"     element={<FStructures />} />
+              <Route path="fine-rules"     element={<FFineRules />} />
+              <Route path="concessions"    element={<FConcessions />} />
+              <Route path="student-fees"   element={<FStudentFees />} />
+              <Route path="payments"       element={<FPayments />} />
+              <Route path="reports"        element={<FReports />} />
+              <Route path="settings"       element={<FSettings />} />
+            </Route>
             {/* Payroll */}
-            <Route path="payroll/dashboard"   element={<PayDashboard />} />
-            <Route path="payroll/structures"  element={<PayStructures />} />
-            <Route path="payroll/assignments" element={<PayAssignments />} />
-            <Route path="payroll/runs"        element={<PayRuns />} />
+            <Route path="payroll" element={<ModuleNav tabs={PAYROLL_ADMIN_TABS} />}>
+              <Route index element={<Navigate to="dashboard" replace />} />
+              <Route path="dashboard"   element={<PayDashboard />} />
+              <Route path="structures"  element={<PayStructures />} />
+              <Route path="assignments" element={<PayAssignments />} />
+              <Route path="runs"        element={<PayRuns />} />
+            </Route>
             {/* Library */}
-            <Route path="library/dashboard"   element={<LibDashboard />} />
-            <Route path="library/books"       element={<LibBooks />} />
-            <Route path="library/circulation" element={<LibCirculation />} />
-            <Route path="library/reservations"element={<LibReservations />} />
-            <Route path="library/fines"       element={<LibFines />} />
-            <Route path="library/policy"      element={<LibPolicy />} />
+            <Route path="library" element={<ModuleNav tabs={LIBRARY_ADMIN_TABS} />}>
+              <Route index element={<Navigate to="dashboard" replace />} />
+              <Route path="dashboard"   element={<LibDashboard />} />
+              <Route path="books"       element={<LibBooks />} />
+              <Route path="circulation" element={<LibCirculation />} />
+              <Route path="reservations"element={<LibReservations />} />
+              <Route path="fines"       element={<LibFines />} />
+              <Route path="policy"      element={<LibPolicy />} />
+            </Route>
           </Route>
 
           {/* Teacher */}
@@ -237,12 +254,28 @@ export default function App() {
             <Route path="results/*"    element={<TResults />} />
             <Route path="leave"        element={<TLeave />} />
             <Route path="documents"    element={<TDocuments />} />
-            <Route path="payroll/ctc"      element={<PayMyCtc />} />
-            <Route path="payroll/payslips" element={<PayMyPayslips />} />
-            <Route path="library"          element={<SLibrary />} />
-            <Route path="library/search"   element={<SLibSearch />} />
-            <Route path="library/my-books" element={<SLibMyBooks />} />
-            <Route path="library/my-fines" element={<SLibMyFines />} />
+            <Route path="payroll" element={<ModuleNav tabs={PAYROLL_TEACHER_TABS} />}>
+              <Route index element={<Navigate to="ctc" replace />} />
+              <Route path="ctc"      element={<PayMyCtc />} />
+              <Route path="payslips" element={<PayMyPayslips />} />
+            </Route>
+            <Route element={<ModuleNav tabs={LIBRARY_STUDENT_TABS('/teacher')} />}>
+              <Route path="library"          element={<SLibrary />} />
+              <Route path="library/search"   element={<SLibSearch />} />
+              <Route path="library/my-books" element={<SLibMyBooks />} />
+              <Route path="library/my-fines" element={<SLibMyFines />} />
+            </Route>
+            {/* Library management for teachers with the Librarian designation
+                (backend enforces the designation on every endpoint) */}
+            <Route path="manage-library" element={<ModuleNav tabs={LIBRARY_MANAGE_TABS('/teacher/manage-library')} />}>
+              <Route index element={<Navigate to="dashboard" replace />} />
+              <Route path="dashboard"   element={<LibDashboard />} />
+              <Route path="books"       element={<LibBooks />} />
+              <Route path="circulation" element={<LibCirculation />} />
+              <Route path="reservations"element={<LibReservations />} />
+              <Route path="fines"       element={<LibFines />} />
+              <Route path="policy"      element={<LibPolicy />} />
+            </Route>
             <Route path="holidays"         element={<THolidays />} />
             <Route path="notifications"    element={<SharedNotifications />} />
           </Route>
@@ -260,10 +293,12 @@ export default function App() {
             <Route path="documents"        element={<SDocuments />} />
             <Route path="holidays"         element={<SHolidays />} />
             <Route path="fees/*"           element={<SFees />} />
-            <Route path="library"          element={<SLibrary />} />
-            <Route path="library/search"   element={<SLibSearch />} />
-            <Route path="library/my-books" element={<SLibMyBooks />} />
-            <Route path="library/my-fines" element={<SLibMyFines />} />
+            <Route element={<ModuleNav tabs={LIBRARY_STUDENT_TABS('/student')} />}>
+              <Route path="library"          element={<SLibrary />} />
+              <Route path="library/search"   element={<SLibSearch />} />
+              <Route path="library/my-books" element={<SLibMyBooks />} />
+              <Route path="library/my-fines" element={<SLibMyFines />} />
+            </Route>
             <Route path="notifications"    element={<SharedNotifications />} />
           </Route>
 

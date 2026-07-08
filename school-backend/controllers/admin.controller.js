@@ -67,12 +67,37 @@ const jsonErr = (res, err, status = 500)  => res.status(status).json({ success: 
 exports.getDashboard = async (req, res) => {
     try {
         const school = req.schoolId;
-        const [teachers, students, parents] = await Promise.all([
+        const LeaveApplication = require('../models/LeaveApplication');
+        const FeePayment       = require('../models/FeePayment');
+        const FormalExam       = require('../models/FormalExam');
+        const TeacherAttendanceRegularization = require('../models/TeacherAttendanceRegularization');
+        const Notification     = require('../models/Notification');
+
+        const [teachers, students, parents, sections,
+               pendingLeaves, pendingPayments, examsToPublish, pendingRegularizations,
+               recentNotifications] = await Promise.all([
             User.countDocuments({ school, role: 'teacher' }),
             User.countDocuments({ school, role: 'student' }),
             User.countDocuments({ school, role: 'parent' }),
+            ClassSection.countDocuments({ school, status: 'active' }),
+            LeaveApplication.countDocuments({ school, status: 'pending' }).catch(() => 0),
+            FeePayment.countDocuments({ school, paymentStatus: 'pending' }).catch(() => 0),
+            FormalExam.countDocuments({ school, status: 'CLASS_APPROVED' }).catch(() => 0),
+            TeacherAttendanceRegularization.countDocuments({ school, status: 'Pending' }).catch(() => 0),
+            Notification.find({ school }).sort({ createdAt: -1 }).limit(5)
+                .select('title createdAt senderRole recipientCount').lean().catch(() => []),
         ]);
-        jsonOk(res, { teachers, students, parents });
+
+        jsonOk(res, {
+            teachers, students, parents, sections,
+            pending: {
+                leaves:          pendingLeaves,
+                payments:        pendingPayments,
+                examsToPublish,
+                regularizations: pendingRegularizations,
+            },
+            recentNotifications,
+        });
     } catch (err) { jsonErr(res, err); }
 };
 
@@ -576,6 +601,30 @@ exports.parentLookup = async (req, res) => {
 };
 
 // ── School Settings ───────────────────────────────────────────────────────────
+
+// ── Teacher designations (dropdown source, admin-managed) ─────────────────────
+
+const DEFAULT_DESIGNATIONS = ['Teacher', 'Class Teacher', 'Librarian'];
+
+exports.getDesignations = async (req, res) => {
+    try {
+        const school = await School.findById(req.schoolId).select('designations').lean();
+        const list = (school?.designations?.length ? school.designations : DEFAULT_DESIGNATIONS);
+        jsonOk(res, list);
+    } catch (err) { jsonErr(res, err); }
+};
+
+exports.updateDesignations = async (req, res) => {
+    try {
+        let { designations } = req.body;
+        if (!Array.isArray(designations)) return res.status(400).json({ success: false, message: 'designations must be an array' });
+        designations = [...new Set(designations.map(d => String(d).trim()).filter(Boolean))];
+        if (!designations.length) return res.status(400).json({ success: false, message: 'At least one designation is required' });
+
+        await School.findByIdAndUpdate(req.schoolId, { designations });
+        jsonOk(res, designations);
+    } catch (err) { jsonErr(res, err); }
+};
 
 exports.getSchoolSettings = async (req, res) => {
     try {

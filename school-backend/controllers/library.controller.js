@@ -123,7 +123,8 @@ exports.updateBook = async (req, res) => {
         if (language    !== undefined) update.language    = language;
         if (description !== undefined) update.description = description;
 
-        const book = await LibraryBook.findByIdAndUpdate(req.params.id, update, { new: true }).lean();
+        const book = await LibraryBook.findOneAndUpdate({ _id: req.params.id, school: req.schoolId }, update, { new: true }).lean();
+        if (!book) return res.status(404).json({ success: false, message: 'Book not found' });
         audit(req.schoolId, req.userId, req.userRole, 'BOOK_UPDATED', 'Book', book._id, old, book);
         res.json({ success: true, data: book });
     } catch (e) { res.status(500).json({ success: false, message: e.message }); }

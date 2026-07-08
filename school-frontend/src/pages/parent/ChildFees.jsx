@@ -1,56 +1,77 @@
-import React from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
+import * as feesApi from '../../api/fees.api';
 import { useAuth } from '../../contexts/AuthContext';
-import useFetch from '../../hooks/useFetch';
-import { getChildFees } from '../../api/fees.api';
-import { PageHeader, Table, Badge, Spinner, Card } from '../../components/ui/index';
+import { PageHeader, Spinner } from '../../components/ui/index';
+import FeeBook from '../../components/fees/FeeBook';
 
 export default function ParentChildFees() {
   const { user } = useAuth();
-  const childId  = user?.children?.[0]?._id || user?.linkedStudent;
 
-  const { data, loading } = useFetch(
-    () => childId ? getChildFees(childId) : Promise.resolve(null),
-    [childId],
-  );
+  const [children, setChildren] = useState([]);
+  const [childId, setChildId]   = useState('');
+  const [data, setData]         = useState(null);
+  const [loading, setLoading]   = useState(true);
+  const [error, setError]       = useState(null);
 
-  const statusColor = { paid: 'success', unpaid: 'danger', partial: 'warning', waived: 'muted' };
+  useEffect(() => {
+    (async () => {
+      try {
+        const res = await feesApi.getMyChildren();
+        const kids = res?.data || [];
+        setChildren(kids);
+        if (kids.length) setChildId(String(kids[0]._id));
+        else { setLoading(false); setError('No child linked to your account. Contact the school admin.'); }
+      } catch (err) {
+        setLoading(false);
+        setError(err.message || 'Failed to load children');
+      }
+    })();
+  }, []);
 
-  const columns = [
-    { key: 'head',   label: 'Fee Head',  render: r => r.feeHead?.name || r.label || '—' },
-    { key: 'amount', label: 'Amount',    render: r => `₹${(r.amount||0).toLocaleString()}` },
-    { key: 'paid',   label: 'Paid',      render: r => `₹${(r.paidAmount||0).toLocaleString()}` },
-    { key: 'due',    label: 'Due',       render: r => `₹${(r.dueAmount||0).toLocaleString()}` },
-    { key: 'status', label: 'Status',    render: r => <Badge variant={statusColor[r.status] || 'muted'}>{r.status}</Badge> },
-  ];
+  const loadFees = useCallback(async () => {
+    if (!childId) return;
+    setLoading(true);
+    setError(null);
+    try {
+      const res = await feesApi.getChildFees(childId);
+      setData(res?.data || null);
+    } catch (err) {
+      setError(err.message || 'Failed to load fees');
+    } finally { setLoading(false); }
+  }, [childId]);
+
+  useEffect(() => { loadFees(); }, [loadFees]);
 
   return (
     <div className="page">
-      <PageHeader title="Child's Fees" subtitle="Fee details and payment history" />
+      <PageHeader title={data?.child?.name ? `Fee Book — ${data.child.name}` : "Child's Fees"}
+        subtitle={data?.activeYear?.yearName ? `Academic year ${data.activeYear.yearName}` : 'Fee dues, schedule and payments'}
+        action={children.length > 1 && (
+          <select className="form-control" style={{ width: 200 }} value={childId}
+            onChange={e => setChildId(e.target.value)}>
+            {children.map(c => <option key={c._id} value={c._id}>{c.name}</option>)}
+          </select>
+        )} />
+
       {loading ? (
         <div style={{ display: 'flex', justifyContent: 'center', padding: 48 }}><Spinner /></div>
+      ) : error ? (
+        <div className="card"><div className="card-body" style={{ textAlign: 'center', padding: 48 }}>
+          <div style={{ fontSize: '2.5rem', marginBottom: 8 }}>👨‍👩‍👧</div>
+          <p style={{ color: 'var(--text-muted)' }}>{error}</p>
+        </div></div>
       ) : (
-        <>
-          {data?.summary && (
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill,minmax(160px,1fr))', gap: 12, marginBottom: 20 }}>
-              {[
-                { label: 'Total Fees',  value: `₹${(data.summary.total||0).toLocaleString()}`,    bg: '#dbeafe' },
-                { label: 'Paid',        value: `₹${(data.summary.paid||0).toLocaleString()}`,     bg: '#d1fae5' },
-                { label: 'Due',         value: `₹${(data.summary.due||0).toLocaleString()}`,      bg: '#fee2e2' },
-                { label: 'Fine',        value: `₹${(data.summary.fine||0).toLocaleString()}`,     bg: '#fef3c7' },
-              ].map(s => (
-                <div key={s.label} style={{ background: s.bg, borderRadius: 'var(--radius)', padding: '16px 20px' }}>
-                  <div style={{ fontSize: '.75rem', color: 'var(--text-muted)', marginBottom: 4 }}>{s.label}</div>
-                  <div style={{ fontSize: '1.25rem', fontWeight: 700 }}>{s.value}</div>
-                </div>
-              ))}
-            </div>
-          )}
-          <div className="card">
-            <div className="card-body" style={{ padding: 0 }}>
-              <Table columns={columns} data={data?.fees} emptyIcon="💰" emptyTitle="No fee records" />
-            </div>
-          </div>
-        </>
+        <FeeBook
+          data={data}
+          payerName={user?.name}
+          onRefresh={loadFees}
+          api={{
+            payNow:              (body) => feesApi.parentPayNow(childId, body),
+            createRazorpayOrder: (body) => feesApi.parentCreateRazorpayOrder(childId, body),
+            verifyRazorpay:      (body) => feesApi.parentVerifyRazorpay(childId, body),
+            downloadReceipt:     (paymentId) => feesApi.downloadChildReceipt(childId, paymentId),
+          }}
+        />
       )}
     </div>
   );

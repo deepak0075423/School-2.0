@@ -13,7 +13,7 @@ export default function LibraryCirculation() {
     () => getIssuances({ status: statusFilter || undefined, page, limit: 20 }),
     [statusFilter, page],
   );
-  const issuances = data?.data || [];
+  const issuances = Array.isArray(data) ? data : [];
 
   // ── Issue Book ───────────────────────────────────────────────────────────────
   const [issueModal, setIssueModal] = useState(false);

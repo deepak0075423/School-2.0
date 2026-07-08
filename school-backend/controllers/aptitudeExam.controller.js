@@ -48,9 +48,9 @@ exports.getAdminExams = async (req, res) => {
         const [exams, total] = await Promise.all([
             AptitudeExam.find(filter)
                 .populate('section',     'sectionName')
-                .populate('subject',     'name')
+                .populate('subject',     'subjectName')
                 .populate('createdBy',   'name')
-                .populate('academicYear','label')
+                .populate('academicYear','yearName')
                 .sort({ examDate: -1 })
                 .skip((+page - 1) * +limit)
                 .limit(+limit)
@@ -62,6 +62,37 @@ exports.getAdminExams = async (req, res) => {
 };
 
 // ── Teacher: Exams CRUD ───────────────────────────────────────────────────────
+
+// Sections the teacher owns (class teacher / substitute) or teaches via timetable,
+// plus subjects and the active academic year — feeds the create/edit exam form.
+exports.getExamMeta = async (req, res) => {
+    try {
+        const Timetable      = require('../models/Timetable');
+        const TimetableEntry = require('../models/TimetableEntry');
+        const Subject        = require('../models/Subject');
+
+        const [ownSections, timetableIds, subjects, academicYear] = await Promise.all([
+            ClassSection.find({
+                school: req.schoolId, status: 'active',
+                $or: [{ classTeacher: req.userId }, { substituteTeacher: req.userId }],
+            }).populate('class', 'name className').lean(),
+            TimetableEntry.find({ teacher: req.userId }).distinct('timetable'),
+            Subject.find({ school: req.schoolId }).sort('subjectName').lean(),
+            getActiveYear(req.schoolId),
+        ]);
+
+        const timetables = await Timetable.find({ _id: { $in: timetableIds } }).select('section').lean();
+        const sectionIds = timetables.map(t => t.section).filter(Boolean);
+        const taughtSections = await ClassSection.find({
+            _id: { $in: sectionIds }, school: req.schoolId, status: 'active',
+        }).populate('class', 'name className').lean();
+
+        const map = {};
+        [...ownSections, ...taughtSections].forEach(s => { map[s._id.toString()] = s; });
+
+        res.json({ success: true, data: { sections: Object.values(map), subjects, academicYear } });
+    } catch (e) { res.status(500).json({ success: false, message: e.message }); }
+};
 
 exports.getTeacherExams = async (req, res) => {
     try {
@@ -79,8 +110,8 @@ exports.getTeacherExams = async (req, res) => {
 
         const exams = await AptitudeExam.find(filter)
             .populate('section',     'sectionName')
-            .populate('subject',     'name')
-            .populate('academicYear','label')
+            .populate('subject',     'subjectName')
+            .populate('academicYear','yearName')
             .sort({ examDate: -1 })
             .lean();
 
@@ -120,8 +151,8 @@ exports.getExamDetail = async (req, res) => {
     try {
         const exam = await AptitudeExam.findOne({ _id: req.params.id, school: req.schoolId })
             .populate('section',     'sectionName')
-            .populate('subject',     'name')
-            .populate('academicYear','label')
+            .populate('subject',     'subjectName')
+            .populate('academicYear','yearName')
             .populate('createdBy',   'name')
             .lean();
         if (!exam) return res.status(404).json({ success: false, message: 'Exam not found' });
@@ -393,8 +424,8 @@ exports.getStudentExams = async (req, res) => {
         const exams = await AptitudeExam.find({
             school: req.schoolId, section: profile.currentSection, status: 'published',
         })
-            .populate('subject',     'name')
-            .populate('academicYear','label')
+            .populate('subject',     'subjectName')
+            .populate('academicYear','yearName')
             .sort({ examDate: -1 })
             .lean();
 
@@ -607,18 +638,41 @@ exports.getParentExamResults = async (req, res) => {
             school: req.schoolId, section: profile.currentSection,
             status: 'published', resultApprovalStatus: 'approved',
         })
-            .populate('subject',      'name')
-            .populate('academicYear', 'label')
+            .populate('subject',      'subjectName')
+            .populate('academicYear', 'yearName')
             .sort({ examDate: -1 })
             .lean();
 
         const examIds = exams.map(e => e._id);
-        const attempts = await ExamAttempt.find({ student: childId, exam: { $in: examIds }, status: 'submitted' })
-            .select('exam score percentage passed submittedAt')
-            .lean();
-        const attemptMap = Object.fromEntries(attempts.map(a => [a.exam.toString(), a]));
+        const [attempts, questions] = await Promise.all([
+            ExamAttempt.find({ student: childId, exam: { $in: examIds }, status: { $in: ['submitted', 'auto_submitted'] } })
+                .select('exam answers submittedAt status')
+                .lean(),
+            AptitudeQuestion.find({ exam: { $in: examIds } }).lean(),
+        ]);
+        const qByExam = {};
+        questions.forEach(q => {
+            const k = q.exam.toString();
+            (qByExam[k] = qByExam[k] || []).push(q);
+        });
+        const attemptMap = {};
+        for (const a of attempts) {
+            const k = a.exam.toString();
+            const score = scoreAttempt(qByExam[k] || [], a.answers || []);
+            attemptMap[k] = { _id: a._id, submittedAt: a.submittedAt, status: a.status, score };
+        }
 
-        const data = exams.map(e => ({ ...e, attempt: attemptMap[e._id.toString()] || null }));
+        const data = exams.map(e => {
+            const a = attemptMap[e._id.toString()] || null;
+            return {
+                ...e,
+                attempt: a && {
+                    ...a,
+                    percentage: e.totalMarks ? Math.round((a.score / e.totalMarks) * 100) : 0,
+                    passed:     a.score >= e.totalMarks * 0.4,
+                },
+            };
+        });
         res.json({ success: true, data });
     } catch (e) { res.status(500).json({ success: false, message: e.message }); }
 };

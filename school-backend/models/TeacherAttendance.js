@@ -20,6 +20,15 @@ const TeacherAttendanceSchema = new mongoose.Schema({
         enum: ['Present', 'Absent', 'Half-Day', 'Leave'],
         required: true,
     },
+    // Clock in/out times as 'HH:mm' — presence is derived from checkIn
+    checkIn: {
+        type: String,
+        default: '',
+    },
+    checkOut: {
+        type: String,
+        default: '',
+    },
     remarks: {
         type: String,
         default: '',
@@ -44,9 +53,9 @@ const TeacherAttendanceSchema = new mongoose.Schema({
 TeacherAttendanceSchema.index({ teacher: 1, date: 1 }, { unique: true });
 TeacherAttendanceSchema.index({ school: 1, date: 1 });
 
-TeacherAttendanceSchema.pre('save', function (next) {
+// Mongoose 9: middleware is promise-based — no `next` callback
+TeacherAttendanceSchema.pre('save', function () {
     this.updatedAt = new Date();
-    next();
 });
 
 module.exports = mongoose.model('TeacherAttendance', TeacherAttendanceSchema);

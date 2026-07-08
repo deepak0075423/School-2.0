@@ -13,7 +13,7 @@ export default function LibraryFines() {
     () => getFines({ status: statusFilter || undefined, page, limit: 20 }),
     [statusFilter, page],
   );
-  const fines = data?.data || [];
+  const fines = Array.isArray(data) ? data : [];
 
   const [waiveModal,  setWaiveModal]  = useState(null);
   const [waiveReason, setWaiveReason] = useState('');

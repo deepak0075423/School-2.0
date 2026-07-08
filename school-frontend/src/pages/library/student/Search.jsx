@@ -17,7 +17,7 @@ export default function LibrarySearch() {
     () => studentSearch({ q: query || undefined, category: category || undefined, page, limit: 20 }),
     [query, category, page],
   );
-  const books = data?.data || [];
+  const books = Array.isArray(data) ? data : [];
 
   const handleReserve = async (bookId) => {
     try { await studentReserve(bookId); toast.success('Book reserved!'); }

@@ -565,13 +565,31 @@ exports.recordPayment = async (req, res) => {
 
 exports.approvePayment = async (req, res) => {
     try {
-        const payment = await FeePayment.findOneAndUpdate(
-            { _id: req.params.id, school: req.schoolId, paymentStatus: 'pending' },
-            { paymentStatus: 'completed', collectedBy: req.userId },
-            { new: true }
-        ).lean();
-        if (!payment) return res.status(404).json({ success: false, message: 'Pending payment not found' });
-        res.json({ success: true, data: payment });
+        const payment = await FeePayment.findOne({ _id: req.params.id, school: req.schoolId });
+        if (!payment) return res.status(404).json({ success: false, message: 'Payment not found' });
+        if (payment.paymentStatus !== 'pending')
+            return res.status(400).json({ success: false, message: 'Only pending payments can be approved' });
+
+        const ay            = await getActiveYear(req.schoolId);
+        const academicYear  = payment.academicYear || ay?._id;
+        const receiptNumber = await nextReceiptNumber(req.schoolId);
+        const running       = await computeRunningBalance(req.schoolId, payment.student, academicYear, -payment.amount);
+
+        const ledger = await FeeLedger.create({
+            school: req.schoolId, student: payment.student, academicYear,
+            entryType: 'credit', category: 'payment', amount: payment.amount,
+            description: `Payment received — ${receiptNumber}`,
+            referenceType: 'FeePayment', referenceId: payment._id,
+            runningBalance: running, createdBy: req.userId,
+        });
+
+        payment.paymentStatus = 'completed';
+        payment.receiptNumber = receiptNumber;
+        payment.ledgerEntry   = ledger._id;
+        payment.collectedBy   = req.userId;
+        await payment.save();
+
+        res.json({ success: true, data: payment.toObject() });
     } catch (e) { res.status(500).json({ success: false, message: e.message }); }
 };
 
@@ -728,16 +746,18 @@ exports.updateSettings = async (req, res) => {
         if (onlinePaymentEnabled !== undefined) update.onlinePaymentEnabled = !!onlinePaymentEnabled;
         if (paymentGateway       !== undefined) update.paymentGateway       = paymentGateway;
         if (razorpayKeyId        !== undefined) update.razorpayKeyId        = razorpayKeyId;
-        if (razorpayKeySecret    !== undefined) update.razorpayKeySecret    = razorpayKeySecret;
+        // '***' is the mask sent back by the form — keep the stored secret
+        if (razorpayKeySecret    !== undefined && razorpayKeySecret !== '***') update.razorpayKeySecret = razorpayKeySecret;
         if (stripePublishableKey !== undefined) update.stripePublishableKey = stripePublishableKey;
-        if (stripeSecretKey      !== undefined) update.stripeSecretKey      = stripeSecretKey;
+        if (stripeSecretKey      !== undefined && stripeSecretKey !== '***') update.stripeSecretKey = stripeSecretKey;
         if (currency             !== undefined) update.currency             = currency;
         if (currencySymbol       !== undefined) update.currencySymbol       = currencySymbol;
         if (receipt              !== undefined) update.receipt              = receipt;
         if (receiptPrefix        !== undefined) update.receiptPrefix        = receiptPrefix;
 
         const settings = await FeeSettings.findOneAndUpdate({ school: req.schoolId }, update, { upsert: true, new: true }).lean();
-        res.json({ success: true, data: settings });
+        const safe = { ...settings, razorpayKeySecret: settings.razorpayKeySecret ? '***' : '', stripeSecretKey: settings.stripeSecretKey ? '***' : '' };
+        res.json({ success: true, data: safe });
     } catch (e) { res.status(500).json({ success: false, message: e.message }); }
 };
 

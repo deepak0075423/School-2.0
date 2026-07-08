@@ -11,7 +11,7 @@ export default function StudentAttendance() {
   const [month, setMonth] = useState(today.getMonth() + 1);
   const [year,  setYear]  = useState(today.getFullYear());
   const [showForm, setShowForm] = useState(false);
-  const [form, setForm] = useState({ date: '', checkIn: '', checkOut: '', reason: '' });
+  const [form, setForm] = useState({ date: '', requestedStatus: 'present', reason: '' });
   const [submitting, setSubmitting] = useState(false);
 
   const { data: records, loading } = useFetch(
@@ -22,7 +22,7 @@ export default function StudentAttendance() {
   const daysInMonth = new Date(year, month, 0).getDate();
   const firstDay    = new Date(year, month - 1, 1).getDay();
 
-  const list = records?.data || [];
+  const list = Array.isArray(records) ? records : [];
   const recordMap = {};
   list.forEach(r => {
     const d = new Date(r.date).getDate();
@@ -35,9 +35,9 @@ export default function StudentAttendance() {
     setSubmitting(true);
     try {
       await submitCorrection(form);
-      toast.success('Correction request submitted');
+      toast.success('Correction request submitted — awaiting class teacher approval');
       setShowForm(false);
-      setForm({ date: '', checkIn: '', checkOut: '', reason: '' });
+      setForm({ date: '', requestedStatus: 'present', reason: '' });
     } catch (err) { toast.error(err?.response?.data?.message || err.message); }
     finally { setSubmitting(false); }
   };
@@ -65,14 +65,13 @@ export default function StudentAttendance() {
                     onChange={e => setForm(f => ({ ...f, date: e.target.value }))} required />
                 </div>
                 <div className="form-group">
-                  <label className="form-label">Check-In</label>
-                  <input type="time" className="form-control" value={form.checkIn}
-                    onChange={e => setForm(f => ({ ...f, checkIn: e.target.value }))} />
-                </div>
-                <div className="form-group">
-                  <label className="form-label">Check-Out</label>
-                  <input type="time" className="form-control" value={form.checkOut}
-                    onChange={e => setForm(f => ({ ...f, checkOut: e.target.value }))} />
+                  <label className="form-label">Correct status should be *</label>
+                  <select className="form-control" value={form.requestedStatus}
+                    onChange={e => setForm(f => ({ ...f, requestedStatus: e.target.value }))}>
+                    <option value="present">Present</option>
+                    <option value="late">Late</option>
+                    <option value="absent">Absent</option>
+                  </select>
                 </div>
               </div>
               <div className="form-group" style={{ marginTop: 8 }}>

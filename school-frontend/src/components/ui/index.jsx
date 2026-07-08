@@ -234,7 +234,7 @@ function isWeekendOff(date, satConfig) {
   return false;
 }
 
-export function MiniCalendar({ holidays = [], leaves = [], holidayListPath = '', saturdayConfig }) {
+export function MiniCalendar({ holidays = [], leaves = [], attendance = [], holidayListPath = '', saturdayConfig }) {
   const today        = new Date();
   const todayIso     = localIso(today);
   const [view, setView] = React.useState(() => new Date(today.getFullYear(), today.getMonth(), 1));
@@ -259,6 +259,16 @@ export function MiniCalendar({ holidays = [], leaves = [], holidayListPath = '',
     });
     return map;
   }, [holidays]);
+
+  // Attendance map: "YYYY-MM-DD" → 'present' | 'absent' (self clock in/out days)
+  const attMap = useMemo(() => {
+    const map = {};
+    attendance.forEach(a => {
+      if (!a?.date || !['present', 'absent'].includes(a.status)) return;
+      map[localIso(parseServerDate(a.date))] = a.status;
+    });
+    return map;
+  }, [attendance]);
 
   // Build leave map: "YYYY-MM-DD" → [leave, ...]
   const leaveMap = useMemo(() => {
@@ -335,16 +345,20 @@ export function MiniCalendar({ holidays = [], leaves = [], holidayListPath = '',
             const dayLeaves = leaveMap[iso]   || [];
             const isHol     = dayHols.length > 0   && cell.cur;
             const isLeave   = dayLeaves.length > 0 && cell.cur;
+            const att       = cell.cur ? attMap[iso] : null;
             const isOff     = cell.cur && !isToday && isWeekendOff(cell.date, saturdayConfig);
             const tipParts  = [
+              ...(att ? [att === 'present' ? 'Present' : 'Absent'] : []),
               ...(isOff && !isHol ? [cell.date.getDay() === 0 ? 'Sunday' : 'Holiday'] : []),
               ...dayHols.map(h => h.name),
               ...dayLeaves.map(l => `${l.leaveType?.code || 'Leave'} (${l.status})`),
             ];
-            const bg = isToday  ? 'var(--primary)'
-                     : isLeave  ? 'rgba(180,83,9,.13)'
-                     : isHol    ? '#fef3c7'
-                     : isOff    ? 'rgba(0,0,0,.05)'
+            const bg = isToday           ? 'var(--primary)'
+                     : att === 'present' ? 'rgba(16,185,129,.18)'
+                     : att === 'absent'  ? 'rgba(239,68,68,.18)'
+                     : isLeave           ? 'rgba(180,83,9,.13)'
+                     : isHol             ? '#fef3c7'
+                     : isOff             ? 'rgba(0,0,0,.05)'
                      : 'transparent';
             return (
               <div key={i}
@@ -362,6 +376,8 @@ export function MiniCalendar({ holidays = [], leaves = [], holidayListPath = '',
                   {cell.date.getDate()}
                 </span>
                 <div style={{ display: 'flex', gap: 2, marginTop: 2 }}>
+                  {att === 'present' && <span style={{ width: 5, height: 5, borderRadius: '50%', background: '#10b981' }} />}
+                  {att === 'absent'  && <span style={{ width: 5, height: 5, borderRadius: '50%', background: '#ef4444' }} />}
                   {isHol   && <span style={{ width: 5, height: 5, borderRadius: '50%', background: '#d97706' }} />}
                   {isLeave && <span style={{ width: 5, height: 5, borderRadius: '50%', background: '#b45309' }} />}
                 </div>

@@ -38,14 +38,15 @@ exports.updateSubject = async (req, res) => {
         if (type)                          update.type        = type;
         if (description !== undefined)     update.description = description;
         if (Array.isArray(teachers))       update.teachers    = teachers;
-        const s = await Subject.findByIdAndUpdate(req.params.id, update, { new: true })
+        const s = await Subject.findOneAndUpdate({ _id: req.params.id, school: req.schoolId }, update, { new: true })
             .populate('teachers', 'name email');
+        if (!s) return err(res, 'Subject not found', 404);
         ok(res, s);
     } catch (e) { err(res, e, 400); }
 };
 exports.deleteSubject = async (req, res) => {
     try {
-        await Subject.findByIdAndDelete(req.params.id);
+        await Subject.findOneAndDelete({ _id: req.params.id, school: req.schoolId });
         res.json({ success: true });
     } catch (e) { err(res, e); }
 };

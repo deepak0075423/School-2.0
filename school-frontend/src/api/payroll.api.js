@@ -7,7 +7,10 @@ export const assignEmployee = (data) => api.post('/payroll/admin/assignments', d
 export const getPayrollRuns = () => api.get('/payroll/admin/runs');
 export const createRun      = (data) => api.post('/payroll/admin/runs', data);
 export const getRunDetail   = (id) => api.get(`/payroll/admin/runs/${id}`);
+export const updateRunStatus = (id, status) => api.patch(`/payroll/admin/runs/${id}/status`, { status });
 export const publishRun     = (id) => api.post(`/payroll/admin/runs/${id}/publish`);
+export const updateRunEntry = (id, entryId, data) => api.put(`/payroll/admin/runs/${id}/entries/${entryId}`, data);
+export const adminDownloadPayslip = (id) => api.get(`/payroll/admin/payslips/${id}/download`, { responseType: 'blob' });
 export const getReports     = () => api.get('/payroll/admin/reports');
 export const getAuditLog    = () => api.get('/payroll/admin/audit');
 // Teacher

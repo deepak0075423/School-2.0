@@ -32,6 +32,8 @@ const holidayGuard     = [...guard, requireModule('holiday')];
 router.get('/dashboard', guard, adminCtrl.getDashboard);
 
 // School Settings
+router.get('/designations', guard, adminCtrl.getDesignations);
+router.put('/designations', guard, adminCtrl.updateDesignations);
 router.get('/school-settings', guard, adminCtrl.getSchoolSettings);
 router.put('/school-settings', guard, uploadImage.single('logo'), adminCtrl.updateSchoolSettings);
 
@@ -53,6 +55,7 @@ router.get('/modules', guard, async (req, res) => {
             library:      !!m.library,
             payroll:      !!m.payroll,
             fees:         !!m.fees,
+            chat:         !!m.chat,
             saturdayConfig: {
                 working: ls.saturdayWorking !== false,
                 mode:    ls.saturdayMode    || 'all',
@@ -170,6 +173,13 @@ router.get('/reports', guard, reportCtrl.getReports);
 router.get('/regularization-requests',         attendanceGuard, attendanceCtrl.getAdminRegularizationRequests);
 router.post('/regularization-requests/review', attendanceGuard, attendanceCtrl.adminReviewRegularization);
 
+// Admin self-attendance (same store as teacher self-attendance)
+router.get('/my-attendance',            attendanceGuard, attendanceCtrl.getTeacherSelfAttendance);
+router.post('/my-attendance/clock-in',  attendanceGuard, attendanceCtrl.clockIn);
+router.post('/my-attendance/clock-out', attendanceGuard, attendanceCtrl.clockOut);
+router.get('/regularization',           attendanceGuard, attendanceCtrl.getRegularizationForm);
+router.post('/regularization',          attendanceGuard, attendanceCtrl.submitRegularization);
+
 // ── Notifications ─────────────────────────────────────────────────────────────
 router.get('/notifications',        notifGuard, notifCtrl.getList);
 router.post('/notifications/send',  notifGuard, notifCtrl.send);
@@ -213,6 +223,32 @@ router.get('/leave/requests/export',               leaveGuard, leaveCtrl.adminEx
 router.get('/leave/allocations/export',            leaveGuard, leaveCtrl.adminExportAllocations);
 router.get('/leave/reports',                       leaveGuard, leaveCtrl.adminGetReports);
 router.get('/leave/reports/export',                leaveGuard, leaveCtrl.adminExportReports);
+
+// ── Document Categories ────────────────────────────────────────────────────────
+const DocumentCategory = require('../../models/DocumentCategory');
+router.get('/document-categories', docGuard, async (req, res) => {
+    try {
+        const cats = await DocumentCategory.find({ school: req.schoolId, isActive: true }).sort({ name: 1 }).lean();
+        res.json({ success: true, data: cats });
+    } catch (e) { res.status(500).json({ success: false, message: e.message }); }
+});
+router.post('/document-categories', docGuard, async (req, res) => {
+    try {
+        const { name } = req.body;
+        if (!name?.trim()) return res.status(400).json({ success: false, message: 'Name is required' });
+        const cat = await DocumentCategory.create({ school: req.schoolId, name: name.trim() });
+        res.status(201).json({ success: true, data: cat });
+    } catch (e) {
+        if (e.code === 11000) return res.status(409).json({ success: false, message: 'Category already exists' });
+        res.status(500).json({ success: false, message: e.message });
+    }
+});
+router.delete('/document-categories/:id', docGuard, async (req, res) => {
+    try {
+        await DocumentCategory.findOneAndDelete({ _id: req.params.id, school: req.schoolId });
+        res.json({ success: true });
+    } catch (e) { res.status(500).json({ success: false, message: e.message }); }
+});
 
 // ── Documents ─────────────────────────────────────────────────────────────────
 router.get('/documents',                              docGuard, docCtrl.adminGetDocuments);

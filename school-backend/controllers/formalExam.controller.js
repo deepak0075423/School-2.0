@@ -92,7 +92,7 @@ exports.adminGetExams = async (req, res) => {
         const [exams, total] = await Promise.all([
             FormalExam.find(filter)
                 .populate('section',     'sectionName')
-                .populate('academicYear','label')
+                .populate('academicYear','yearName label')
                 .populate('createdBy',   'name')
                 .sort({ createdAt: -1 })
                 .skip((+page - 1) * +limit)
@@ -130,7 +130,7 @@ exports.adminGetExamDetail = async (req, res) => {
     try {
         const exam = await FormalExam.findOne({ _id: req.params.id, school: req.schoolId })
             .populate('section',      'sectionName')
-            .populate('academicYear', 'label')
+            .populate('academicYear', 'yearName label')
             .populate('createdBy',    'name')
             .populate('classApprovedBy', 'name')
             .populate('finalApprovedBy', 'name')
@@ -139,7 +139,7 @@ exports.adminGetExamDetail = async (req, res) => {
         if (!exam) return res.status(404).json({ success: false, message: 'Exam not found' });
 
         const sheets = await ExamMarksSheet.find({ exam: exam._id })
-            .populate('subject',     'name')
+            .populate('subject',     'subjectName name')
             .populate('submittedBy', 'name')
             .lean();
         res.json({ success: true, data: { ...exam, sheets } });
@@ -186,12 +186,12 @@ exports.adminDeleteExam = async (req, res) => {
 exports.adminGetMarksReview = async (req, res) => {
     try {
         const exam = await FormalExam.findOne({ _id: req.params.id, school: req.schoolId })
-            .populate('subjects.subject', 'name')
+            .populate('subjects.subject', 'subjectName name')
             .lean();
         if (!exam) return res.status(404).json({ success: false, message: 'Exam not found' });
 
         const sheets = await ExamMarksSheet.find({ exam: exam._id })
-            .populate('subject',     'name')
+            .populate('subject',     'subjectName name')
             .populate('submittedBy', 'name')
             .lean();
 
@@ -275,7 +275,7 @@ exports.adminGetResult = async (req, res) => {
 
         const results = await FormalResult.find({ exam: exam._id })
             .populate('student', 'name rollNumber email')
-            .populate('subjects.subject', 'name')
+            .populate('subjects.subject', 'subjectName name')
             .sort({ rank: 1 })
             .lean();
         res.json({ success: true, data: results, exam });
@@ -285,7 +285,7 @@ exports.adminGetResult = async (req, res) => {
 exports.adminGetSectionSubjects = async (req, res) => {
     try {
         const teachers = await SectionSubjectTeacher.find({ section: req.params.sectionId })
-            .populate('subject',  'name code')
+            .populate('subject',  'subjectName subjectCode name code')
             .populate('teacher',  'name')
             .lean();
         res.json({ success: true, data: teachers });
@@ -298,7 +298,7 @@ exports.teacherGetMarksEntry = async (req, res) => {
     try {
         const assignments = await SectionSubjectTeacher.find({ teacher: req.userId })
             .populate('section', 'sectionName')
-            .populate('subject', 'name')
+            .populate('subject', 'subjectName name')
             .lean();
 
         const sectionIds = [...new Set(assignments.map(a => a.section._id.toString()))];
@@ -409,13 +409,13 @@ exports.teacherGetValidation = async (req, res) => {
 exports.teacherGetValidationDetail = async (req, res) => {
     try {
         const exam = await FormalExam.findOne({ _id: req.params.examId, school: req.schoolId })
-            .populate('subjects.subject', 'name')
+            .populate('subjects.subject', 'subjectName name')
             .populate('section', 'sectionName')
             .lean();
         if (!exam) return res.status(404).json({ success: false, message: 'Exam not found' });
 
         const sheets = await ExamMarksSheet.find({ exam: exam._id })
-            .populate('subject',     'name')
+            .populate('subject',     'subjectName name')
             .populate('submittedBy', 'name')
             .lean();
         res.json({ success: true, data: { ...exam, sheets } });
@@ -483,7 +483,7 @@ exports.studentGetResults = async (req, res) => {
         const examIds = exams.map(e => e._id);
         const results = await FormalResult.find({ student: req.userId, exam: { $in: examIds } })
             .populate('exam',             'title examType publishDate')
-            .populate('subjects.subject', 'name')
+            .populate('subjects.subject', 'subjectName name')
             .lean();
 
         // Hide results before publish date
@@ -497,7 +497,7 @@ exports.studentGetResultDetail = async (req, res) => {
     try {
         const result = await FormalResult.findOne({ _id: req.params.resultId, student: req.userId })
             .populate('exam',             'title examType publishDate')
-            .populate('subjects.subject', 'name')
+            .populate('subjects.subject', 'subjectName name')
             .lean();
         if (!result) return res.status(404).json({ success: false, message: 'Result not found' });
 
@@ -526,7 +526,7 @@ exports.parentGetResults = async (req, res) => {
         const examIds = exams.map(e => e._id);
         const results = await FormalResult.find({ student: childId, exam: { $in: examIds } })
             .populate('exam',             'title examType publishDate')
-            .populate('subjects.subject', 'name')
+            .populate('subjects.subject', 'subjectName name')
             .lean();
 
         const now     = new Date();
@@ -543,7 +543,7 @@ exports.parentGetResultDetail = async (req, res) => {
 
         const result = await FormalResult.findOne({ _id: req.params.resultId, student: childId })
             .populate('exam',             'title examType publishDate')
-            .populate('subjects.subject', 'name')
+            .populate('subjects.subject', 'subjectName name')
             .lean();
         if (!result) return res.status(404).json({ success: false, message: 'Result not found' });
 

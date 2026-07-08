@@ -13,7 +13,7 @@ export default function LibraryReservations() {
     () => getReservations({ status: statusFilter || undefined, page, limit: 20 }),
     [statusFilter, page],
   );
-  const reservations = data?.data || [];
+  const reservations = Array.isArray(data) ? data : [];
 
   const [cancelItem, setCancelItem] = useState(null);
   const [cancelLoad, setCancelLoad] = useState(false);

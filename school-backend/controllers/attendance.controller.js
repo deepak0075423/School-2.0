@@ -5,117 +5,547 @@ const TeacherAttendance = require('../models/TeacherAttendance');
 const TeacherAttendanceRegularization = require('../models/TeacherAttendanceRegularization');
 const AttendanceCorrection = require('../models/AttendanceCorrection');
 const StudentProfile   = require('../models/StudentProfile');
+const ClassSection     = require('../models/ClassSection');
 
 const ok  = (res, d, s=200) => res.status(s).json({ success: true, data: d });
 const err = (res, e, s=500) => res.status(s).json({ success: false, message: e.message||e });
+
+// Statuses are stored capitalized; the frontend uses lowercase — normalize here.
+const low = (s) => String(s || '').toLowerCase();
+const capReview  = (s) => (low(s) === 'approved' ? 'Approved' : low(s) === 'rejected' ? 'Rejected' : null);
+const capRecord  = (s) => ({ present: 'Present', absent: 'Absent', late: 'Late' }[low(s)] || null);
+const capTeacher = (s) => ({ present: 'Present', absent: 'Absent', 'half-day': 'Half-Day', leave: 'Leave' }[low(s)] || 'Present');
+
+const dayRange = (dateStr) => {
+    const start = new Date(dateStr + 'T00:00:00.000Z');
+    const end   = new Date(dateStr + 'T23:59:59.999Z');
+    return { start, end };
+};
+
+const teacherSection = (req) => ClassSection.findOne({
+    school: req.schoolId,
+    $or: [{ classTeacher: req.userId }, { substituteTeacher: req.userId }],
+}).lean();
+
+// Fetch a student's attendance records for a month via section sessions
+async function studentMonthRecords(studentId, schoolId, month, year) {
+    const profile = await StudentProfile.findOne({ user: studentId, school: schoolId }).lean();
+    if (!profile?.currentSection) return [];
+
+    const filter = { section: profile.currentSection };
+    if (month && year) {
+        filter.date = { $gte: new Date(Date.UTC(year, month - 1, 1)), $lte: new Date(Date.UTC(year, month, 0, 23, 59, 59)) };
+    }
+    const sessions = await Attendance.find(filter).sort({ date: 1 }).lean();
+    if (!sessions.length) return [];
+
+    const records = await AttendanceRecord.find({
+        attendance: { $in: sessions.map(s => s._id) },
+        student: studentId,
+    }).lean();
+    const byId = Object.fromEntries(records.map(r => [String(r.attendance), r]));
+
+    return sessions
+        .filter(s => byId[String(s._id)])
+        .map(s => ({
+            _id:     byId[String(s._id)]._id,
+            date:    s.date,
+            status:  low(byId[String(s._id)].status),
+            remarks: byId[String(s._id)].remarks || '',
+        }));
+}
+
+// ── Admin: teacher attendance regularization ─────────────────────────────────
 
 exports.getAdminRegularizationRequests = async (req, res) => {
     try {
         const { page=1, limit=20, status } = req.query;
         const filter = { school: req.schoolId };
-        if (status) filter.status = status;
+        if (status) {
+            const capped = { pending: 'Pending', approved: 'Approved', rejected: 'Rejected' }[low(status)];
+            filter.status = capped || status;
+        }
         const [requests, total] = await Promise.all([
-            TeacherAttendanceRegularization.find(filter).populate('teacher','name email').sort({createdAt:-1}).skip((page-1)*+limit).limit(+limit).lean(),
+            TeacherAttendanceRegularization.find(filter)
+                .populate('teacher','name email')
+                .sort({ createdAt: -1 })
+                .skip((page-1)*+limit).limit(+limit)
+                .lean(),
             TeacherAttendanceRegularization.countDocuments(filter),
         ]);
-        res.json({ success: true, data: requests, total });
+        res.json({
+            success: true,
+            data: requests.map(r => ({ ...r, status: low(r.status) })),
+            total,
+        });
     } catch (e) { err(res, e); }
 };
+
 exports.adminReviewRegularization = async (req, res) => {
     try {
         const { id, status, remarks } = req.body;
-        const reg = await TeacherAttendanceRegularization.findByIdAndUpdate(id, { status, remarks, reviewedBy: req.userId }, { new: true });
-        ok(res, reg);
+        const newStatus = capReview(status);
+        if (!id || !newStatus) return err(res, 'id and status (approved/rejected) are required', 400);
+
+        const request = await TeacherAttendanceRegularization.findOne({
+            _id: id, school: req.schoolId, status: 'Pending',
+        });
+        if (!request) return err(res, 'Request not found or already reviewed', 404);
+
+        // Four-eyes rule: an admin's own request must be reviewed by another admin
+        if (String(request.teacher) === String(req.userId))
+            return err(res, 'You cannot review your own request — another admin must approve it', 403);
+
+        request.status       = newStatus;
+        request.reviewedBy   = req.userId;
+        request.reviewedAt   = new Date();
+        request.adminRemarks = (remarks || '').trim();
+        await request.save();
+
+        // Apply the approved punches to the teacher's attendance for that day.
+        // Only the times the request carries are written — an existing punch is
+        // never blanked. Requests without times (legacy) fall back to status.
+        if (newStatus === 'Approved') {
+            const dateStr = new Date(request.date).toISOString().split('T')[0];
+            const { start, end } = dayRange(dateStr);
+            const set = {
+                remarks: `Regularized: ${request.requestType}. ${request.adminRemarks}`.trim(),
+                markedBy: req.userId,
+            };
+            if (request.checkIn || request.checkOut) {
+                set.status = 'Present';
+                if (request.checkIn)  set.checkIn  = request.checkIn;
+                if (request.checkOut) set.checkOut = request.checkOut;
+            } else {
+                set.status = request.requestedStatus;
+            }
+            await TeacherAttendance.findOneAndUpdate(
+                { teacher: request.teacher, school: request.school, date: { $gte: start, $lte: end } },
+                {
+                    $set: set,
+                    $setOnInsert: {
+                        teacher: request.teacher,
+                        school:  request.school,
+                        date:    new Date(dateStr + 'T00:00:00.000Z'),
+                    },
+                },
+                { upsert: true }
+            );
+        }
+        ok(res, { ...request.toObject(), status: low(request.status) });
     } catch (e) { err(res, e); }
 };
+
+// ── Teacher: self attendance ──────────────────────────────────────────────────
+
+// ── Self attendance: clock in/out with derived statuses ───────────────────────
+// Statuses are never hand-picked: clock-in → present, approved leave → leave /
+// half-day, holidays & non-working days are skipped, anything else in the past
+// counts as absent automatically.
+
+const hhmm = () => {
+    const n = new Date();
+    return `${String(n.getHours()).padStart(2, '0')}:${String(n.getMinutes()).padStart(2, '0')}`;
+};
+const todayStr = () => new Date().toISOString().split('T')[0];
+
+// Is this Saturday a working day under the school's leave settings?
+function saturdayWorking(day, ls = {}) {
+    if (ls.saturdayWorking === false) return false;
+    const ordinal = Math.ceil(day / 7); // 1st..5th Saturday of the month
+    if (ls.saturdayMode === '1_3_5') return [1, 3, 5].includes(ordinal);
+    if (ls.saturdayMode === '2_4')   return [2, 4].includes(ordinal);
+    return true; // 'all'
+}
+
+// Find the approved leave covering a date, if any
+function leaveOn(dateUTC, leaves) {
+    return leaves.find(l => {
+        const from = new Date(new Date(l.fromDate).toISOString().split('T')[0] + 'T00:00:00.000Z');
+        const to   = new Date(new Date(l.toDate).toISOString().split('T')[0] + 'T23:59:59.999Z');
+        return dateUTC >= from && dateUTC <= to;
+    });
+}
+
+async function buildSelfAttendanceMonth(req, month, year) {
+    const School           = require('../models/School');
+    const LeaveApplication = require('../models/LeaveApplication');
+    const Holiday          = require('../models/Holiday');
+
+    const monthStart = new Date(Date.UTC(year, month - 1, 1));
+    const monthEnd   = new Date(Date.UTC(year, month, 0, 23, 59, 59));
+
+    const [records, leaves, holidays, school] = await Promise.all([
+        TeacherAttendance.find({ teacher: req.userId, date: { $gte: monthStart, $lte: monthEnd } }).lean(),
+        LeaveApplication.find({
+            teacher: req.userId, school: req.schoolId, status: 'approved',
+            fromDate: { $lte: monthEnd }, toDate: { $gte: monthStart },
+        }).populate('leaveType', 'name').lean().catch(() => []),
+        Holiday.find({
+            school: req.schoolId,
+            startDate: { $lte: monthEnd }, endDate: { $gte: monthStart },
+        }).lean().catch(() => []),
+        School.findById(req.schoolId).select('leaveSettings').lean(),
+    ]);
+
+    const ls    = school?.leaveSettings || {};
+    const dept  = req.userRole === 'teacher' ? 'teaching_staff' : 'admin_staff';
+    const staffHolidays = holidays.filter(h =>
+        !h.applicability || h.applicability.scope !== 'specific_departments' ||
+        (h.applicability.departments || []).includes(dept));
+
+    const recByDay = {};
+    records.forEach(r => { recByDay[new Date(r.date).getUTCDate()] = r; });
+
+    const now         = new Date();
+    const isCurrentMonth = now.getFullYear() === year && now.getMonth() === month - 1;
+    const lastDay     = new Date(Date.UTC(year, month, 0)).getUTCDate();
+    const todayDay    = isCurrentMonth ? now.getDate() : null;
+
+    const days    = [];
+    const summary = { present: 0, absent: 0, leave: 0, 'half-day': 0, holiday: 0 };
+
+    for (let d = 1; d <= lastDay; d++) {
+        const dateUTC = new Date(Date.UTC(year, month - 1, d));
+        const isPast  = isCurrentMonth ? d < todayDay : dateUTC < now;
+        const isToday = isCurrentMonth && d === todayDay;
+        const dow     = dateUTC.getUTCDay();
+
+        const holiday = staffHolidays.find(h => {
+            const from = new Date(new Date(h.startDate).toISOString().split('T')[0] + 'T00:00:00.000Z');
+            const to   = new Date(new Date(h.endDate).toISOString().split('T')[0] + 'T23:59:59.999Z');
+            return dateUTC >= from && dateUTC <= to;
+        });
+
+        let entry = { day: d, date: dateUTC, status: null };
+
+        if (dow === 0 || (dow === 6 && !saturdayWorking(d, ls))) {
+            entry.status = 'weekend';
+        } else if (holiday) {
+            entry.status = 'holiday';
+            entry.label  = holiday.name;
+            summary.holiday++;
+        } else {
+            const rec   = recByDay[d];
+            const leave = leaveOn(dateUTC, leaves);
+            // A clock-in, or an approved regularization (status Present), counts as present
+            if (rec?.checkIn || (rec && rec.status === 'Present')) {
+                entry.status   = 'present';
+                entry.checkIn  = rec.checkIn || '';
+                entry.checkOut = rec.checkOut || '';
+                summary.present++;
+            } else if (leave) {
+                entry.status = leave.leaveMode === 'half_day' ? 'half-day' : 'leave';
+                entry.label  = leave.leaveType?.name || 'Leave';
+                summary[entry.status]++;
+            } else if (isPast) {
+                entry.status = 'absent';   // auto-absent: past working day, never clocked in
+                summary.absent++;
+            } else if (isToday) {
+                entry.status = 'pending';  // today, not clocked in yet
+            }
+            // future working days stay null
+        }
+        days.push(entry);
+    }
+
+    // Today's clock state for the clock in/out buttons
+    let today = null;
+    if (isCurrentMonth) {
+        const rec   = recByDay[todayDay];
+        const leave = leaveOn(new Date(Date.UTC(year, month - 1, todayDay)), leaves);
+        today = {
+            clockedIn:  !!rec?.checkIn,
+            clockedOut: !!rec?.checkOut,
+            checkIn:    rec?.checkIn  || '',
+            checkOut:   rec?.checkOut || '',
+            onLeave:    !!leave,
+            leaveLabel: leave ? (leave.leaveType?.name || 'Leave') : '',
+        };
+    }
+
+    return { days, summary, today };
+}
+
 exports.getTeacherSelfAttendance = async (req, res) => {
     try {
-        const { month, year } = req.query;
-        const filter = { teacher: req.userId };
-        if (month && year) {
-            const start = new Date(year, month-1, 1);
-            const end   = new Date(year, month, 0);
-            filter.date = { $gte: start, $lte: end };
-        }
-        const records = await TeacherAttendance.find(filter).sort({ date: 1 }).lean();
-        ok(res, records);
+        const now   = new Date();
+        const month = +req.query.month || now.getMonth() + 1;
+        const year  = +req.query.year  || now.getFullYear();
+        const data  = await buildSelfAttendanceMonth(req, month, year);
+        ok(res, data);
     } catch (e) { err(res, e); }
 };
-exports.markTeacherSelfAttendance = async (req, res) => {
+
+exports.clockIn = async (req, res) => {
     try {
-        const { date, status, checkIn, checkOut } = req.body;
+        const { start, end } = dayRange(todayStr());
+
+        const LeaveApplication = require('../models/LeaveApplication');
+        const onLeave = await LeaveApplication.findOne({
+            teacher: req.userId, school: req.schoolId, status: 'approved',
+            fromDate: { $lte: end }, toDate: { $gte: start },
+            leaveMode: 'full_day',
+        }).lean().catch(() => null);
+        if (onLeave) return err(res, 'You are on approved leave today', 400);
+
+        const existing = await TeacherAttendance.findOne({
+            teacher: req.userId, school: req.schoolId, date: { $gte: start, $lte: end },
+        }).lean();
+        if (existing?.checkIn) return err(res, `Already clocked in at ${existing.checkIn}`, 400);
+
         const rec = await TeacherAttendance.findOneAndUpdate(
-            { teacher: req.userId, date: new Date(date) },
-            { status, checkIn, checkOut, school: req.schoolId },
+            { teacher: req.userId, school: req.schoolId, date: { $gte: start, $lte: end } },
+            {
+                $set: { status: 'Present', checkIn: hhmm(), markedBy: req.userId },
+                $setOnInsert: { teacher: req.userId, school: req.schoolId, date: new Date(todayStr() + 'T00:00:00.000Z') },
+            },
             { upsert: true, new: true }
         );
-        ok(res, rec);
+        ok(res, { checkIn: rec.checkIn });
     } catch (e) { err(res, e); }
 };
-exports.getRegularizationForm = async (req, res) => {
-    ok(res, { message: 'Regularization form data' });
+
+exports.clockOut = async (req, res) => {
+    try {
+        const { start, end } = dayRange(todayStr());
+        const rec = await TeacherAttendance.findOne({
+            teacher: req.userId, school: req.schoolId, date: { $gte: start, $lte: end },
+        });
+        if (!rec?.checkIn) return err(res, 'Clock in first', 400);
+
+        rec.checkOut = hhmm();
+        if (!rec.markedBy) rec.markedBy = req.userId;
+        await rec.save();
+        ok(res, { checkIn: rec.checkIn, checkOut: rec.checkOut });
+    } catch (e) { err(res, e); }
 };
+
+exports.getRegularizationForm = async (req, res) => {
+    try {
+        // Recent self-attendance for context + the teacher's pending requests
+        const [recent, myRequests] = await Promise.all([
+            TeacherAttendance.find({ teacher: req.userId }).sort({ date: -1 }).limit(30).lean(),
+            TeacherAttendanceRegularization.find({ teacher: req.userId }).sort({ createdAt: -1 }).limit(20).lean(),
+        ]);
+        ok(res, {
+            recent:   recent.map(r => ({ ...r, status: low(r.status) })),
+            requests: myRequests.map(r => ({ ...r, status: low(r.status) })),
+        });
+    } catch (e) { err(res, e); }
+};
+
 exports.submitRegularization = async (req, res) => {
     try {
+        const { date, checkIn, checkOut, reason } = req.body;
+        if (!date || !reason) return err(res, 'date and reason are required', 400);
+        if (!checkIn && !checkOut)
+            return err(res, 'Provide the missed clock-in and/or clock-out time', 400);
+
+        const dateStr = new Date(date).toISOString().split('T')[0];
+        if (dateStr > todayStr()) return err(res, 'Cannot mark attendance for a future date', 400);
+
+        const { start, end } = dayRange(dateStr);
+        const existing = await TeacherAttendanceRegularization.findOne({
+            teacher: req.userId, school: req.schoolId,
+            date: { $gte: start, $lte: end },
+            status: 'Pending',
+        }).lean();
+        if (existing) return err(res, 'A pending request already exists for this date', 400);
+
         const reg = await TeacherAttendanceRegularization.create({
-            teacher: req.userId, school: req.schoolId, ...req.body,
+            teacher: req.userId, school: req.schoolId,
+            date: new Date(dateStr + 'T00:00:00.000Z'),
+            requestType:     'Missed Punch',
+            requestedStatus: 'Present',
+            checkIn:  checkIn  || '',
+            checkOut: checkOut || '',
+            reason: String(reason).trim(),
+            status: 'Pending',
         });
-        ok(res, reg, 201);
+        ok(res, { ...reg.toObject(), status: low(reg.status) }, 201);
     } catch (e) { err(res, e); }
 };
+
+// ── Teacher: section dashboard & student profile ──────────────────────────────
+
 exports.getAttendanceDashboard = async (req, res) => {
-    ok(res, { message: 'Attendance dashboard data' });
+    try {
+        const mySection = await teacherSection(req);
+        if (!mySection) return ok(res, { students: [], sessions: 0 });
+
+        const [students, sessions] = await Promise.all([
+            StudentProfile.find({ currentSection: mySection._id }).populate('user', 'name').lean(),
+            Attendance.find({ section: mySection._id }).select('_id date').lean(),
+        ]);
+        const sessionIds = sessions.map(s => s._id);
+        const records = sessionIds.length
+            ? await AttendanceRecord.find({ attendance: { $in: sessionIds } }).lean()
+            : [];
+
+        const byStudent = {};
+        for (const r of records) {
+            const k = String(r.student);
+            byStudent[k] = byStudent[k] || { present: 0, absent: 0, late: 0 };
+            const s = low(r.status);
+            if (byStudent[k][s] !== undefined) byStudent[k][s] += 1;
+        }
+
+        const data = students.map(sp => {
+            const stats = byStudent[String(sp.user?._id)] || { present: 0, absent: 0, late: 0 };
+            const total = stats.present + stats.absent + stats.late;
+            return {
+                student: { _id: sp.user?._id, name: sp.user?.name, rollNumber: sp.rollNumber },
+                ...stats, total,
+                percentage: total ? Math.round(((stats.present + stats.late) / total) * 100) : 0,
+            };
+        });
+        ok(res, { students: data, sessions: sessions.length });
+    } catch (e) { err(res, e); }
 };
+
 exports.getStudentProfile = async (req, res) => {
     try {
-        const profile = await StudentProfile.findOne({ user: req.params.studentId }).lean();
-        const records = await AttendanceRecord.find({ student: req.params.studentId }).sort({date:-1}).limit(30).lean();
-        ok(res, { profile, records });
+        const profile = await StudentProfile.findOne({ user: req.params.studentId, school: req.schoolId })
+            .populate('user', 'name email').lean();
+        const records = await studentMonthRecords(req.params.studentId, req.schoolId, null, null);
+        ok(res, { profile, records: records.slice(-30) });
     } catch (e) { err(res, e); }
 };
+
+// ── Teacher: student correction requests ──────────────────────────────────────
+
 exports.getCorrectionRequests = async (req, res) => {
     try {
-        const requests = await AttendanceCorrection.find({ school: req.schoolId, status: 'pending' })
-            .populate('student','name').lean();
-        ok(res, requests);
+        const mySection = await teacherSection(req);
+        if (!mySection) return ok(res, []);
+
+        const requests = await AttendanceCorrection.find({ section: mySection._id })
+            .populate('student', 'name email')
+            .sort({ createdAt: -1 })
+            .lean();
+        ok(res, requests.map(r => ({
+            ...r,
+            status:          low(r.status),
+            currentStatus:   low(r.currentStatus),
+            requestedStatus: low(r.requestedStatus),
+        })));
     } catch (e) { err(res, e); }
 };
+
 exports.reviewCorrection = async (req, res) => {
     try {
-        const { id, status } = req.body;
-        const corr = await AttendanceCorrection.findByIdAndUpdate(id, { status, reviewedBy: req.userId }, { new: true });
-        ok(res, corr);
+        const { id, status, remarks } = req.body;
+        const newStatus = capReview(status);
+        if (!id || !newStatus) return err(res, 'id and status (approved/rejected) are required', 400);
+
+        const mySection = await teacherSection(req);
+        if (!mySection) return err(res, 'Not authorized', 403);
+
+        const correction = await AttendanceCorrection.findOne({
+            _id: id, section: mySection._id, status: 'Pending',
+        });
+        if (!correction) return err(res, 'Request not found or already reviewed', 404);
+
+        correction.status         = newStatus;
+        correction.reviewedBy     = req.userId;
+        correction.reviewedAt     = new Date();
+        correction.teacherRemarks = (remarks || '').trim();
+        await correction.save();
+
+        // Apply the approved status to the actual attendance record
+        if (newStatus === 'Approved') {
+            const remarksText = `Corrected via student request. ${correction.teacherRemarks}`.trim();
+            if (correction.attendanceRecord) {
+                await AttendanceRecord.findByIdAndUpdate(correction.attendanceRecord, {
+                    $set: { status: correction.requestedStatus, remarks: remarksText },
+                });
+            } else if (correction.attendance) {
+                await AttendanceRecord.findOneAndUpdate(
+                    { attendance: correction.attendance, student: correction.student },
+                    { $set: { status: correction.requestedStatus, remarks: 'Added via correction request.' } },
+                    { upsert: true }
+                );
+            }
+        }
+        ok(res, { ...correction.toObject(), status: low(correction.status) });
     } catch (e) { err(res, e); }
 };
+
+// ── Student: calendar & corrections ──────────────────────────────────────────
+
 exports.getStudentAttendanceCalendar = async (req, res) => {
     try {
         const { month, year } = req.query;
-        const filter = { student: req.userId };
-        if (month && year) {
-            filter.date = { $gte: new Date(year, month-1, 1), $lte: new Date(year, month, 0) };
-        }
-        const records = await AttendanceRecord.find(filter).sort({ date: 1 }).lean();
+        const records = await studentMonthRecords(req.userId, req.schoolId, +month || null, +year || null);
         ok(res, records);
     } catch (e) { err(res, e); }
 };
-exports.getStudentCorrectionForm = async (req, res) => { ok(res, {}); };
-exports.submitStudentCorrection = async (req, res) => {
+
+exports.getStudentCorrectionForm = async (req, res) => {
     try {
-        const corr = await AttendanceCorrection.create({ student: req.userId, school: req.schoolId, ...req.body });
-        ok(res, corr, 201);
+        const requests = await AttendanceCorrection.find({ student: req.userId, school: req.schoolId })
+            .sort({ createdAt: -1 }).limit(20).lean();
+        ok(res, requests.map(r => ({ ...r, status: low(r.status) })));
     } catch (e) { err(res, e); }
 };
+
+exports.submitStudentCorrection = async (req, res) => {
+    try {
+        const { date, requestedStatus, reason } = req.body;
+        if (!date || !requestedStatus || !reason)
+            return err(res, 'date, requestedStatus and reason are required', 400);
+
+        const requested = capRecord(requestedStatus);
+        if (!requested) return err(res, 'requestedStatus must be present, absent or late', 400);
+
+        const profile = await StudentProfile.findOne({ user: req.userId, school: req.schoolId }).lean();
+        if (!profile?.currentSection) return err(res, 'You are not enrolled in a section', 400);
+
+        const dateStr = new Date(date).toISOString().split('T')[0];
+        const { start, end } = dayRange(dateStr);
+
+        const session = await Attendance.findOne({
+            section: profile.currentSection, date: { $gte: start, $lte: end },
+        }).lean();
+        if (!session) return err(res, 'No attendance was taken on that date', 400);
+
+        const existing = await AttendanceCorrection.findOne({
+            student: req.userId, date: { $gte: start, $lte: end }, status: 'Pending',
+        }).lean();
+        if (existing) return err(res, 'A pending correction request already exists for this date', 400);
+
+        const record = await AttendanceRecord.findOne({ attendance: session._id, student: req.userId }).lean();
+
+        const corr = await AttendanceCorrection.create({
+            student: req.userId,
+            school:  req.schoolId,
+            section: session.section,
+            attendance:       session._id,
+            attendanceRecord: record?._id || null,
+            date:             session.date,
+            currentStatus:    record?.status || 'Not Marked',
+            requestedStatus:  requested,
+            reason: String(reason).trim(),
+            status: 'Pending',
+        });
+        ok(res, { ...corr.toObject(), status: low(corr.status) }, 201);
+    } catch (e) { err(res, e); }
+};
+
+// ── Parent: child calendar ────────────────────────────────────────────────────
+
 exports.getParentChildAttendance = async (req, res) => {
     try {
         const ParentProfile = require('../models/ParentProfile');
-        const parent = await ParentProfile.findOne({ user: req.userId }).lean();
-        const childId = parent?.children?.[0] || parent?.student;
+        const parent  = await ParentProfile.findOne({ user: req.userId }).lean();
+        const childId = req.query.childId && (parent?.children || []).map(String).includes(String(req.query.childId))
+            ? req.query.childId
+            : (parent?.children?.[0] || parent?.student);
+        if (!childId) return ok(res, []);
+
         const { month, year } = req.query;
-        const filter = { student: childId };
-        if (month && year) {
-            filter.date = { $gte: new Date(year, month - 1, 1), $lte: new Date(year, month, 0) };
-        }
-        const records = await AttendanceRecord.find(filter).sort({ date: 1 }).lean();
+        const records = await studentMonthRecords(childId, req.schoolId, +month || null, +year || null);
         ok(res, records);
     } catch (e) { err(res, e); }
 };

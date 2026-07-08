@@ -106,10 +106,14 @@ export default function SADashboard() {
       <div className="stat-grid" style={{ marginBottom: 28 }}>
         <StatCard icon="🏫" label="Total Schools" value={data?.schoolCount} color="blue" />
         <StatCard icon="👥" label="Total Users"   value={data?.userCount}   color="green" />
+        <StatCard icon="👤" label="School Admins" value={data?.roles?.admins ?? '—'}   color="purple" />
+        <StatCard icon="👨‍🏫" label="Teachers"     value={data?.roles?.teachers ?? '—'} color="orange" />
+        <StatCard icon="👨‍🎓" label="Students"     value={data?.roles?.students ?? '—'} color="blue" />
+        <StatCard icon="👨‍👩‍👧" label="Parents"      value={data?.roles?.parents ?? '—'}  color="green" />
       </div>
 
       {/* ── Quick Links ── */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill,minmax(220px,1fr))', gap: 16 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill,minmax(220px,1fr))', gap: 16, marginBottom: 28 }}>
         {quickLinks.map(item => (
           <Link key={item.to} to={item.to}
             style={{
@@ -125,6 +129,33 @@ export default function SADashboard() {
           </Link>
         ))}
       </div>
+
+      {/* ── Recently added schools ── */}
+      {(data?.recentSchools || []).length > 0 && (
+        <div className="card">
+          <div className="card-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <h3 className="card-title">Recently added schools</h3>
+            <Link to="/super-admin/schools" style={{ fontSize: '.82rem' }}>View all →</Link>
+          </div>
+          <div className="card-body" style={{ padding: '4px 16px' }}>
+            {data.recentSchools.map(s => (
+              <Link key={s._id} to={`/super-admin/schools/${s._id}/edit`}
+                style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 0', borderBottom: '1px solid var(--border)', textDecoration: 'none', color: 'var(--text)' }}>
+                <div style={{ width: 32, height: 32, borderRadius: 6, overflow: 'hidden', border: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                  {s.logo ? <img src={s.logo} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : <span>🏫</span>}
+                </div>
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontWeight: 600, fontSize: '.9rem' }}>{s.name}</div>
+                  {s.code && <div style={{ fontSize: '.75rem', color: 'var(--text-muted)' }}>Code: {s.code}</div>}
+                </div>
+                <span style={{ fontSize: '.75rem', color: 'var(--text-muted)' }}>
+                  {s.createdAt ? new Date(s.createdAt).toLocaleDateString('en-IN') : ''}
+                </span>
+              </Link>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

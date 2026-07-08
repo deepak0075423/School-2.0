@@ -1,9 +1,11 @@
 'use strict';
+const mongoose             = require('mongoose');
 const Document             = require('../models/Document');
 const AssignmentSubmission = require('../models/AssignmentSubmission');
 const StudentProfile       = require('../models/StudentProfile');
 const ParentProfile        = require('../models/ParentProfile');
 const ClassSection         = require('../models/ClassSection');
+const Class                = require('../models/Class');
 const SectionSubjectTeacher= require('../models/SectionSubjectTeacher');
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -31,11 +33,23 @@ async function canStudentViewDocument(doc, studentId, schoolId) {
     const sectionId = profile.currentSection.toString();
 
     if (targetType === 'class_sections') {
-        return (targetSections || []).some(id => id.toString() === sectionId);
+        const studentSec = await ClassSection.findById(sectionId).lean();
+        if (!studentSec) return false;
+        const studentClass = await Class.findById(studentSec.class).lean();
+        if (!studentClass) return false;
+        const sameClasses = await Class.find({ school: schoolId, classNumber: studentClass.classNumber }).distinct('_id');
+        const sameSections = await ClassSection.find({ class: { $in: sameClasses }, sectionName: studentSec.sectionName, school: schoolId }).distinct('_id');
+        const sameSectionStrs = sameSections.map(id => id.toString());
+        return (targetSections || []).some(id => sameSectionStrs.includes(id.toString()));
     }
     if (targetType === 'class') {
         const section = await ClassSection.findById(sectionId).lean();
-        return (targetClasses || []).some(id => section?.class && id.toString() === section.class.toString());
+        if (!section?.class) return false;
+        const classDoc = await Class.findById(section.class).lean();
+        if (!classDoc) return false;
+        const allClassIds = await Class.find({ school: classDoc.school, classNumber: classDoc.classNumber }).distinct('_id');
+        const allClassStrs = allClassIds.map(id => id.toString());
+        return (targetClasses || []).some(id => allClassStrs.includes(id.toString()));
     }
     return false;
 }
@@ -54,6 +68,8 @@ exports.adminGetDocuments = async (req, res) => {
         const [docs, total] = await Promise.all([
             Document.find(filter)
                 .populate('uploadedBy', 'name email')
+                .populate('targetClasses', 'className classNumber')
+                .populate('targetSections', 'sectionName')
                 .sort({ createdAt: -1 })
                 .skip((+page - 1) * +limit)
                 .limit(+limit)
@@ -342,23 +358,30 @@ exports.studentGetDocuments = async (req, res) => {
     try {
         const { category } = req.query;
         const profile = await StudentProfile.findOne({ user: req.userId }).lean();
-        if (!profile?.currentSection) return res.json({ success: true, data: [] });
+        if (!profile?.currentSection) return res.json({ success: true, data: [], _debug: 'no currentSection' });
 
         const section = await ClassSection.findById(profile.currentSection).lean();
 
-        const filter = {
-            school: req.schoolId,
-            isArchived: false,
-            $or: [
-                { targetType: 'whole_school' },
-                { targetType: 'class_sections', targetSections: profile.currentSection },
-                { targetType: 'class', targetClasses: section?.class },
-            ],
-        };
+        const orConditions = [{ targetType: 'whole_school' }];
+
+        if (section) {
+            const classDoc = await Class.findById(section.class).lean();
+            if (classDoc) {
+                const sameClasses = await Class.find({ school: req.schoolId, classNumber: classDoc.classNumber }).distinct('_id');
+                orConditions.push({ targetType: 'class', targetClasses: { $in: sameClasses } });
+
+                const sameSections = await ClassSection.find({ class: { $in: sameClasses }, sectionName: section.sectionName, school: req.schoolId }).distinct('_id');
+                orConditions.push({ targetType: 'class_sections', targetSections: { $in: sameSections } });
+            }
+        }
+
+        const filter = { school: req.schoolId, isArchived: false, $or: orConditions };
         if (category) filter.category = category;
 
         const docs = await Document.find(filter)
             .populate('uploadedBy', 'name')
+            .populate('targetClasses', 'classNumber className')
+            .populate('targetSections', 'sectionName')
             .sort({ createdAt: -1 })
             .lean();
 
@@ -432,14 +455,23 @@ exports.parentGetDocuments = async (req, res) => {
 
         const section = await ClassSection.findById(profile.currentSection).lean();
 
+        const parentOrConds = [{ targetType: 'whole_school' }];
+
+        if (section) {
+            const classDoc = await Class.findById(section.class).lean();
+            if (classDoc) {
+                const sameClasses = await Class.find({ school: req.schoolId, classNumber: classDoc.classNumber }).distinct('_id');
+                parentOrConds.push({ targetType: 'class', targetClasses: { $in: sameClasses } });
+
+                const sameSections = await ClassSection.find({ class: { $in: sameClasses }, sectionName: section.sectionName, school: req.schoolId }).distinct('_id');
+                parentOrConds.push({ targetType: 'class_sections', targetSections: { $in: sameSections } });
+            }
+        }
+
         const docs = await Document.find({
             school: req.schoolId,
             isArchived: false,
-            $or: [
-                { targetType: 'whole_school' },
-                { targetType: 'class_sections', targetSections: profile.currentSection },
-                { targetType: 'class', targetClasses: section?.class },
-            ],
+            $or: parentOrConds,
         })
             .populate('uploadedBy', 'name')
             .sort({ createdAt: -1 })

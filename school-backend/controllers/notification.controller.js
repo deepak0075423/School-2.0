@@ -210,7 +210,10 @@ exports.clearAll = async (req, res) => {
 
 exports.markOneRead = async (req, res) => {
     try {
-        await NotificationReceipt.findByIdAndUpdate(req.params.receiptId, { isRead: true, readAt: new Date() });
+        await NotificationReceipt.findOneAndUpdate(
+            { _id: req.params.receiptId, recipient: req.userId },
+            { isRead: true, readAt: new Date() }
+        );
         _pushCount(req.userId);
         res.json({ success: true });
     } catch (err) { res.status(500).json({ success: false, message: err.message }); }
@@ -218,7 +221,10 @@ exports.markOneRead = async (req, res) => {
 
 exports.clearOne = async (req, res) => {
     try {
-        await NotificationReceipt.findByIdAndUpdate(req.params.receiptId, { isCleared: true, clearedAt: new Date() });
+        await NotificationReceipt.findOneAndUpdate(
+            { _id: req.params.receiptId, recipient: req.userId },
+            { isCleared: true, clearedAt: new Date() }
+        );
         res.json({ success: true });
     } catch (err) { res.status(500).json({ success: false, message: err.message }); }
 };
@@ -237,7 +243,7 @@ exports.getSent = async (req, res) => {
 
 exports.getSectionsByClass = async (req, res) => {
     try {
-        const sections = await ClassSection.find({ class: req.params.classId }).lean();
+        const sections = await ClassSection.find({ class: req.params.classId, school: req.schoolId }).lean();
         res.json({ success: true, data: sections });
     } catch (err) { res.status(500).json({ success: false, message: err.message }); }
 };

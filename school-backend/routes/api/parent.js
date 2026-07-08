@@ -40,6 +40,7 @@ router.get('/modules', guard, async (req, res) => {
             library:      !!m.library,
             payroll:      !!m.payroll,
             fees:         !!m.fees,
+            chat:         !!m.chat,
             saturdayConfig: {
                 working: ls.saturdayWorking !== false,
                 mode:    ls.saturdayMode    || 'all',

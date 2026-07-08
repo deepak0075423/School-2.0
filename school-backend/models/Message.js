@@ -61,6 +61,15 @@ const MessageSchema = new mongoose.Schema(
             type: Date,
             default: null,
         },
+        // Previous versions kept for admin audit (surfaced to school_admin only)
+        editHistory: {
+            type: [{
+                content:  { type: String, default: '' },
+                editedAt: { type: Date,   default: Date.now },
+            }],
+            default: [],
+            _id: false,
+        },
         isDeleted: {
             type: Boolean,
             default: false,

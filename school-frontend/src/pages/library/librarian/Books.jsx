@@ -10,7 +10,7 @@ export default function LibraryBooks() {
   const [search, setSearch] = useState('');
   const [page,   setPage]   = useState(1);
   const { data, loading, refetch } = useFetch(() => getBooks({ q: search || undefined, page, limit: 20 }), [search, page]);
-  const books = data?.data || [];
+  const books = Array.isArray(data) ? data : [];
 
   const [modal,    setModal]   = useState(false);
   const [editItem, setEditItem]= useState(null);
